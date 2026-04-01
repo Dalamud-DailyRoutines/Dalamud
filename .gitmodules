@@ -1,12 +1,15 @@
 [submodule "lib/FFXIVClientStructs"]
 	path = lib/FFXIVClientStructs
-	url = https://github.com/aers/FFXIVClientStructs
+	url = https://github.com/Dalamud-DailyRoutines/FFXIVClientStructs.git
 [submodule "lib/Nomade040-nmd"]
 	path = lib/Nomade040-nmd
 	url = https://github.com/Nomade040/nmd.git
 [submodule "lib/TsudaKageyu-minhook"]
 	path = lib/TsudaKageyu-minhook
 	url = https://github.com/TsudaKageyu/minhook.git
+[submodule "lib/FfxivArgLauncher"]
+	path = lib/FfxivArgLauncher
+	url = https://github.com/ottercorp/FfxivArgLauncher.git
 [submodule "lib/cimgui"]
 	path = lib/cimgui
 	url = https://github.com/goatcorp/gc-cimgui
@@ -19,6 +22,9 @@
 [submodule "lib/Hexa.NET.ImGui"]
 	path = lib/Hexa.NET.ImGui
 	url = https://github.com/goatcorp/Hexa.NET.ImGui.git
+[submodule "lib/Lumina"]
+	path = lib/Lumina
+	url = https://github.com/Dalamud-DailyRoutines/Lumina.git
 [submodule "lib/Lumina.Excel"]
 	path = lib/Lumina.Excel
-	url = https://github.com/NotAdam/Lumina.Excel.git
+	url = https://github.com/Dalamud-DailyRoutines/Lumina.Excel.git

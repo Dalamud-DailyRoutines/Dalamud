@@ -76,5 +76,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Dalamud.Common\Dalamud.Common.csproj" />
+      <ProjectReference Include="..\lib\FfxivArgLauncher\FfxivArgLauncher.csproj" />
     </ItemGroup>
 </Project>

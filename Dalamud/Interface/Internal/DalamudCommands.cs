@@ -83,11 +83,6 @@ internal class DalamudCommands : IServiceType
             HelpMessage = Loc.Localize("DalamudPluginStats", "Draw plugin statistics window"),
         });
 
-        commandManager.AddHandler("/xlbranch", new CommandInfo(this.OnToggleBranchSwitcher)
-        {
-            HelpMessage = Loc.Localize("DalamudBranchSwitcher", "Open the branch switcher"),
-        });
-
         commandManager.AddHandler("/xldata", new CommandInfo(this.OnDebugDrawDataMenu)
         {
             HelpMessage = Loc.Localize("DalamudDevDataMenuHelp", "Draw dev data menu DEBUG. Usage: /xldata [Data Dropdown Type]"),
@@ -278,11 +273,6 @@ internal class DalamudCommands : IServiceType
         Service<DalamudInterface>.Get().TogglePluginStatsWindow();
     }
 
-    private void OnToggleBranchSwitcher(string command, string arguments)
-    {
-        Service<DalamudInterface>.Get().ToggleBranchSwitcher();
-    }
-
     private void OnDebugDrawDataMenu(string command, string arguments)
     {
         var dalamudInterface = Service<DalamudInterface>.Get();
@@ -384,7 +374,7 @@ internal class DalamudCommands : IServiceType
         var chatGui = Service<ChatGui>.Get();
         var logPath = Path.Join(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "XIVLauncher",
+            "XIVLauncherCN",
             "dalamud.log");
         var message = Util.CopyFilesToClipboard([logPath])
                           ? Loc.Localize("DalamudLogCopySuccess", "Log file copied to clipboard.")

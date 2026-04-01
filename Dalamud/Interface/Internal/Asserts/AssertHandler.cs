@@ -44,7 +44,7 @@ internal class AssertHandler : IDisposable
     /// <summary>
     /// Gets or sets a value indicating whether ImGui asserts should be shown to the user.
     /// </summary>
-    public bool ShowAsserts { get; set; }
+    public bool ShowAsserts { get; } = false;
 
     /// <summary>
     /// Gets or sets a value indicating whether we want to hide asserts that occur frequently (= every update)
@@ -288,7 +288,6 @@ internal class AssertHandler : IDisposable
         }
         else if (result == disableButton)
         {
-            this.ShowAsserts = false;
         }
         else if (result == ignoreButton)
         {

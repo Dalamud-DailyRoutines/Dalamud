@@ -45,8 +45,7 @@ internal class PluginImageCache : IInternalDisposableService
     /// </summary>
     public const int PluginIconHeight = 512;
 
-    private const string MainRepoImageUrl = "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api6/{0}/{1}/images/{2}";
-    private const string MainRepoDip17ImageUrl = "https://raw.githubusercontent.com/goatcorp/PluginDistD17/main/{0}/{1}/images/{2}";
+    private const string MainRepoDip17ImageUrl = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/PluginDistD17/main/{0}/{1}/images/{2}";
 
     [ServiceManager.ServiceDependency]
     private readonly HappyHttpClient happyHttpClient = Service<HappyHttpClient>.Get();
@@ -221,9 +220,10 @@ internal class PluginImageCache : IInternalDisposableService
                 if (texture != null)
                     this.pluginIconMap[manifest.InternalName] = new LoadedIcon(texture, DateTime.Now);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Log.Error(ex, $"An unexpected error occurred with the icon for {manifest.InternalName}");
+                // Log.Error(ex, $"An unexpected error occurred with the icon for {manifest.InternalName}");
+                Log.Verbose($"An unexpected error occurred with the icon for {manifest.InternalName}");
             }
         });
 
@@ -259,9 +259,10 @@ internal class PluginImageCache : IInternalDisposableService
             {
                 await this.DownloadPluginImagesAsync(target, plugin, manifest, isThirdParty, requestedFrame);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Log.Error(ex, $"An unexpected error occurred with the images for {manifest.InternalName}");
+                // Log.Error(ex, $"An unexpected error occurred with the images for {manifest.InternalName}");
+                Log.Verbose($"An unexpected error occurred with the images for {manifest.InternalName}");
             }
         });
 

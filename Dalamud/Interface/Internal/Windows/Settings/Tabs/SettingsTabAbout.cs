@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -72,6 +73,12 @@ MalRD
 philpax
 
 
+CN maintained by:
+Bluefissure
+Loskh
+wozaiha
+subjadeites
+MapleRecall
 
 Localization by:
 

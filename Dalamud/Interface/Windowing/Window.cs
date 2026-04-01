@@ -908,11 +908,12 @@ public abstract class Window
     private void DrawErrorMessage()
     {
         // TODO: Once window systems are services, offer to reload the plugin
-        ImGui.TextColoredWrapped(ImGuiColors.DalamudRed, Loc.Localize("WindowSystemErrorOccurred", "An error occurred while rendering this window. Please contact the developer for details."));
+        ImGui.TextColoredWrapped(ImGuiColors.DalamudRed,
+                                 "渲染本窗口时发生错误, 请咨询相关开发者了解详情");
 
         ImGuiHelpers.ScaledDummy(5);
 
-        if (ImGui.Button(Loc.Localize("WindowSystemErrorRecoverButton", "Attempt to retry")))
+        if (ImGui.Button("重试渲染"))
         {
             this.hasError = false;
             this.lastError = null;
@@ -920,7 +921,7 @@ public abstract class Window
 
         ImGui.SameLine();
 
-        if (ImGui.Button(Loc.Localize("WindowSystemErrorClose", "Close Window")))
+        if (ImGui.Button("关闭窗口"))
         {
             this.IsOpen = false;
             this.hasError = false;
@@ -934,13 +935,13 @@ public abstract class Window
             using var child = ImRaii.Child("##ErrorDetails", new Vector2(0, 200 * ImGuiHelpers.GlobalScale), true);
             using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.DalamudGrey))
             {
-                ImGui.TextWrapped(Loc.Localize("WindowSystemErrorDetails", "Error Details:"));
+                ImGui.TextWrapped("错误详情");
                 ImGui.Separator();
                 ImGui.TextWrapped(this.lastError.ToString());
             }
 
             var childWindowSize = ImGui.GetWindowSize();
-            var copyText = Loc.Localize("WindowSystemErrorCopy", "Copy");
+            var copyText = "复制";
             var buttonWidth = ImGuiComponents.GetIconButtonWithTextWidth(FontAwesomeIcon.Copy, copyText);
             ImGui.SetCursorPos(new Vector2(childWindowSize.X - buttonWidth - ImGui.GetStyle().FramePadding.X,
                                            ImGui.GetStyle().FramePadding.Y));

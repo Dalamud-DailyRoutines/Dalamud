@@ -129,7 +129,7 @@ public sealed class SingleFontChooserDialog : IDisposable
         this.popupImGuiName = $"{this.title}##{nameof(SingleFontChooserDialog)}[{this.counter}]";
         this.atlas = newAsyncAtlas;
         this.selectedFont = new() { FontId = DalamudDefaultFontAndFamilyId.Instance };
-        Encoding.UTF8.GetBytes("Font preview.\n0123456789!", this.fontPreviewText);
+        Encoding.UTF8.GetBytes("Font preview.\n0123456789!\n遍角次亮采之门，门上插刀、直字拐弯、天上平板、船顶漏雨。\n다람쥐 헌 쳇바퀴에 타고파", this.fontPreviewText);
     }
 
     /// <summary>Called when the selected font spec has changed.</summary>
@@ -454,7 +454,7 @@ public sealed class SingleFontChooserDialog : IDisposable
     {
         var lineHeight = ImGui.GetTextLineHeight();
         var previewHeight = (ImGui.GetFrameHeightWithSpacing() - lineHeight) +
-                            Math.Max(lineHeight, this.selectedFont.LineHeightPx * 2);
+                            Math.Max(lineHeight, this.selectedFont.LineHeightPx * 6);
 
         var advancedOptionsHeight = ImGui.GetFrameHeightWithSpacing() * (this.useAdvancedOptions ? 4 : 1);
 
@@ -465,21 +465,21 @@ public sealed class SingleFontChooserDialog : IDisposable
                 tableSize,
                 false,
                 ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
-            && ImGui.BeginTable("##table"u8, 3, ImGuiTableFlags.None))
+            && ImGui.BeginTable("##table"u8, 3))
         {
             ImGui.PushStyleColor(ImGuiCol.TableHeaderBg, Vector4.Zero);
             ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Vector4.Zero);
             ImGui.PushStyleColor(ImGuiCol.HeaderActive, Vector4.Zero);
             ImGui.TableSetupColumn(
-                "Font:##familyColumn"u8,
+                "字体##familyColumn"u8,
                 ImGuiTableColumnFlags.WidthStretch,
                 0.4f);
             ImGui.TableSetupColumn(
-                "Style:##fontColumn"u8,
+                "子系列##fontColumn"u8,
                 ImGuiTableColumnFlags.WidthStretch,
                 0.4f);
             ImGui.TableSetupColumn(
-                "Size:##sizeColumn"u8,
+                "大小##sizeColumn"u8,
                 ImGuiTableColumnFlags.WidthStretch,
                 0.2f);
             ImGui.TableHeadersRow();
@@ -511,7 +511,7 @@ public sealed class SingleFontChooserDialog : IDisposable
 
         ImGui.EndChild();
 
-        ImGui.Checkbox("Show advanced options"u8, ref this.useAdvancedOptions);
+        ImGui.Checkbox("高级设置"u8, ref this.useAdvancedOptions);
         if (this.useAdvancedOptions)
         {
             if (this.DrawAdvancedOptions())
@@ -540,7 +540,7 @@ public sealed class SingleFontChooserDialog : IDisposable
         if (this.fontHandle is null)
         {
             ImGui.SetCursorPos(ImGui.GetCursorPos() + ImGui.GetStyle().FramePadding);
-            ImGui.Text("Select a font."u8);
+            ImGui.Text("选择字体"u8);
         }
         else if (this.fontHandle.LoadException is { } loadException)
         {
@@ -552,7 +552,7 @@ public sealed class SingleFontChooserDialog : IDisposable
         else if (!this.fontHandle.Available)
         {
             ImGui.SetCursorPos(ImGui.GetCursorPos() + ImGui.GetStyle().FramePadding);
-            ImGui.Text("Loading font..."u8);
+            ImGui.Text("加载字体中..."u8);
         }
         else
         {
@@ -567,19 +567,19 @@ public sealed class SingleFontChooserDialog : IDisposable
         }
     }
 
-    private unsafe bool DrawFamilyListColumn()
+    private bool DrawFamilyListColumn()
     {
         if (this.fontFamilies?.IsCompleted is not true)
         {
             ImGui.SetScrollY(0);
-            ImGui.Text("Loading..."u8);
+            ImGui.Text("加载中..."u8);
             return false;
         }
 
         if (!this.fontFamilies.IsCompletedSuccessfully)
         {
             ImGui.SetScrollY(0);
-            ImGui.Text("Error: " + this.fontFamilies.Exception);
+            ImGui.Text("错误: " + this.fontFamilies.Exception);
             return false;
         }
 
@@ -598,7 +598,7 @@ public sealed class SingleFontChooserDialog : IDisposable
                 ref this.familySearch,
                 255,
                 ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CallbackHistory,
-                (ref ImGuiInputTextCallbackData data) =>
+                (ref data) =>
                 {
                     if (families.Count == 0)
                         return 0;
@@ -732,7 +732,7 @@ public sealed class SingleFontChooserDialog : IDisposable
         return changed;
     }
 
-    private unsafe bool DrawFontListColumn(bool changed)
+    private bool DrawFontListColumn(bool changed)
     {
         if (this.fontFamilies?.IsCompleted is not true)
         {
@@ -766,7 +766,7 @@ public sealed class SingleFontChooserDialog : IDisposable
                 ref this.fontSearch,
                 255,
                 ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CallbackHistory,
-                (ref ImGuiInputTextCallbackData data) =>
+                (ref data) =>
                 {
                     if (fonts.Count == 0)
                         return 0;
@@ -892,13 +892,27 @@ public sealed class SingleFontChooserDialog : IDisposable
             this.selectedFontWeight = font.Weight;
             this.selectedFontStretch = font.Stretch;
             this.selectedFontStyle = font.Style;
-            this.selectedFont = this.selectedFont with { FontId = font };
+            var fontNo = 0;
+            if (family is DalamudAssetFontAndFamilyId { Asset: DalamudAsset.NotoSansCJKRegular or DalamudAsset.NotoSansCJKMedium })
+            {
+                var dalamudConfiguration = Service<DalamudConfiguration>.Get();
+                fontNo = dalamudConfiguration.EffectiveLanguage switch
+                {
+                    "jp" => 0,
+                    "tw" => 1,
+                    "zh" => 2,
+                    "ko" => 3,
+                    _ => 0,
+                };
+            }
+
+            this.selectedFont = this.selectedFont with { FontId = font, FontNo = fontNo };
         }
 
         return changed;
     }
 
-    private unsafe bool DrawSizeListColumn()
+    private bool DrawSizeListColumn()
     {
         var changed = false;
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
@@ -915,7 +929,7 @@ public sealed class SingleFontChooserDialog : IDisposable
                 255,
                 ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CallbackHistory |
                 ImGuiInputTextFlags.CharsDecimal,
-                (ref ImGuiInputTextCallbackData data) =>
+                (ref data) =>
                 {
                     switch (data.EventKey)
                     {
@@ -1014,9 +1028,9 @@ public sealed class SingleFontChooserDialog : IDisposable
         if (!ImGui.BeginTable("##advancedOptions"u8, 4))
             return false;
 
-        var labelWidth = ImGui.CalcTextSize("Letter Spacing:"u8).X;
-        labelWidth = Math.Max(labelWidth, ImGui.CalcTextSize("Offset:"u8).X);
-        labelWidth = Math.Max(labelWidth, ImGui.CalcTextSize("Line Height:"u8).X);
+        var labelWidth = ImGui.CalcTextSize("间距"u8).X;
+        labelWidth = Math.Max(labelWidth, ImGui.CalcTextSize("偏移"u8).X);
+        labelWidth = Math.Max(labelWidth, ImGui.CalcTextSize("行高"u8).X);
         labelWidth += ImGui.GetStyle().FramePadding.X;
 
         var inputWidth = ImGui.CalcTextSize("000.000"u8).X + (ImGui.GetStyle().FramePadding.X * 2);
@@ -1040,7 +1054,7 @@ public sealed class SingleFontChooserDialog : IDisposable
         ImGui.TableNextRow();
         ImGui.TableNextColumn();
         ImGui.AlignTextToFramePadding();
-        ImGui.Text("Offset:"u8);
+        ImGui.Text("偏移"u8);
 
         ImGui.TableNextColumn();
         if (FloatInputText(
@@ -1071,7 +1085,7 @@ public sealed class SingleFontChooserDialog : IDisposable
         ImGui.TableNextRow();
         ImGui.TableNextColumn();
         ImGui.AlignTextToFramePadding();
-        ImGui.Text("Letter Spacing:"u8);
+        ImGui.Text("间距"u8);
 
         ImGui.TableNextColumn();
         if (FloatInputText(
@@ -1086,7 +1100,7 @@ public sealed class SingleFontChooserDialog : IDisposable
         ImGui.TableNextRow();
         ImGui.TableNextColumn();
         ImGui.AlignTextToFramePadding();
-        ImGui.Text("Line Height:"u8);
+        ImGui.Text("行高"u8);
 
         ImGui.TableNextColumn();
         if (FloatInputText(
@@ -1104,7 +1118,7 @@ public sealed class SingleFontChooserDialog : IDisposable
         ImGui.EndTable();
         return changed;
 
-        static unsafe float? FloatInputText(
+        static float? FloatInputText(
             string label, ref string buf, float value, float step = 1f, float min = -127, float max = 127)
         {
             var stylePushed = value < min || value > max || !float.TryParse(buf, out _);
@@ -1119,7 +1133,7 @@ public sealed class SingleFontChooserDialog : IDisposable
                 255,
                 ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CallbackHistory |
                 ImGuiInputTextFlags.CharsDecimal,
-                (ref ImGuiInputTextCallbackData data) =>
+                (ref data) =>
                 {
                     switch (data.EventKey)
                     {
@@ -1160,15 +1174,15 @@ public sealed class SingleFontChooserDialog : IDisposable
             || this.FontFamilyExcludeFilter?.Invoke(this.selectedFont.FontId.Family) is true)
         {
             ImGui.BeginDisabled();
-            ImGui.Button("OK"u8, buttonSize);
+            ImGui.Button("确认"u8, buttonSize);
             ImGui.EndDisabled();
         }
-        else if (ImGui.Button("OK"u8, buttonSize))
+        else if (ImGui.Button("确认"u8, buttonSize))
         {
             this.tcs.SetResult(this.selectedFont);
         }
 
-        if (ImGui.Button("Cancel"u8, buttonSize))
+        if (ImGui.Button("取消"u8, buttonSize))
         {
             this.Cancel();
         }
@@ -1179,10 +1193,10 @@ public sealed class SingleFontChooserDialog : IDisposable
         {
             isFirst = doRefresh = this.fontFamilies is null;
             ImGui.BeginDisabled();
-            ImGui.Button("Refresh"u8, buttonSize);
+            ImGui.Button("刷新"u8, buttonSize);
             ImGui.EndDisabled();
         }
-        else if (ImGui.Button("Refresh"u8, buttonSize))
+        else if (ImGui.Button("刷新"u8, buttonSize))
         {
             doRefresh = true;
         }
@@ -1219,13 +1233,13 @@ public sealed class SingleFontChooserDialog : IDisposable
 
         if (this.useAdvancedOptions)
         {
-            if (ImGui.Button("Reset"u8, buttonSize))
+            if (ImGui.Button("重置"u8, buttonSize))
             {
                 this.selectedFont = this.selectedFont with
                 {
                     LineHeight = 1f,
                     GlyphOffset = default,
-                    LetterSpacing = default,
+                    LetterSpacing = 0,
                 };
 
                 this.advUiState = new(this.selectedFont);
@@ -1274,19 +1288,11 @@ public sealed class SingleFontChooserDialog : IDisposable
     private bool TestName(IObjectWithLocalizableName what, string search) =>
         this.ExtractName(what).Contains(search, StringComparison.CurrentCultureIgnoreCase);
 
-    private struct AdvancedOptionsUiState
+    private struct AdvancedOptionsUiState(SingleFontSpec spec)
     {
-        public string OffsetXText;
-        public string OffsetYText;
-        public string LetterSpacingText;
-        public string LineHeightText;
-
-        public AdvancedOptionsUiState(SingleFontSpec spec)
-        {
-            this.OffsetXText = $"{spec.GlyphOffset.X:0.##}";
-            this.OffsetYText = $"{spec.GlyphOffset.Y:0.##}";
-            this.LetterSpacingText = $"{spec.LetterSpacing:0.##}";
-            this.LineHeightText = $"{spec.LineHeight:0.##}";
-        }
+        public string OffsetXText       = $"{spec.GlyphOffset.X:0.##}";
+        public string OffsetYText       = $"{spec.GlyphOffset.Y:0.##}";
+        public string LetterSpacingText = $"{spec.LetterSpacing:0.##}";
+        public string LineHeightText    = $"{spec.LineHeight:0.##}";
     }
 }

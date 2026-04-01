@@ -18,6 +18,12 @@ internal sealed class HintSettingsEntry : SettingsEntry
         this.text = text;
         this.color = color ?? ImGuiColors.DalamudGrey;
     }
+    
+    public HintSettingsEntry(string text, Vector4? color = null)
+    {
+        this.text  = new(text, text);
+        this.color = color ?? ImGuiColors.DalamudGrey;
+    }
 
     public override void Load()
     {

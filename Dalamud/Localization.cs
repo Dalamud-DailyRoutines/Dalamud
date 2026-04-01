@@ -18,7 +18,8 @@ public class Localization : IServiceType
     /// <summary>
     /// Array of language codes which have a valid translation in Dalamud.
     /// </summary>
-    public static readonly string[] ApplicableLangCodes = ["de", "ja", "fr", "it", "es", "ko", "no", "ru", "zh", "tw"];
+    // REGION TODO: 国服
+    public static readonly string[] ApplicableLangCodes = ["zh"];
 
     private const string FallbackLangCode = "en";
 
@@ -63,13 +64,9 @@ public class Localization : IServiceType
     /// </summary>
     /// <param name="langCode">The language code which should be in <see cref="ApplicableLangCodes"/>.</param>
     /// <returns>The corresponding instance of <see cref="CultureInfo"/>.</returns>
+    // REGION TODO: 国服
     public static CultureInfo GetCultureInfoFromLangCode(string langCode) =>
-        CultureInfo.GetCultureInfo(langCode switch
-        {
-            "tw" => "zh-hant",
-            "zh" => "zh-hans",
-            _ => langCode,
-        });
+        CultureInfo.GetCultureInfo("zh-hans");
 
     /// <summary>
     /// Search the set-up localization data for the provided assembly for the given string key and return it.

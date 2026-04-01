@@ -15,7 +15,6 @@ using Dalamud.Console;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Gui;
 using Dalamud.Hooking;
 using Dalamud.Interface.Animation.EasingFunctions;
@@ -25,7 +24,6 @@ using Dalamud.Interface.ImGuiNotification.Internal;
 using Dalamud.Interface.Internal.Badge;
 using Dalamud.Interface.Internal.Windows;
 using Dalamud.Interface.Internal.Windows.Data;
-using Dalamud.Interface.Internal.Windows.Fools26;
 using Dalamud.Interface.Internal.Windows.PluginInstaller;
 using Dalamud.Interface.Internal.Windows.SelfTest;
 using Dalamud.Interface.Internal.Windows.Settings;
@@ -64,7 +62,6 @@ internal class DalamudInterface : IInternalDisposableService
     private readonly DalamudConfiguration configuration;
     private readonly InterfaceManager interfaceManager;
 
-    private readonly ChangelogWindow changelogWindow;
     private readonly ColorDemoWindow colorDemoWindow;
     private readonly ComponentDemoWindow componentDemoWindow;
     private readonly DataWindow dataWindow;
@@ -77,11 +74,7 @@ internal class DalamudInterface : IInternalDisposableService
     private readonly StyleEditorWindow styleEditorWindow;
     private readonly TitleScreenMenuWindow titleScreenMenuWindow;
     private readonly ProfilerWindow profilerWindow;
-    private readonly BranchSwitcherWindow branchSwitcherWindow;
     private readonly HitchSettingsWindow hitchSettingsWindow;
-
-    private readonly Fools26VerifyWindow fools26VerifyWindow;
-    private readonly Fools26ResultWindow fools26ResultWindow;
 
     private bool isCreditsDarkening = false;
     private OutCubic creditsDarkeningAnimation = new(TimeSpan.FromSeconds(10));
@@ -143,20 +136,9 @@ internal class DalamudInterface : IInternalDisposableService
             titleScreenMenu,
             consoleManager,
             addonLifecycle) { IsOpen = false };
-        this.changelogWindow = new ChangelogWindow(
-            this.titleScreenMenuWindow,
-            fontAtlasFactory,
-            dalamudAssetManager,
-            gameGui,
-            framework) { IsOpen = false };
         this.profilerWindow = new ProfilerWindow() { IsOpen = false };
-        this.branchSwitcherWindow = new BranchSwitcherWindow() { IsOpen = false };
         this.hitchSettingsWindow = new HitchSettingsWindow() { IsOpen = false };
 
-        this.fools26VerifyWindow = new Fools26VerifyWindow() { IsOpen = false };
-        this.fools26ResultWindow = new Fools26ResultWindow() { IsOpen = false };
-
-        this.WindowSystem.AddWindow(this.changelogWindow);
         this.WindowSystem.AddWindow(this.colorDemoWindow);
         this.WindowSystem.AddWindow(this.componentDemoWindow);
         this.WindowSystem.AddWindow(this.dataWindow);
@@ -169,13 +151,8 @@ internal class DalamudInterface : IInternalDisposableService
         this.WindowSystem.AddWindow(this.styleEditorWindow);
         this.WindowSystem.AddWindow(this.titleScreenMenuWindow);
         this.WindowSystem.AddWindow(this.profilerWindow);
-        this.WindowSystem.AddWindow(this.branchSwitcherWindow);
         this.WindowSystem.AddWindow(this.hitchSettingsWindow);
 
-        this.WindowSystem.AddWindow(this.fools26VerifyWindow);
-        this.WindowSystem.AddWindow(this.fools26ResultWindow);
-
-        this.interfaceManager.ShowAsserts = configuration.ImGuiAssertsEnabledAtStartup ?? false;
         this.isImGuiDrawDevMenu = this.isImGuiDrawDevMenu || configuration.DevBarOpenAtStartup;
 
         this.interfaceManager.Draw += this.OnDraw;
@@ -193,18 +170,9 @@ internal class DalamudInterface : IInternalDisposableService
                     this.OpenSettings);
 
                 titleScreenMenu.AddEntryCore(
-                    "Toggle Dev Menu",
+                    Loc.Localize("TSMDalamudDevMenu", "Developer Menu"),
                     new ForwardingSharedImmediateTexture(dalamudAssetManager.GetDalamudTextureWrap(DalamudAsset.LogoSmall)),
-                    () => Service<DalamudInterface>.GetNullable()?.ToggleDevMenu(),
-                    VirtualKey.SHIFT);
-
-                if (Versioning.GetActiveTrack() != "release")
-                {
-                    titleScreenMenu.AddEntryCore(
-                        Loc.Localize("TSMDalamudDevMenu", "Developer Menu"),
-                        new ForwardingSharedImmediateTexture(dalamudAssetManager.GetDalamudTextureWrap(DalamudAsset.LogoSmall)),
-                        () => this.isImGuiDrawDevMenu = true);
-                }
+                    () => this.isImGuiDrawDevMenu = true);
             });
 
         this.creditsDarkeningAnimation.Point1 = Vector2.Zero;
@@ -264,10 +232,6 @@ internal class DalamudInterface : IInternalDisposableService
         set => this.pluginWindow.IsOpen = value;
     }
 
-#pragma warning disable SA1600
-    public Fools26VerifyWindow Fools26VerifyWindow => this.fools26VerifyWindow;
-#pragma warning restore SA1600
-
     /// <inheritdoc/>
     void IInternalDisposableService.DisposeService()
     {
@@ -276,20 +240,12 @@ internal class DalamudInterface : IInternalDisposableService
         this.WindowSystem.Windows.OfType<IDisposable>().AggregateToDisposable().Dispose();
         this.WindowSystem.RemoveAllWindows();
 
-        this.fools26VerifyWindow.Dispose();
-        this.fools26ResultWindow.Dispose();
-        this.changelogWindow.Dispose();
         this.consoleWindow.Dispose();
         this.pluginWindow.Dispose();
         this.titleScreenMenuWindow.Dispose();
     }
 
     #region Open
-
-    /// <summary>
-    /// Opens the <see cref="ChangelogWindow"/>.
-    /// </summary>
-    public void OpenChangelogWindow() => this.changelogWindow.IsOpen = true;
 
     /// <summary>
     /// Opens the <see cref="ColorDemoWindow"/>.
@@ -422,33 +378,6 @@ internal class DalamudInterface : IInternalDisposableService
         this.hitchSettingsWindow.BringToFront();
     }
 
-    /// <summary>
-    /// Opens the <see cref="BranchSwitcherWindow"/>.
-    /// </summary>
-    public void OpenBranchSwitcher()
-    {
-        this.branchSwitcherWindow.IsOpen = true;
-        this.branchSwitcherWindow.BringToFront();
-    }
-
-    /// <summary>
-    /// April fools stuff.
-    /// </summary>
-    public void OpenFools26Verify()
-    {
-        this.fools26VerifyWindow.IsOpen = true;
-        this.fools26VerifyWindow.BringToFront();
-    }
-
-    /// <summary>
-    /// April fools stuff.
-    /// </summary>
-    public void OpenFools26Result()
-    {
-        this.fools26ResultWindow.IsOpen = true;
-        this.fools26ResultWindow.BringToFront();
-    }
-
     #endregion
 
     #region Close
@@ -461,11 +390,6 @@ internal class DalamudInterface : IInternalDisposableService
     #endregion
 
     #region Toggle
-
-    /// <summary>
-    /// Toggles the <see cref="ChangelogWindow"/>.
-    /// </summary>
-    public void ToggleChangelogWindow() => this.changelogWindow.Toggle();
 
     /// <summary>
     /// Toggles the <see cref="ColorDemoWindow"/>.
@@ -535,11 +459,6 @@ internal class DalamudInterface : IInternalDisposableService
     /// Toggles the <see cref="ProfilerWindow"/>.
     /// </summary>
     public void ToggleProfilerWindow() => this.profilerWindow.Toggle();
-
-    /// <summary>
-    /// Toggles the <see cref="BranchSwitcherWindow"/>.
-    /// </summary>
-    public void ToggleBranchSwitcher() => this.branchSwitcherWindow.Toggle();
 
     #endregion
 
@@ -797,11 +716,11 @@ internal class DalamudInterface : IInternalDisposableService
             {
                 var pluginManager = Service<PluginManager>.Get();
 
-                if (ImGui.BeginMenu("Dalamud"u8))
+                if (ImGui.BeginMenu("Dalamud"))
                 {
-                    ImGui.MenuItem("Draw dev menu"u8, (byte*)null, ref this.isImGuiDrawDevMenu);
+                    ImGui.MenuItem("显示开发菜单栏", (byte*)null, ref this.isImGuiDrawDevMenu);
 
-                    if (ImGui.MenuItem("Draw dev menu at startup"u8, (byte*)null, this.configuration.DevBarOpenAtStartup))
+                    if (ImGui.MenuItem("在游戏启动时显示开发菜单栏"u8, (byte*)null, this.configuration.DevBarOpenAtStartup))
                     {
                         this.configuration.DevBarOpenAtStartup ^= true;
                         this.configuration.QueueSave();
@@ -809,12 +728,12 @@ internal class DalamudInterface : IInternalDisposableService
 
                     ImGui.Separator();
 
-                    if (ImGui.MenuItem("Open Log window"u8))
+                    if (ImGui.MenuItem("日志"))
                     {
                         this.OpenLogWindow();
                     }
 
-                    if (ImGui.BeginMenu("Set log level..."u8))
+                    if (ImGui.BeginMenu("设置日志播报等级"))
                     {
                         foreach (var logLevel in Enum.GetValues<LogEventLevel>())
                         {
@@ -828,8 +747,8 @@ internal class DalamudInterface : IInternalDisposableService
 
                         ImGui.EndMenu();
                     }
-
-                    if (ImGui.MenuItem("Log Synchronously"u8, (byte*)null, this.configuration.LogSynchronously))
+                    
+                    if (ImGui.MenuItem("以同步方式输出日志"u8, (byte*)null, this.configuration.LogSynchronously))
                     {
                         this.configuration.LogSynchronously ^= true;
                         this.configuration.QueueSave();
@@ -843,78 +762,73 @@ internal class DalamudInterface : IInternalDisposableService
 
                     ImGui.Separator();
 
-                    if (ImGui.MenuItem("Open Data window"u8))
+                    if (ImGui.MenuItem("数据"))
                     {
                         this.OpenDataWindow();
                     }
 
-                    if (ImGui.MenuItem("Open Settings window"u8))
+                    if (ImGui.MenuItem("设置"))
                     {
                         this.OpenSettings();
                     }
 
-                    if (ImGui.MenuItem("Open Changelog window"u8))
-                    {
-                        this.OpenChangelogWindow();
-                    }
-
-                    if (ImGui.MenuItem("Open Components Demo"u8))
+                    if (ImGui.MenuItem("预设 ImGui 组件"))
                     {
                         this.OpenComponentDemoWindow();
                     }
 
-                    if (ImGui.MenuItem("Open Colors Demo"u8))
+                    if (ImGui.MenuItem("预设颜色预览"))
                     {
                         this.OpenColorsDemoWindow();
                     }
 
-                    if (ImGui.MenuItem("Open Self-Test"u8))
+                    if (ImGui.MenuItem("自检"))
                     {
                         this.OpenSelfTest();
                     }
 
-                    if (ImGui.MenuItem("Open Style Editor"u8))
+                    if (ImGui.MenuItem("样式编辑器"))
                     {
                         this.OpenStyleEditor();
                     }
 
-                    if (ImGui.MenuItem("Open Profiler"u8))
+                    if (ImGui.MenuItem("性能分析器"))
                     {
                         this.OpenProfiler();
                     }
 
-                    if (ImGui.MenuItem("Open Hitch Settings"u8))
+                    if (ImGui.MenuItem("Hitch 设置"))
                     {
                         this.OpenHitchSettings();
                     }
-
+                    
                     ImGui.Separator();
 
-                    if (ImGui.MenuItem("Unload Dalamud"u8))
+                    if (ImGui.MenuItem("卸载 Dalamud"))
                     {
                         Service<Dalamud>.Get().Unload();
                     }
 
-                    if (ImGui.MenuItem("Restart game"u8))
+                    if (ImGui.MenuItem("重启游戏"))
                     {
                         Dalamud.RestartGame();
                     }
 
-                    if (ImGui.MenuItem("Kill game"u8))
+                    if (ImGui.MenuItem("关闭游戏"))
                     {
                         Process.GetCurrentProcess().Kill();
                     }
 
                     ImGui.Separator();
 
-                    if (ImGui.BeginMenu("Crash game"u8))
+                    if (ImGui.BeginMenu("崩溃游戏"))
                     {
-                        if (ImGui.MenuItem("Access Violation"u8))
+                        if (ImGui.MenuItem("非法访问"))
                         {
                             Marshal.ReadByte(IntPtr.Zero);
                         }
 
-                        if (ImGui.MenuItem("Set UiModule to NULL"u8))
+                        if (ImGui.MenuItem("设置 UIModule 为 NULL"))
                         {
                             unsafe
                             {
@@ -923,7 +837,7 @@ internal class DalamudInterface : IInternalDisposableService
                             }
                         }
 
-                        if (ImGui.MenuItem("Set UiModule to invalid ptr"u8))
+                        if (ImGui.MenuItem("为 UIModule 写入非法地址"))
                         {
                             unsafe
                             {
@@ -932,7 +846,7 @@ internal class DalamudInterface : IInternalDisposableService
                             }
                         }
 
-                        if (ImGui.MenuItem("Deref nullptr in Hook"u8))
+                        if (ImGui.MenuItem("为 Hook 传入空引用"))
                         {
                             unsafe
                             {
@@ -947,7 +861,7 @@ internal class DalamudInterface : IInternalDisposableService
                             }
                         }
 
-                        if (ImGui.MenuItem("Cause CLR fastfail"u8))
+                        if (ImGui.MenuItem("触发 CLR 快速失败"))
                         {
                             static unsafe void CauseFastFail()
                             {
@@ -959,7 +873,7 @@ internal class DalamudInterface : IInternalDisposableService
                             Service<Game.Framework>.Get().RunOnTick(CauseFastFail);
                         }
 
-                        if (ImGui.MenuItem("Cause ImGui assert"u8))
+                        if (ImGui.MenuItem("触发 ImGui 断言"))
                         {
                             ImGui.PopStyleVar();
                             ImGui.PopStyleVar();
@@ -973,65 +887,40 @@ internal class DalamudInterface : IInternalDisposableService
                         ImGui.EndMenu();
                     }
 
-                    if (ImGui.MenuItem("Report crashes at shutdown"u8, (byte*)null, this.configuration.ReportShutdownCrashes))
+                    if (ImGui.MenuItem("上报在游戏终止时产生的崩溃"u8, (byte*)null, this.configuration.ReportShutdownCrashes))
                     {
                         this.configuration.ReportShutdownCrashes ^= true;
                         this.configuration.QueueSave();
                     }
 
-                    ImGui.Separator();
-
-                    if (ImGui.MenuItem("Open Dalamud branch switcher"u8))
-                    {
-                        this.OpenBranchSwitcher();
-                    }
-
-                    ImGui.MenuItem(this.dalamud.StartInfo.GameVersion?.ToString() ?? "Unknown version", false, false);
-                    ImGui.MenuItem($"D: {Versioning.GetScmVersion()} CS: {Versioning.GetGitHashClientStructs()}[{FFXIVClientStructs.ThisAssembly.Git.Commits}]", false, false);
-                    ImGui.MenuItem($"CLR: {Environment.Version}", false, false);
+                    ImGui.MenuItem(this.dalamud.StartInfo.GameVersion?.ToString() ?? "未知版本", false, false);
+                    ImGui.MenuItem($"Dalamud: {Versioning.GetScmVersion()}", false, false);
+                    ImGui.MenuItem($"FFXIVClientStructs: {Versioning.GetGitHashClientStructs()}[{FFXIVClientStructs.ThisAssembly.Git.Commits}]", false, false);
+                    ImGui.MenuItem($"运行时: {Environment.Version}", false, false);
 
                     ImGui.EndMenu();
                 }
 
-                if (ImGui.BeginMenu("GUI"u8))
+                if (ImGui.BeginMenu("绘制"u8))
                 {
-                    ImGui.MenuItem("Use Monospace font for following windows"u8, (byte*)null, ref this.isImGuiTestWindowsInMonospace);
-                    ImGui.MenuItem("Draw ImGui demo"u8, (byte*)null, ref this.isImGuiDrawDemoWindow);
-                    ImGui.MenuItem("Draw ImPlot demo"u8, (byte*)null, ref this.isImPlotDrawDemoWindow);
-                    ImGui.MenuItem("Draw metrics"u8, (byte*)null, ref this.isImGuiDrawMetricsWindow);
+                    ImGui.MenuItem("为之后的窗口应用 Monospace 字体", string.Empty, ref this.isImGuiTestWindowsInMonospace);
+                    ImGui.MenuItem("显示 ImGui Demo", string.Empty, ref this.isImGuiDrawDemoWindow);
+                    ImGui.MenuItem("显示 ImPlot Demo", string.Empty, ref this.isImPlotDrawDemoWindow);
+                    ImGui.MenuItem("显示绘制数据", string.Empty, ref this.isImGuiDrawMetricsWindow);
 
                     ImGui.Separator();
-
-                    if (ImGui.MenuItem("Enable assert popups"u8, (byte*)null, this.interfaceManager.ShowAsserts))
-                    {
-                        this.interfaceManager.ShowAsserts ^= true;
-                    }
-
-                    if (ImGui.MenuItem("Enable verbose assert logging"u8, (byte*)null, this.interfaceManager.EnableVerboseAssertLogging))
-                    {
-                        this.interfaceManager.EnableVerboseAssertLogging ^= true;
-                    }
-
-                    var assertsEnabled = this.configuration.ImGuiAssertsEnabledAtStartup ?? false;
-                    if (ImGui.MenuItem("Enable asserts at startup"u8, (byte*)null, assertsEnabled))
-                    {
-                        this.configuration.ImGuiAssertsEnabledAtStartup = !assertsEnabled;
-                        this.configuration.QueueSave();
-                    }
-
-                    ImGui.Separator();
-
-                    if (ImGui.MenuItem("Clear focus"u8))
+                    
+                    if (ImGui.MenuItem("清除窗口焦点"))
                     {
                         ImGui.SetWindowFocus((byte*)null);
                     }
 
-                    if (ImGui.MenuItem("Clear stacks"u8))
+                    if (ImGui.MenuItem("清除绘制堆栈"))
                     {
                         this.interfaceManager.ClearStacks();
                     }
 
-                    if (ImGui.MenuItem("Dump style"u8))
+                    if (ImGui.MenuItem("清除绘制样式"))
                     {
                         var info = string.Empty;
                         var style = StyleModelV1.Get();
@@ -1064,35 +953,27 @@ internal class DalamudInterface : IInternalDisposableService
                         Log.Information(info);
                     }
 
-                    if (ImGui.MenuItem("Show dev bar info"u8, (byte*)null, this.configuration.ShowDevBarInfo))
+                    if (ImGui.MenuItem("显示调试信息"u8, (byte*)null, this.configuration.ShowDevBarInfo))
                     {
                         this.configuration.ShowDevBarInfo ^= true;
-                    }
-
-                    ImGui.Separator();
-
-                    if (ImGui.MenuItem("Show loading window"u8))
-                    {
-                        var dialog = new LoadingDialog();
-                        dialog.Show();
                     }
 
                     ImGui.EndMenu();
                 }
 
-                if (ImGui.BeginMenu("Game"u8))
+                if (ImGui.BeginMenu("游戏"u8))
                 {
-                    if (ImGui.MenuItem("Use in-game default ExceptionHandler"u8))
+                    if (ImGui.MenuItem("使用游戏默认的异常处理器"))
                     {
                         this.dalamud.UseDefaultExceptionHandler();
                     }
 
-                    if (ImGui.MenuItem("Use in-game debug ExceptionHandler"u8))
+                    if (ImGui.MenuItem("使用游戏调试用异常处理器"))
                     {
                         this.dalamud.UseDebugExceptionHandler();
                     }
 
-                    if (ImGui.MenuItem("Disable in-game ExceptionHandler"u8))
+                    if (ImGui.MenuItem("禁用游戏内置的异常处理器"))
                     {
                         this.dalamud.UseNoExceptionHandler();
                     }
@@ -1100,26 +981,26 @@ internal class DalamudInterface : IInternalDisposableService
                     ImGui.EndMenu();
                 }
 
-                if (ImGui.BeginMenu("Plugins"u8))
+                if (ImGui.BeginMenu("插件"u8))
                 {
-                    if (ImGui.MenuItem("Open Plugin installer"u8))
+                    if (ImGui.MenuItem("插件安装器"))
                     {
                         this.OpenPluginInstaller();
                     }
 
-                    if (ImGui.MenuItem("Clear cached images/icons"u8))
+                    if (ImGui.MenuItem("清除图片/图标缓存"))
                     {
                         this.pluginWindow?.ClearIconCache();
                     }
 
                     ImGui.Separator();
 
-                    if (ImGui.MenuItem("Open Plugin Stats"u8))
+                    if (ImGui.MenuItem("插件统计数据"))
                     {
                         this.OpenPluginStats();
                     }
 
-                    if (ImGui.MenuItem("Print plugin info"u8))
+                    if (ImGui.MenuItem("打印插件信息"))
                     {
                         foreach (var plugin in pluginManager.InstalledPlugins)
                         {
@@ -1128,58 +1009,58 @@ internal class DalamudInterface : IInternalDisposableService
                         }
                     }
 
-                    if (ImGui.MenuItem("Scan dev plugins"u8))
+                    if (ImGui.MenuItem("扫描开发版插件"))
                     {
                         _ = pluginManager.ScanDevPluginsAsync();
                     }
 
                     ImGui.Separator();
 
-                    if (ImGui.MenuItem("Load all API levels"u8, (byte*)null, pluginManager.LoadAllApiLevels))
+                    if (ImGui.MenuItem("无视 API 限制 (仅开发用)"u8, (byte*)null, pluginManager.LoadAllApiLevels))
                     {
                         pluginManager.LoadAllApiLevels ^= true;
                     }
 
-                    if (ImGui.MenuItem("Load blacklisted plugins"u8, (byte*)null, pluginManager.LoadBannedPlugins))
+                    if (ImGui.MenuItem("加载黑名单插件", (byte*)null, pluginManager.LoadBannedPlugins))
                     {
                         pluginManager.LoadBannedPlugins ^= true;
                     }
 
-                    if (pluginManager.SafeMode && ImGui.MenuItem("Disable Safe Mode"u8))
+                    if (pluginManager.SafeMode && ImGui.MenuItem("禁用安全模式"))
                     {
                         pluginManager.SafeMode = false;
                     }
 
                     ImGui.Separator();
-                    ImGui.MenuItem("API Level:" + PluginManager.DalamudApiLevel, false, false);
-                    ImGui.MenuItem("Loaded plugins:" + pluginManager.InstalledPlugins.Count(), false, false);
+                    ImGui.MenuItem("API 等级:" + PluginManager.DalamudApiLevel, false, false);
+                    ImGui.MenuItem("已加载插件数:" + pluginManager.InstalledPlugins.Count(), false, false);
                     ImGui.EndMenu();
                 }
 
-                if (ImGui.BeginMenu("Localization"u8))
+                if (ImGui.BeginMenu("本地化"u8))
                 {
                     var localization = Service<Localization>.Get();
 
-                    if (ImGui.MenuItem("Export localizable"u8))
+                    if (ImGui.MenuItem("导出本地化用文本"))
                     {
                         localization.ExportLocalizable(true);
                     }
 
-                    if (ImGui.BeginMenu("Load language..."u8))
+                    if (ImGui.BeginMenu("加载语言..."))
                     {
-                        if (ImGui.MenuItem("From Fallbacks"u8))
+                        if (ImGui.MenuItem("备用"))
                         {
                             localization.SetupWithFallbacks();
                         }
 
-                        if (ImGui.MenuItem("From UICulture"u8))
+                        if (ImGui.MenuItem("UI 语言"))
                         {
                             localization.SetupWithUiCulture();
                         }
 
                         foreach (var applicableLangCode in Localization.ApplicableLangCodes)
                         {
-                            if (ImGui.MenuItem($"Applicable: {applicableLangCode}"))
+                            if (ImGui.MenuItem($"应用: {applicableLangCode}"))
                             {
                                 localization.SetupWithLangCode(applicableLangCode);
                             }
@@ -1192,21 +1073,21 @@ internal class DalamudInterface : IInternalDisposableService
                 }
 
                 if (Service<GameGui>.Get().GameUiHidden)
-                    ImGui.BeginMenu("UI is hidden..."u8, false);
+                    ImGui.BeginMenu("UI 隐藏中...", false);
 
                 if (this.configuration.ShowDevBarInfo)
                 {
                     ImGui.PushFont(InterfaceManager.MonoFont);
 
-                    ImGui.BeginMenu($"{Versioning.GetActiveTrack() ?? "???"} on {Versioning.GetGitBranch() ?? "???"}", false);
-                    ImGui.BeginMenu($"{Versioning.GetScmVersion()}", false);
+                    ImGui.BeginMenu($"分支: {Versioning.GetGitBranch() ?? "???"}", false);
+                    ImGui.BeginMenu($"版本: {Versioning.GetScmVersion()}", false);
                     ImGui.BeginMenu(this.FrameCount.ToString("000000"), false);
                     ImGui.BeginMenu(ImGui.GetIO().Framerate.ToString("000"), false);
-                    ImGui.BeginMenu($"W:{Util.FormatBytes(GC.GetTotalMemory(false))}", false);
+                    ImGui.BeginMenu($"内存: {Util.FormatBytes(GC.GetTotalMemory(false))}", false);
 
                     var videoMem = this.interfaceManager.GetD3dMemoryInfo();
                     ImGui.BeginMenu(
-                        !videoMem.HasValue ? "V:???" : $"V:{Util.FormatBytes(videoMem.Value.Used)}",
+                        !videoMem.HasValue ? "显存:???" : $"显存:{Util.FormatBytes(videoMem.Value.Used)}",
                         false);
 
                     ImGui.PopFont();

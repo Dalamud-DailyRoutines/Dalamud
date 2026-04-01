@@ -45,6 +45,29 @@ internal sealed class EnumSettingsEntry<T> : SettingsEntry
 
         this.fallbackValue = fallbackValue;
     }
+    
+    public EnumSettingsEntry(
+        string             name,
+        string             description,
+        LoadSettingDelegate load,
+        SaveSettingDelegate save,
+        Action<T>?          change        = null,
+        Func<T, string?>?   warning       = null,
+        Func<T, string?>?   validity      = null,
+        Func<bool>?         visibility    = null,
+        T                   fallbackValue = default)
+    {
+        this.load            = load;
+        this.save            = save;
+        this.change          = change;
+        this.Name            = new(name, name);
+        this.Description     = new(description, description);
+        this.CheckWarning    = warning;
+        this.CheckValidity   = validity;
+        this.CheckVisibility = visibility;
+
+        this.fallbackValue = fallbackValue;
+    }
 
     public delegate T LoadSettingDelegate(DalamudConfiguration config);
 

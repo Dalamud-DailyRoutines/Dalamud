@@ -180,31 +180,16 @@ internal sealed unsafe class DalamudIme : IInternalDisposableService
     /// <param name="str">The string.</param>
     public void ReflectCharacterEncounters(string str)
     {
-        foreach (var chr in str)
-        {
-            if (!this.EncounteredHan)
-            {
-                if (HanRange.Any(x => x.FirstCodePoint <= chr && chr < x.FirstCodePoint + x.Length))
-                {
-                    if (Service<FontAtlasFactory>.Get()
-                                                 ?.GetFdtReader(GameFontFamilyAndSize.Axis12)
-                                                 .FindGlyph(chr) is null)
-                    {
-                        this.EncounteredHan = true;
-                        Service<InterfaceManager>.Get().RebuildFonts();
-                    }
-                }
-            }
-
-            if (!this.EncounteredHangul)
-            {
-                if (HangulRange.Any(x => x.FirstCodePoint <= chr && chr < x.FirstCodePoint + x.Length))
-                {
-                    this.EncounteredHangul = true;
-                    Service<InterfaceManager>.Get().RebuildFonts();
-                }
-            }
-        }
+        var needHan = !this.EncounteredHan &&
+                      str.Any(chr => HanRange.Any(x => x.FirstCodePoint <= chr && chr < x.FirstCodePoint + x.Length));
+        var needHangul = !this.EncounteredHangul &&
+                         str.Any(chr => HangulRange.Any(x => x.FirstCodePoint <= chr && chr < x.FirstCodePoint + x.Length));
+        if (needHan)
+            this.EncounteredHan = true;
+        if (needHangul)
+            this.EncounteredHangul = true;
+        if (needHan || needHangul)
+            Service<InterfaceManager>.Get().RebuildFonts();
     }
 
     private static ImGuiInputTextStatePtr GetInputTextState() => new(&ImGui.GetCurrentContext().Handle->InputTextState);
@@ -489,6 +474,11 @@ internal sealed unsafe class DalamudIme : IInternalDisposableService
         switch (lang & 0x3F)
         {
             case LANG.LANG_KOREAN:
+                if (!this.EncounteredHangul && open)
+                {
+                    this.EncounteredHangul = true;
+                    Service<InterfaceManager>.Get().RebuildFonts();
+                }
                 if (native)
                     this.inputModeIcon = (char)SeIconChar.ImeKoreanHangul;
                 else if (fullwidth)
@@ -513,6 +503,11 @@ internal sealed unsafe class DalamudIme : IInternalDisposableService
                 break;
 
             case LANG.LANG_CHINESE:
+                if (!this.EncounteredHan && open)
+                {
+                    this.EncounteredHan = true;
+                    Service<InterfaceManager>.Get().RebuildFonts();
+                }
                 if (native)
                     this.inputModeIcon = (char)SeIconChar.ImeChineseHan;
                 else

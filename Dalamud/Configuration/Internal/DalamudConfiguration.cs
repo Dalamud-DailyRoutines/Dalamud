@@ -17,6 +17,7 @@ using Dalamud.Interface.Windowing.Persistence;
 using Dalamud.IoC.Internal;
 using Dalamud.Plugin.Internal.AutoUpdate;
 using Dalamud.Plugin.Internal.Profiles;
+using Dalamud.Plugin.Internal.Types;
 using Dalamud.Storage;
 using Dalamud.Utility;
 
@@ -39,6 +40,7 @@ namespace Dalamud.Configuration.Internal;
 #pragma warning restore SA1015
 internal sealed class DalamudConfiguration : IInternalDisposableService
 {
+
     private static readonly JsonSerializerSettings SerializerSettings = new()
     {
         TypeNameHandling = TypeNameHandling.All,
@@ -64,6 +66,16 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     /// Event that occurs when dalamud configuration is saved.
     /// </summary>
     public event DalamudConfigurationSavedDelegate? DalamudConfigurationSaved;
+
+    /// <summary>
+    /// Gets or sets main Repo Url for Dalamud Plugin init. Default is PluginRepository.MainRepoUrlDailyRoutines
+    /// </summary>
+    public string MainRepoUrl { get; set; } = PluginRepository.MainRepoUrlSoil;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether gets or sets main Repo Url for Dalamud Plugin init. Default is PluginRepository.MainRepoUrlDailyRoutines
+    /// </summary>
+    public bool UseSoilPluginManager { get; set; } = true;
 
     /// <summary>
     /// Gets or sets a list of muted words.
@@ -116,9 +128,9 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     public List<ThirdPartyRepoSettings> ThirdRepoList { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets a value indicating whether a disclaimer regarding third-party repos has been dismissed.
+    /// Gets or sets a value indicating weather some preset third repos should be added by default
     /// </summary>
-    public bool? ThirdRepoSpeedbumpDismissed { get; set; } = null;
+    public bool AddPresetThirdRepos { get; set; } = true;
 
     /// <summary>
     /// Gets or sets a list of hidden plugins.
@@ -233,11 +245,6 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     public bool DevBarOpenAtStartup { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether ImGui asserts should be enabled at startup.
-    /// </summary>
-    public bool? ImGuiAssertsEnabledAtStartup { get; set; }
-
-    /// <summary>
     /// Gets or sets a value indicating whether docking should be globally enabled in ImGui.
     /// </summary>
     public bool IsDocking { get; set; }
@@ -328,7 +335,7 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     /// Gets or sets a value indicating whether the user has seen the profiles tutorial.
     /// </summary>
     public bool ProfilesHasSeenTutorial { get; set; } = false;
-
+    
     /// <summary>
     /// Gets or sets a value indicating whether the user has enabled character-specific profiles.
     /// </summary>
@@ -377,7 +384,7 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     /// Gets or sets a value indicating whether market board data should be uploaded.
     /// </summary>
     public bool IsMbCollect { get; set; } = true;
-
+    
     /// <summary>
     /// Gets the ISO 639-1 two-letter code for the language of the effective Dalamud display language.
     /// </summary>
@@ -472,7 +479,7 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     /// <summary>
     /// Gets or sets a value indicating how auto-updating should behave.
     /// </summary>
-    public AutoUpdateBehavior? AutoUpdateBehavior { get; set; } = null;
+    public AutoUpdateBehavior? AutoUpdateBehavior { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether users should be notified regularly about pending updates.
@@ -557,7 +564,7 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
 
         deserialized ??= new DalamudConfiguration();
         deserialized.configPath = path;
-
+            
         try
         {
             deserialized.SetDefaults();

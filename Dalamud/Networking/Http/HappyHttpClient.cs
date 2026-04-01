@@ -29,7 +29,7 @@ internal class HappyHttpClient : IInternalDisposableService
         this.SharedHttpClient = new HttpClient(new SocketsHttpHandler
         {
             AutomaticDecompression = DecompressionMethods.All,
-            ConnectCallback = this.SharedHappyEyeballsCallback.ConnectCallback,
+            ConnectCallback        = this.SharedHappyEyeballsCallback.ConnectCallback,
         })
         {
             DefaultRequestHeaders =
@@ -41,7 +41,7 @@ internal class HappyHttpClient : IInternalDisposableService
             },
         };
     }
-
+    
     /// <summary>
     /// Gets a <see cref="HttpClient"/> meant to be shared across all (standard) requests made by the application,
     /// where custom configurations are not required.

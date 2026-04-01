@@ -7,8 +7,7 @@ namespace Dalamud.Utility;
 /// </summary>
 public static class ThreadSafety
 {
-    [ThreadStatic]
-    private static bool threadStaticIsMainThread;
+    private static bool threadStaticIsMainThread = true;
 
     /// <summary>
     /// Gets a value indicating whether the current thread is the main thread.

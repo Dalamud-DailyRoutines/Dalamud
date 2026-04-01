@@ -82,8 +82,11 @@ public class StyleEditorWindow : Window
         var config = Service<DalamudConfiguration>.Get();
         var renameModalTitle = Loc.Localize("RenameStyleModalTitle", "Rename Style");
 
+        if (currentSel >= config.SavedStyles.Count)
+            currentSel = 0;
+        
         var workStyle = config.SavedStyles[this.currentSel];
-        workStyle.BuiltInColors ??= StyleModelV1.DalamudStandard.BuiltInColors;
+        workStyle.BuiltInColors ??= StyleModelV1.DalamudStandard.BuiltInColors.Clone();
 
         var isBuiltinStyle = this.currentSel < 2;
         var appliedThisFrame = false;
@@ -102,7 +105,7 @@ public class StyleEditorWindow : Window
         {
             this.SaveStyle();
 
-            var newStyle = StyleModelV1.DalamudStandard;
+            var newStyle = StyleModelV1.DalamudStandard.Clone();
             newStyle.Name = Util.GetRandomName();
             config.SavedStyles.Add(newStyle);
 

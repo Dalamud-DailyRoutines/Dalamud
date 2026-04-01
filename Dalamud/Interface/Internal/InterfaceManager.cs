@@ -288,13 +288,6 @@ internal partial class InterfaceManager : IInternalDisposableService
     /// </remarks>
     public long CumulativePresentCalls { get; private set; }
 
-    /// <inheritdoc cref="AssertHandler.ShowAsserts"/>
-    public bool ShowAsserts
-    {
-        get => this.assertHandler.ShowAsserts;
-        set => this.assertHandler.ShowAsserts = value;
-    }
-
     /// <inheritdoc cref="AssertHandler.EnableVerboseLogging"/>
     public bool EnableVerboseAssertLogging
     {
@@ -709,19 +702,10 @@ internal partial class InterfaceManager : IInternalDisposableService
 
             StyleModel.TransferOldModels();
 
-            if (configuration.SavedStyles == null ||
-                configuration.SavedStyles.All(x => x.Name != StyleModelV1.DalamudStandard.Name))
+            if (configuration.SavedStyles == null)
             {
                 configuration.SavedStyles = [StyleModelV1.DalamudStandard, StyleModelV1.DalamudClassic];
                 configuration.ChosenStyle = StyleModelV1.DalamudStandard.Name;
-            }
-            else if (configuration.SavedStyles.Count == 1)
-            {
-                configuration.SavedStyles.Add(StyleModelV1.DalamudClassic);
-            }
-            else if (configuration.SavedStyles[1].Name != StyleModelV1.DalamudClassic.Name)
-            {
-                configuration.SavedStyles.Insert(1, StyleModelV1.DalamudClassic);
             }
 
             configuration.SavedStyles[0] = StyleModelV1.DalamudStandard;

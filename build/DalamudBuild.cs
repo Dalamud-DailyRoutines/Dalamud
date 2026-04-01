@@ -22,8 +22,12 @@ public class DalamudBuild : NukeBuild
     public static int Main() => Execute<DalamudBuild>(x => x.Compile);
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
+#if DEBUG
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
-
+#else
+    readonly Configuration Configuration = Configuration.Release;
+#endif
+    
     [Parameter("Whether we are building for documentation - emits generated files")]
     readonly bool IsDocsBuild = false;
 
@@ -75,9 +79,11 @@ public class DalamudBuild : NukeBuild
             // Not necessary, and does not build on Linux
             if (IsDocsBuild)
                 return;
-            
             MSBuildTasks.MSBuild(s => s
                 .SetTargetPath(CImGuiProjectFile)
+#if DEBUG
+                .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
+#endif
                 .SetConfiguration(Configuration)
                 .SetTargetPlatform(MSBuildTargetPlatform.x64));
         });
@@ -91,6 +97,9 @@ public class DalamudBuild : NukeBuild
             
             MSBuildTasks.MSBuild(s => s
                 .SetTargetPath(CImPlotProjectFile)
+#if DEBUG
+                .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
+#endif
                 .SetConfiguration(Configuration)
                 .SetTargetPlatform(MSBuildTargetPlatform.x64));
         });
@@ -104,6 +113,9 @@ public class DalamudBuild : NukeBuild
             
             MSBuildTasks.MSBuild(s => s
                 .SetTargetPath(CImGuizmoProjectFile)
+#if DEBUG
+                .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
+#endif
                 .SetConfiguration(Configuration)
                 .SetTargetPlatform(MSBuildTargetPlatform.x64));
         });
@@ -147,6 +159,9 @@ public class DalamudBuild : NukeBuild
         {
             MSBuildTasks.MSBuild(s => s
                 .SetTargetPath(DalamudBootProjectFile)
+#if DEBUG
+                .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
+#endif
                 .SetConfiguration(Configuration));
         });
     
@@ -155,6 +170,9 @@ public class DalamudBuild : NukeBuild
         {
             MSBuildTasks.MSBuild(s => s
                                       .SetTargetPath(DalamudCrashHandlerProjectFile)
+#if DEBUG
+                                      .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
+#endif
                                       .SetConfiguration(Configuration));
         });
 

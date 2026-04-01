@@ -66,6 +66,8 @@ public class DalamudColors
     [JsonProperty("s")]
     public Vector4? ParsedGold { get; set; }
 
+    public DalamudColors Clone() => (DalamudColors)this.MemberwiseClone();
+
     public void Apply()
     {
         if (this.DalamudRed.HasValue)

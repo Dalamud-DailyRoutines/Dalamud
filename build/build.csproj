@@ -15,4 +15,13 @@
         <PackageReference Include="System.Runtime.Serialization.Formatters" Version="10.0.0" />
         <PackageReference Remove="Microsoft.CodeAnalysis.BannedApiAnalyzers" />
     </ItemGroup>
+    <ItemGroup>
+      <Compile Remove="logs\**" />
+    </ItemGroup>
+    <ItemGroup>
+      <EmbeddedResource Remove="logs\**" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Remove="logs\**" />
+    </ItemGroup>
 </Project>

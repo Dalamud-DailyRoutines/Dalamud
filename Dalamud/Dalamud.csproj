@@ -66,10 +66,9 @@
         <PackageReference Include="DotNet.ReproducibleBuilds" PrivateAssets="all" />
         <PackageReference Include="goatcorp.Reloaded.Hooks" />
         <PackageReference Include="JetBrains.Annotations" />
-        <PackageReference Include="Lumina" />
         <PackageReference Include="Microsoft.Extensions.ObjectPool" />
         <PackageReference Include="Microsoft.Windows.CsWin32">
-          <PrivateAssets>all</PrivateAssets>
+            <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="MinSharp" />
         <PackageReference Include="Newtonsoft.Json" />
@@ -86,7 +85,6 @@
         <PackageReference Include="System.Reflection.MetadataLoadContext" />
         <PackageReference Include="TerraFX.Interop.Windows" />
     </ItemGroup>
-
     <ItemGroup>
         <ProjectReference Include="..\generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator\Dalamud.EnumGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
     </ItemGroup>
@@ -98,13 +96,12 @@
 
     <ItemGroup>
         <EmbeddedResource Include="Interface\ImGuiBackend\Renderers\imgui-frag.hlsl.bytes">
-          <LogicalName>imgui-frag.hlsl.bytes</LogicalName>
+            <LogicalName>imgui-frag.hlsl.bytes</LogicalName>
         </EmbeddedResource>
         <EmbeddedResource Include="Interface\ImGuiBackend\Renderers\imgui-vertex.hlsl.bytes">
-          <LogicalName>imgui-vertex.hlsl.bytes</LogicalName>
+            <LogicalName>imgui-vertex.hlsl.bytes</LogicalName>
         </EmbeddedResource>
     </ItemGroup>
-
     <ItemGroup>
         <ProjectReference Include="..\Dalamud.Common\Dalamud.Common.csproj" />
         <ProjectReference Include="..\imgui\Dalamud.Bindings.ImGuizmo\Dalamud.Bindings.ImGuizmo.csproj" />
@@ -114,6 +111,7 @@
         <ProjectReference Include="..\lib\FFXIVClientStructs\FFXIVClientStructs\FFXIVClientStructs.csproj" />
         <ProjectReference Include="..\lib\FFXIVClientStructs\InteropGenerator.Runtime\InteropGenerator.Runtime.csproj" />
         <ProjectReference Include="..\lib\Lumina.Excel\src\Lumina.Excel\Lumina.Excel.csproj" />
+        <ProjectReference Include="..\lib\Lumina\src\Lumina\Lumina.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -130,17 +128,17 @@
     </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource Include="Interface\ImGuiSeStringRenderer\Internal\TextProcessing\DerivedGeneralCategory.txt" LogicalName="DerivedGeneralCategory.txt" />
-      <EmbeddedResource Include="Interface\ImGuiSeStringRenderer\Internal\TextProcessing\EastAsianWidth.txt" LogicalName="EastAsianWidth.txt" />
-      <EmbeddedResource Include="Interface\ImGuiSeStringRenderer\Internal\TextProcessing\emoji-data.txt" LogicalName="emoji-data.txt" />
-      <EmbeddedResource Include="Interface\ImGuiSeStringRenderer\Internal\TextProcessing\LineBreak.txt" LogicalName="LineBreak.txt" />
+        <EmbeddedResource Include="Interface\ImGuiSeStringRenderer\Internal\TextProcessing\DerivedGeneralCategory.txt" LogicalName="DerivedGeneralCategory.txt" />
+        <EmbeddedResource Include="Interface\ImGuiSeStringRenderer\Internal\TextProcessing\EastAsianWidth.txt" LogicalName="EastAsianWidth.txt" />
+        <EmbeddedResource Include="Interface\ImGuiSeStringRenderer\Internal\TextProcessing\emoji-data.txt" LogicalName="emoji-data.txt" />
+        <EmbeddedResource Include="Interface\ImGuiSeStringRenderer\Internal\TextProcessing\LineBreak.txt" LogicalName="LineBreak.txt" />
     </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource WithCulture="false" Include="Interface\Textures\TextureWraps\Internal\DrawListTextureWrap\Renderer.DrawToPremul.ps.bin" />
-      <EmbeddedResource WithCulture="false" Include="Interface\Textures\TextureWraps\Internal\DrawListTextureWrap\Renderer.DrawToPremul.vs.bin" />
-      <EmbeddedResource WithCulture="false" Include="Interface\Textures\TextureWraps\Internal\DrawListTextureWrap\Renderer.MakeStraight.ps.bin" />
-      <EmbeddedResource WithCulture="false" Include="Interface\Textures\TextureWraps\Internal\DrawListTextureWrap\Renderer.MakeStraight.vs.bin" />
+        <EmbeddedResource WithCulture="false" Include="Interface\Textures\TextureWraps\Internal\DrawListTextureWrap\Renderer.DrawToPremul.ps.bin" />
+        <EmbeddedResource WithCulture="false" Include="Interface\Textures\TextureWraps\Internal\DrawListTextureWrap\Renderer.DrawToPremul.vs.bin" />
+        <EmbeddedResource WithCulture="false" Include="Interface\Textures\TextureWraps\Internal\DrawListTextureWrap\Renderer.MakeStraight.ps.bin" />
+        <EmbeddedResource WithCulture="false" Include="Interface\Textures\TextureWraps\Internal\DrawListTextureWrap\Renderer.MakeStraight.vs.bin" />
     </ItemGroup>
 
     <Target Name="AddRuntimeDependenciesToContent" BeforeTargets="GetCopyToOutputDirectoryItems" DependsOnTargets="GenerateBuildDependencyFile;GenerateBuildRuntimeConfigurationFiles">
@@ -190,7 +188,7 @@
     <Target Name="GenerateStubVersionData" BeforeTargets="WriteVersionData" Condition="'$(SCMVersion)'=='' And '$(Configuration)'!='Release'">
         <!-- stub out version since it takes a while. -->
         <PropertyGroup>
-            <SCMVersion>Local build at $([System.DateTime]::Now.ToString(yyyy-MM-dd HH:mm:ss))</SCMVersion>
+            <SCMVersion>本地构建（$([System.DateTime]::Now.ToString(yyyy-MM-dd HH:mm:ss))）</SCMVersion>
             <Branch>???</Branch>
             <CommitHashClientStructs>???</CommitHashClientStructs>
         </PropertyGroup>

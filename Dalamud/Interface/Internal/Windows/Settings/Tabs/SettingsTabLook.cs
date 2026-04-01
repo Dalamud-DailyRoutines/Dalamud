@@ -53,8 +53,8 @@ internal sealed class SettingsTabLook : SettingsTab
             () => Service<DalamudInterface>.Get().OpenStyleEditor()),
 
         new ButtonSettingsEntry(
-            LazyLoc.Localize("DalamudSettingsOpenNotificationEditor", "Modify Notification Position"),
-            LazyLoc.Localize("DalamudSettingsNotificationEditorHint", "Choose where Dalamud notifications appear on the screen."),
+            "修改 Dalamud 通知",
+            "调整 Dalamud 通知窗口出现的位置",
             () => Service<NotificationManager>.Get().StartPositionChooser()),
 
         new SettingsEntry<bool>(
@@ -201,7 +201,9 @@ internal sealed class SettingsTabLook : SettingsTab
 
         ImGui.AlignTextToFramePadding();
         ImGui.Text(Loc.Localize("DalamudSettingsGlobalUiScale", "Global Font Scale"));
-
+        
+        ImGui.Spacing();
+        
         var buttonSize =
             GlobalUiScalePresets
                 .Select(x => ImGui.CalcTextSize(x.Item1, true))

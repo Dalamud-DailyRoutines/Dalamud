@@ -80,9 +80,12 @@ internal class NotificationPositionChooser
         }
 
         // In the middle of the screen, draw some instructions
-        string[] instructions = ["Drag to move the notifications to where you would like them to appear.",
-                           "Click to select the position.",
-                           "Right-click to close without making changes."];
+        string[] instructions =
+        [
+            "上下移动鼠标以修改 Dalamud 通知信息出现的位置",
+            "单击左键以确认当前位置",
+            "单击右键以直接退出编辑状态"
+        ];
 
         var dl = ImGui.GetWindowDrawList();
         for (var i = 0; i < instructions.Length; i++)
@@ -90,8 +93,8 @@ internal class NotificationPositionChooser
             var instruction = instructions[i];
             var instructionSize = ImGui.CalcTextSize(instruction);
             var instructionPos = new Vector2(
-                ImGuiHelpers.MainViewport.Size.X / 2 - instructionSize.X / 2,
-                ImGuiHelpers.MainViewport.Size.Y / 2 - instructionSize.Y / 2 + i * instructionSize.Y);
+                (ImGuiHelpers.MainViewport.Size.X                           / 2)  - (instructionSize.X / 2),
+                (ImGuiHelpers.MainViewport.Size.Y  / 2) - (instructionSize.Y / 2) + (i                 * instructionSize.Y));
             instructionPos += viewportPos;
             dl.AddText(instructionPos, 0xFFFFFFFF, instruction);
         }
@@ -159,27 +162,26 @@ internal class NotificationPositionChooser
             if (snapPos == NotificationSnapDirection.Left)
             {
                 // For left position: boxes are at the left edge of the screen
-                var xPos = edgeMargin;
 
                 if (anchorPosition.Y > 0.5f)
                 {
                     // Small box on top
-                    smallTopLeft = new Vector2(xPos, yPos - smallBoxHeight - spacing);
-                    smallBottomRight = new Vector2(xPos + width, yPos - spacing);
+                    smallTopLeft = new Vector2(edgeMargin, yPos - smallBoxHeight - spacing);
+                    smallBottomRight = new Vector2(edgeMargin + width, yPos - spacing);
 
                     // Big box below
-                    topLeft = new Vector2(xPos, yPos);
-                    bottomRight = new Vector2(xPos + width, yPos + height);
+                    topLeft = new Vector2(edgeMargin, yPos);
+                    bottomRight = new Vector2(edgeMargin + width, yPos + height);
                 }
                 else
                 {
                     // Big box on top
-                    topLeft = new Vector2(xPos, yPos);
-                    bottomRight = new Vector2(xPos + width, yPos + height);
+                    topLeft = new Vector2(edgeMargin, yPos);
+                    bottomRight = new Vector2(edgeMargin + width, yPos + height);
 
                     // Small box below
-                    smallTopLeft = new Vector2(xPos, yPos + height + spacing);
-                    smallBottomRight = new Vector2(xPos + width, yPos + height + spacing + smallBoxHeight);
+                    smallTopLeft = new Vector2(edgeMargin, yPos + height + spacing);
+                    smallBottomRight = new Vector2(edgeMargin + width, yPos + height + spacing + smallBoxHeight);
                 }
             }
             else

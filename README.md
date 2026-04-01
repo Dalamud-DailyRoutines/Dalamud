@@ -1,16 +1,16 @@
 # Dalamud [![Discord Shield](https://discordapp.com/api/guilds/581875019861328007/widget.png?style=shield)](https://discord.gg/3NMcUV5)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/goatcorp/DalamudAssets/master/UIRes/logo.png" alt="Dalamud" width="200"/>
+  <img src="https://raw.githubusercontent.com/ottercorp/DalamudAssets/master/UIRes/logo.png" alt="Dalamud" width="200"/>
 </p>
 
 Dalamud is a plugin development framework for FFXIV that provides access to game data and native interoperability with the game itself to add functionality and quality-of-life.
 
-It is meant to be used in conjunction with [XIVLauncher](https://github.com/goatcorp/FFXIVQuickLauncher), which manages and launches Dalamud for you. __It is generally not recommended for end users to try to run Dalamud manually as XIVLauncher manages multiple required dependencies.__
+It is meant to be used in conjunction with [XIVLauncherCN](https://github.com/ottercorp/FFXIVQuickLauncher), which manages and launches Dalamud for you. __It is generally not recommended for users to try to run Dalamud manually as there are multiple dependencies and assumed folder paths.__
 
 ## Hold Up!
 
-If you are just trying to **use** Dalamud, you don't need to do anything on this page - please [download XIVLauncher](https://goatcorp.github.io/) from its official page and follow the setup instructions.
+If you are just trying to **use** Dalamud, you don't need to do anything on this page - please [download XIVLauncher](https://ottercorp.github.io/) from its official page and follow the setup instructions.
 
 ## Building and testing locally
 
@@ -18,7 +18,7 @@ Please check the [docs page on building Dalamud](https://dalamud.dev/building) f
 
 ## Plugin development
 Dalamud features a growing API for in-game plugin development with game data and chat access and overlays.
-Please see our [Developer FAQ](https://goatcorp.github.io/faq/development) and the [API documentation](https://dalamud.dev) for more details.
+Please see our [Developer FAQ](https://ottercorp.github.io/faq/development) and the [API documentation](https://dalamud.dev) for more details.
 
 If you need any support regarding the API or usage of Dalamud, please [join our discord server](https://discord.gg/3NMcUV5).
 

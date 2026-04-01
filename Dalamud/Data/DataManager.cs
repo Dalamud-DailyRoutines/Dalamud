@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,6 +13,7 @@ using Dalamud.Utility.Timing;
 using Lumina;
 using Lumina.Data;
 using Lumina.Excel;
+using Lumina.Excel.Sheets;
 
 using Newtonsoft.Json;
 
@@ -50,7 +52,7 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
                 {
                     LoadMultithreaded = true,
                     CacheFileResources = true,
-                    PanicOnSheetChecksumMismatch = true,
+                    PanicOnSheetChecksumMismatch = false,
                     RsvResolver = this.rsvResolver.TryResolve,
                     DefaultExcelLanguage = this.Language.ToLumina(),
                 };
@@ -130,6 +132,9 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
         }
     }
 
+    /// <summary>
+    /// Gets the current game client language.
+    /// </summary>
     /// <inheritdoc/>
     public ClientLanguage Language { get; private set; }
 
@@ -151,11 +156,11 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
 
     /// <inheritdoc/>
     public ExcelSheet<T> GetExcelSheet<T>(ClientLanguage? language = null, string? name = null) where T : struct, IExcelRow<T>
-        => this.Excel.GetSheet<T>(language?.ToLumina(), name);
+        => this.Excel.GetSheet<T>(ClientLanguage.ChineseSimplified.ToLumina(), name);
 
     /// <inheritdoc/>
     public SubrowExcelSheet<T> GetSubrowExcelSheet<T>(ClientLanguage? language = null, string? name = null) where T : struct, IExcelSubrow<T>
-        => this.Excel.GetSubrowSheet<T>(language?.ToLumina(), name);
+        => this.Excel.GetSubrowSheet<T>(ClientLanguage.ChineseSimplified.ToLumina(), name);
 
     /// <inheritdoc/>
     public FileResource? GetFile(string path)

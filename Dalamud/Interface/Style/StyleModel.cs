@@ -111,6 +111,8 @@ public abstract class StyleModel
         return prefix + Convert.ToBase64String(Util.CompressString(JsonConvert.SerializeObject(this)));
     }
 
+    public abstract StyleModel Clone();
+    
     /// <summary>
     /// Apply this style model to ImGui.
     /// </summary>

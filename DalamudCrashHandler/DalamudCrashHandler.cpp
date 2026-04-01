@@ -1,4 +1,4 @@
-#include <array>
+﻿#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -27,6 +27,7 @@
 #include <ShlGuid.h>
 #include <ShObjIdl.h>
 #include <shlobj_core.h>
+#include <winhttp.h>
 
 #include <dxgi.h>
 #pragma comment(lib, "dxgi.lib")
@@ -316,10 +317,10 @@ void print_exception_info(HANDLE hThread, const EXCEPTION_POINTERS& ex, const CO
                 break;
             }
 
-            log << std::format(L"\nException Info #{}\n", rec_index);
-            log << std::format(L"Address: {:X}\n", exRecs.back().ExceptionCode);
-            log << std::format(L"Flags: {:X}\n", exRecs.back().ExceptionFlags);
-            log << std::format(L"Address: {:X}\n", reinterpret_cast<size_t>(exRecs.back().ExceptionAddress));
+            log << std::format(L"\n异常信息 #{}\n", rec_index);
+            log << std::format(L"地址: {:X}\n", exRecs.back().ExceptionCode);
+            log << std::format(L"标志: {:X}\n", exRecs.back().ExceptionFlags);
+            log << std::format(L"地址: {:X}\n", reinterpret_cast<size_t>(exRecs.back().ExceptionAddress));
             if (exRecs.back().NumberParameters)
             {
                 log << L"Parameters: ";
@@ -335,7 +336,7 @@ void print_exception_info(HANDLE hThread, const EXCEPTION_POINTERS& ex, const CO
         }
     }
 
-    log << L"\nCall Stack\n{";
+    log << L"\n调用栈\n{";
 
     STACKFRAME64 sf{};
     sf.AddrPC.Offset = ctx.Rip;
@@ -716,7 +717,7 @@ void restart_game_using_injector(int nRadioButton, const std::vector<std::wstrin
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
     } else {
-        MessageBoxW(nullptr, std::format(L"Failed to restart: 0x{:x}", GetLastError()).c_str(), L"Dalamud Boot", MB_ICONERROR | MB_OK);
+        MessageBoxW(nullptr, std::format(L"重新启动失败: 0x{:x}", GetLastError()).c_str(), L"Dalamud Boot", MB_ICONERROR | MB_OK);
     }
 }
 
@@ -893,7 +894,7 @@ int main() {
 
         if (exinfo.ExceptionRecord.ExceptionCode == 0x12345678) {
             std::cout << "Restart requested" << std::endl;
-            TerminateProcess(g_hProcess, 0);
+            TerminateProcess(g_hProcess, 0x12345678);
             restart_game_using_injector(IdRadioRestartNormal, *launcherArgs);
             break;
         }
@@ -903,10 +904,10 @@ int main() {
         std::cout << "Creating progress window" << std::endl;
         IProgressDialog* pProgressDialog = NULL;
         if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_ALL, IID_IProgressDialog, (void**)&pProgressDialog)) && pProgressDialog) {
-            pProgressDialog->SetTitle(L"Dalamud Crash Handler");
-            pProgressDialog->SetLine(1, L"The game has crashed!", FALSE, NULL);
-            pProgressDialog->SetLine(2, L"Dalamud is collecting further information...", FALSE, NULL);
-            pProgressDialog->SetLine(3, L"Refreshing Game Module List", FALSE, NULL);
+            pProgressDialog->SetTitle(L"Dalamud 故障处理器");
+            pProgressDialog->SetLine(1, L"游戏崩溃", FALSE, NULL);
+            pProgressDialog->SetLine(2, L"Dalamud 正在收集崩溃信息...", FALSE, NULL);
+            pProgressDialog->SetLine(3, L"刷新游戏模块列表中", FALSE, NULL);
             pProgressDialog->StartProgressDialog(NULL, NULL, PROGDLG_MARQUEEPROGRESS | PROGDLG_NOCANCEL | PROGDLG_NOMINIMIZE, NULL);
             IOleWindow* pOleWindow;
             HRESULT hr = pProgressDialog->QueryInterface(IID_IOleWindow, (LPVOID*)&pOleWindow);
@@ -949,55 +950,73 @@ int main() {
         if (g_bSymbolsAvailable) {
             SymRefreshModuleList(g_hProcess);
         }
-        else if(!assetDir.empty())
+        else if (!assetDir.empty())
         {
             auto symbol_search_path = std::format(L".;{}", (assetDir / "UIRes" / "pdb").wstring());
 
             g_bSymbolsAvailable = SymInitializeW(g_hProcess, symbol_search_path.c_str(), true);
-            std::wcout << std::format(L"Init symbols with PDB at {}", symbol_search_path) << std::endl;
+            std::wcout << std::format(L"使用PDB初始化符号，路径：{}", symbol_search_path) << std::endl;
 
             SymRefreshModuleList(g_hProcess);
         }
         else
         {
             g_bSymbolsAvailable = SymInitializeW(g_hProcess, nullptr, true);
-            std::cout << "Init symbols without PDB" << std::endl;
+            std::cout << "初始化符号 (无PDB)" << std::endl;
         }
 
         if (!g_bSymbolsAvailable) {
-            std::wcerr << std::format(L"SymInitialize error: 0x{:x}", GetLastError()) << std::endl;
+            std::wcerr << std::format(L"SymInitialize 错误: 0x{:x}", GetLastError()) << std::endl;
         }
 
         if (pProgressDialog)
-            pProgressDialog->SetLine(3, L"Reading troubleshooting data", FALSE, NULL);
+            pProgressDialog->SetLine(3, L"正在读取故障排除数据", FALSE, NULL);
 
         std::wstring stackTrace(exinfo.dwStackTraceLength, L'\0');
-        if (exinfo.dwStackTraceLength) {
-            if (DWORD read; !ReadFile(hPipeRead, &stackTrace[0], 2 * exinfo.dwStackTraceLength, &read, nullptr)) {
-                std::cout << std::format("Failed to read supplied stack trace: error 0x{:x}", GetLastError()) << std::endl;
+        if (exinfo.dwStackTraceLength)
+        {
+            if (DWORD read; !ReadFile(hPipeRead, &stackTrace[0], 2 * exinfo.dwStackTraceLength, &read, nullptr))
+            {
+                std::cout << std::format("读取堆栈跟踪失败：错误 0x{:x}", GetLastError()) << std::endl;
             }
         }
 
         std::string troubleshootingPackData(exinfo.dwTroubleshootingPackDataLength, '\0');
-        if (exinfo.dwTroubleshootingPackDataLength) {
-            if (DWORD read; !ReadFile(hPipeRead, &troubleshootingPackData[0], exinfo.dwTroubleshootingPackDataLength, &read, nullptr)) {
-                std::cout << std::format("Failed to read troubleshooting pack data: error 0x{:x}", GetLastError()) << std::endl;
+        if (exinfo.dwTroubleshootingPackDataLength)
+        {
+            if (DWORD read; !ReadFile(hPipeRead, &troubleshootingPackData[0], exinfo.dwTroubleshootingPackDataLength,
+                                      &read, nullptr))
+            {
+                std::cout << std::format("读取故障排除包数据失败：错误 0x{:x}", GetLastError()) << std::endl;
             }
         }
 
         if (pProgressDialog)
-            pProgressDialog->SetLine(3, fullDump ? L"Creating full dump" : L"Creating minidump", FALSE, NULL);
+            pProgressDialog->SetLine(3, fullDump ? L"正在创建完整转储" : L"正在创建小型转储", FALSE, NULL);
 
         SYSTEMTIME st;
         GetLocalTime(&st);
         const auto dalamudLogPath = logDir.empty() ? std::filesystem::path() : logDir / L"Dalamud.log";
-        const auto dumpPath = logDir.empty() ? std::filesystem::path() : logDir / std::format(L"dalamud_appcrash_{:04}{:02}{:02}_{:02}{:02}{:02}_{:03}_{}.dmp", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, dwProcessId);
-        const auto logPath = logDir.empty() ? std::filesystem::path() : logDir / std::format(L"dalamud_appcrash_{:04}{:02}{:02}_{:02}{:02}{:02}_{:03}_{}.log", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, dwProcessId);
+        const auto dumpPath = logDir.empty()
+                                  ? std::filesystem::path()
+                                  : logDir / std::format(
+                                      L"dalamud_appcrash_{:04}{:02}{:02}_{:02}{:02}{:02}_{:03}_{}.dmp", st.wYear,
+                                      st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
+                                      dwProcessId);
+        const auto logPath = logDir.empty()
+                                 ? std::filesystem::path()
+                                 : logDir / std::format(
+                                     L"dalamud_appcrash_{:04}{:02}{:02}_{:02}{:02}{:02}_{:03}_{}.log", st.wYear,
+                                     st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
+                                     dwProcessId);
         std::wstring dumpError;
-        if (dumpPath.empty()) {
-            std::cout << "Skipping dump path, as log directory has not been specified" << std::endl;
-        } else if (shutup) {
-            std::cout << "Skipping dump, was shutdown" << std::endl;
+        if (dumpPath.empty())
+        {
+            std::cout << "跳过转储文件，未指定日志目录" << std::endl;
+        }
+        else if (shutup)
+        {
+            std::cout << "跳过转储，程序已关闭" << std::endl;
         }
         else
         {
@@ -1006,21 +1025,36 @@ int main() {
             mdmp_info.ExceptionPointers = exinfo.pExceptionPointers;
             mdmp_info.ClientPointers = TRUE;
 
-            do {
-                const auto hDumpFile = CreateFileW(dumpPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
-                if (hDumpFile == INVALID_HANDLE_VALUE) {
-                    std::wcerr << (dumpError = std::format(L"CreateFileW({}, GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr) error: 0x{:x}", dumpPath.wstring(), GetLastError())) << std::endl;
+            do
+            {
+                const auto hDumpFile = CreateFileW(dumpPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+                                                   CREATE_ALWAYS, 0, nullptr);
+                if (hDumpFile == INVALID_HANDLE_VALUE)
+                {
+                    std::wcerr << (dumpError = std::format(
+                        L"CreateFileW({}, GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr) 错误：0x{:x}",
+                        dumpPath.wstring(), GetLastError())) << std::endl;
                     break;
                 }
 
-                std::unique_ptr<std::remove_pointer_t<HANDLE>, decltype(&CloseHandle)> hDumpFilePtr(hDumpFile, &CloseHandle);
-                if (!MiniDumpWriteDump(g_hProcess, dwProcessId, hDumpFile, fullDump ? MiniDumpWithFullMemory : static_cast<MINIDUMP_TYPE>(MiniDumpWithDataSegs | MiniDumpWithModuleHeaders), &mdmp_info, nullptr, nullptr)) {
-                    std::wcerr << (dumpError = std::format(L"MiniDumpWriteDump(0x{:x}, {}, 0x{:x}({}), MiniDumpWithFullMemory, ..., nullptr, nullptr) error: 0x{:x}", reinterpret_cast<size_t>(g_hProcess), dwProcessId, reinterpret_cast<size_t>(hDumpFile), dumpPath.wstring(), GetLastError())) << std::endl;
+                std::unique_ptr<std::remove_pointer_t<HANDLE>, decltype(&CloseHandle)> hDumpFilePtr(
+                    hDumpFile, &CloseHandle);
+                if (!MiniDumpWriteDump(g_hProcess, dwProcessId, hDumpFile,
+                                       fullDump
+                                           ? MiniDumpWithFullMemory
+                                           : static_cast<MINIDUMP_TYPE>(MiniDumpWithDataSegs |
+                                               MiniDumpWithModuleHeaders), &mdmp_info, nullptr, nullptr))
+                {
+                    std::wcerr << (dumpError = std::format(
+                        L"MiniDumpWriteDump(0x{:x}, {}, 0x{:x}({}), MiniDumpWithFullMemory, ..., nullptr, nullptr) 错误：0x{:x}",
+                        reinterpret_cast<size_t>(g_hProcess), dwProcessId, reinterpret_cast<size_t>(hDumpFile),
+                        dumpPath.wstring(), GetLastError())) << std::endl;
                     break;
                 }
 
-                std::wcout << "Dump written to path: " << dumpPath << std::endl;
-            } while (false);
+                std::wcout << "转储文件已写入路径：" << dumpPath << std::endl;
+            }
+            while (false);
         }
 
         const bool is_external_event = exinfo.ExceptionRecord.ExceptionCode == CUSTOM_EXCEPTION_EXTERNAL_EVENT;
@@ -1032,37 +1066,37 @@ int main() {
 
         if (!is_external_event)
         {
-            log << std::format(L"Unhandled native exception occurred at {}", to_address_string(exinfo.ContextRecord.Rip, false)) << std::endl;
-            log << std::format(L"Code: {:X}", exinfo.ExceptionRecord.ExceptionCode) << std::endl;
+            log << std::format(L"未处理的本地异常发生于 {}", to_address_string(exinfo.ContextRecord.Rip, false)) << std::endl;
+            log << std::format(L"错误代码: {:X}", exinfo.ExceptionRecord.ExceptionCode) << std::endl;
         }
         else
         {
-            log << L"CLR error occurred" << std::endl;
+            log << L"C# 运行时 (CLR) 发生错误" << std::endl;
         }
 
         if (shutup)
-            log << L"======= Crash handler was globally muted(shutdown?) =======" << std::endl;
+            log << L"======= 崩溃处理程序已被全局静默 =======" << std::endl;
 
         if (dumpPath.empty())
-            log << L"Dump skipped" << std::endl;
+            log << L"已跳过转储" << std::endl;
         else if (dumpError.empty())
-            log << std::format(L"Dump at: {}", dumpPath.wstring()) << std::endl;
+            log << std::format(L"转储文件位置: {}", dumpPath.wstring()) << std::endl;
         else
-            log << std::format(L"Dump error: {}", dumpError) << std::endl;
-        log << std::format(L"System Time: {0:%F} {0:%T} {0:%Ez}", std::chrono::system_clock::now()) << std::endl;
-        log << std::format(L"CPU Vendor: {}", vendor) << std::endl;
-        log << std::format(L"CPU Brand: {}", brand) << std::endl;
+            log << std::format(L"转储错误: {}", dumpError) << std::endl;
+        log << std::format(L"系统时间: {0:%F} {0:%T} {0:%Ez}", std::chrono::system_clock::now()) << std::endl;
+        log << std::format(L"处理器厂商: {}", vendor) << std::endl;
+        log << std::format(L"处理器品牌: {}", brand) << std::endl;
 
         for (IDXGIAdapter1* adapter : enum_dxgi_adapters()) {
             DXGI_ADAPTER_DESC1 adapterDescription{};
             adapter->GetDesc1(&adapterDescription);
-            log << std::format(L"GPU Desc: {}", adapterDescription.Description) << std::endl;
+            log << std::format(L"显卡描述: {}", adapterDescription.Description) << std::endl;
         }
 
         log << L"\n" << stackTrace << std::endl;
 
         if (pProgressDialog)
-            pProgressDialog->SetLine(3, L"Refreshing Module List", FALSE, NULL);
+            pProgressDialog->SetLine(3, L"正在刷新模块列表", FALSE, NULL);
 
         std::wstring window_log_str;
 
@@ -1090,49 +1124,48 @@ int main() {
         TASKDIALOGCONFIG config = { 0 };
 
         const TASKDIALOG_BUTTON radios[]{
-            {IdRadioRestartNormal, L"Restart normally"},
-            {IdRadioRestartWithout3pPlugins, L"Restart without custom repository plugins"},
-            {IdRadioRestartWithoutPlugins, L"Restart without any plugins"},
-            {IdRadioRestartWithoutDalamud, L"Restart without Dalamud"},
+            {IdRadioRestartNormal, L"正常重启"},
+            {IdRadioRestartWithout3pPlugins, L"禁用第三方插件并重启"},
+            {IdRadioRestartWithoutPlugins, L"禁用所有插件并重启"},
+            {IdRadioRestartWithoutDalamud, L"禁用 Dalamud 并重启"},
         };
 
         const TASKDIALOG_BUTTON buttons[]{
-            {IdButtonRestart, L"Restart\nRestart the game with the above-selected option."},
-            {IdButtonSaveTsPack, L"Save Troubleshooting Info\nSave a .tspack file containing information about this crash for analysis."},
-            {IdButtonExit, L"Exit\nExit without doing anything."},
+            {IdButtonRestart, L"重启\n使用上面所选的选项重启游戏"},
+            {IdButtonSaveTsPack, L"保存报错信息文件\n保存包含本次游戏崩溃相关信息的 .tspack 文件以待进一步分析"},
+            {IdButtonExit, L"退出游戏\n仅退出游戏, 不执行任何其他操作"},
         };
 
         config.cbSize = sizeof(config);
         config.hInstance = GetModuleHandleW(nullptr);
         config.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_CAN_BE_MINIMIZED | TDF_ALLOW_DIALOG_CANCELLATION | TDF_USE_COMMAND_LINKS | TDF_NO_DEFAULT_RADIO_BUTTON;
         config.pszMainIcon = MAKEINTRESOURCE(IDI_ICON1);
-        config.pszMainInstruction = L"An error in the game occurred";
-        config.pszContent = (L""
-            R"aa(The game has to close. This error may be caused by a faulty plugin, a broken mod, any other third-party tool, or simply a bug in the game.)aa" "\n"
-            "\n"
-            R"aa(Try running a game repair in XIVLauncher by right clicking the login button, and disabling plugins you don't need. Please also check your antivirus, see our <a href="help">help site</a> for more information.)aa" "\n"
-            "\n"
-            R"aa(For further assistance, please upload <a href="exporttspack">a troubleshooting pack</a> to our <a href="discord">Discord server</a>.)aa" "\n"
-
-        );
+        config.pszMainInstruction = L"游戏崩溃";
+        std::wstring content =
+            L"相关原因可能为: 插件故障、模组损坏、其他第三方工具、游戏本身问题等\n"
+            L"\n"
+            L"请暂时禁用你不需要的插件, 并使用 XIVLauncher 检测游戏文件完整性\n"
+            L"\n"
+            L"如果你想在我们的 <a href=\"discord\">Discord</a> 中寻求帮助，请保存 <a href=\"exporttspack\">报错信息文件 (点击此处)</a> 并发送给我们\n"
+            L"\n"
+            L"堆栈跟踪:\n";
+        content += window_log_str;
+        config.pszContent = content.c_str();
         config.pButtons = buttons;
         config.cButtons = ARRAYSIZE(buttons);
         config.nDefaultButton = IdButtonRestart;
-        config.pszExpandedControlText = L"Hide further information";
-        config.pszCollapsedControlText = L"Further information for developers";
-        config.pszExpandedInformation = window_log_str.c_str();
-        config.pszWindowTitle = L"Dalamud Crash Handler";
+        config.pszWindowTitle = L"故障处理器";
         config.pRadioButtons = radios;
         config.cRadioButtons = ARRAYSIZE(radios);
         config.cxWidth = 300;
 
 #if _DEBUG
         config.pszFooter = (L""
-            R"aa(<a href="help">Help</a> | <a href="logdir">Open log directory</a> | <a href="logfile">Open log file</a> | <a href="resume">Attempt to resume</a>)aa"
+            L"<a href=\"help\">常见问题</a> | <a href=\"logdir\">打开日志目录</a> | <a href=\"logfile\">打开日志文件</a> | <a href=\"resume\">尝试恢复</a>"
         );
 #else
         config.pszFooter = (L""
-            R"aa(<a href="help">Help</a> | <a href="logdir">Open log directory</a> | <a href="logfile">Open log file</a>)aa"
+            L"<a href=\"help\">常见问题</a> | <a href=\"logdir\">打开日志目录</a> | <a href=\"logfile\">打开日志文件</a>"
         );
 #endif
 
@@ -1152,7 +1185,7 @@ int main() {
                 {
                     const auto link = std::wstring_view(reinterpret_cast<const wchar_t*>(lParam));
                     if (link == L"help") {
-                        ShellExecuteW(hwnd, nullptr, L"https://goatcorp.github.io/faq?utm_source=vectored", nullptr, nullptr, SW_SHOW);
+                        ShellExecuteW(hwnd, nullptr, L"https://info.atmoomen.top", nullptr, nullptr, SW_SHOW);
                     } else if (link == L"logdir") {
                         open_folder_and_select_items(hwnd, logPath.wstring());
                     } else if (link == L"logfile") {
@@ -1160,7 +1193,7 @@ int main() {
                     } else if (link == L"exporttspack") {
                         export_tspack(hwnd, logDir, ws_to_u8(log.str()), troubleshootingPackData);
                     } else if (link == L"discord") {
-                        ShellExecuteW(hwnd, nullptr, L"https://goat.place", nullptr, nullptr, SW_SHOW);
+                        ShellExecuteW(hwnd, nullptr, L"https://discord.gg/dailyroutines", nullptr, nullptr, SW_SHOW);
                     } else if (link == L"resume") {
                         attemptResume = true;
                         DestroyWindow(hwnd);

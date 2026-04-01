@@ -96,7 +96,7 @@ internal class PluginErrorHandler : IServiceType
 
         this.lastErrorTime = now;
 
-        var creatingErrorsText = $"{devPlugin.Name} is creating errors";
+        var creatingErrorsText = $"{devPlugin.Name} 正在输出错误日志";
         var notification = new Notification()
         {
             Title = creatingErrorsText,
@@ -104,15 +104,15 @@ internal class PluginErrorHandler : IServiceType
             Type = NotificationType.Error,
             InitialDuration = TimeSpan.FromSeconds(15),
             MinimizedText = creatingErrorsText,
-            Content = $"The plugin '{devPlugin.Name}' is creating errors. Click 'Show console' to learn more.\n\n" +
-                      $"You are seeing this because '{devPlugin.Name}' is a Dev Plugin.",
+            Content = $"插件 '{devPlugin.Name}' 正在输出错误日志。点击 '显示控制台' 按钮查看详情\n\n" +
+                      $"显示本消息是因为 '{devPlugin.Name}' 为本地插件",
             RespectUiHidden = false,
         };
 
         this.activeNotification = this.notificationManager.AddNotification(notification);
         this.activeNotification.DrawActions += _ =>
         {
-            if (ImGui.Button("Show console"u8))
+            if (ImGui.Button("显示控制台"))
             {
                 this.di.OpenLogWindow(this.plugin.InternalName);
                 this.activeNotification.DismissNow();
@@ -120,12 +120,12 @@ internal class PluginErrorHandler : IServiceType
 
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Show the console filtered to this plugin"u8);
+                ImGui.SetTooltip("显示此插件相关的控制台日志");
             }
 
             ImGui.SameLine();
 
-            if (ImGui.Button("Disable notifications"u8))
+            if (ImGui.Button("禁用此插件的错误通知"))
             {
                 devPlugin.NotifyForErrors = false;
                 this.activeNotification.DismissNow();
@@ -133,7 +133,7 @@ internal class PluginErrorHandler : IServiceType
 
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Disable error notifications for this plugin"u8);
+                ImGui.SetTooltip("临时禁用此插件的错误日志通知");
             }
         };
     }

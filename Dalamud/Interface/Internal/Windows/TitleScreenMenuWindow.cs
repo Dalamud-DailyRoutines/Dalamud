@@ -90,7 +90,7 @@ internal class TitleScreenMenuWindow : Window, IDisposable
             ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavFocus |
             ImGuiWindowFlags.NoDocking)
     {
-        this.showTsm = consoleManager.AddVariable("dalamud.show_tsm", "Show the Title Screen Menu", true);
+        this.showTsm = consoleManager.AddVariable("dalamud.show_tsm", "显示标题界面菜单", true);
 
         this.clientState = clientState;
         this.configuration = configuration;
@@ -510,10 +510,10 @@ internal class TitleScreenMenuWindow : Window, IDisposable
             .PopColorType()
             .PopEdgeColorType()
             .Append($" Dalamud: {Versioning.GetScmVersion()}")
-            .Append($" - {count} {(count != 1 ? "plugins" : "plugin")} loaded");
+            .Append($" - 已加载插件: {count}");
 
         if (pm?.SafeMode is true)
-            rssb.Builder.PushColorType(17).Append(" [SAFE MODE]").PopColorType();
+            rssb.Builder.PushColorType(17).Append(" [安全模式]").PopColorType();
 
         textNode->SetText(rssb.Builder.GetViewAsSpan());
     }

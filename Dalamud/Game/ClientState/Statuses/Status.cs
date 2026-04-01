@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Dalamud.Data;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
-
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using Lumina.Excel;
 
 using CSStatus = FFXIVClientStructs.FFXIV.Client.Game.Status;

@@ -28,10 +28,6 @@ internal sealed class SettingsWindow : Window
 
     private SettingsTab? setActiveTab;
 
-    private bool fools26NeedSet = true;
-    private bool fools26Active;
-    private SettingsTab fools26Tab = new SettingsTabFools26();
-
     /// <summary>
     /// Initializes a new instance of the <see cref="SettingsWindow"/> class.
     /// </summary>
@@ -51,11 +47,10 @@ internal sealed class SettingsWindow : Window
         [
             new SettingsTabGeneral(),
             new SettingsTabLook(),
-            new SettingsTabAutoUpdates(),
+            new SettingsTabPlugin(), // REGION TODO: 国服修改
             new SettingsTabDtr(),
             new SettingsTabBadge(),
             new SettingsTabExperimental(),
-            new SettingsTabAbout()
         ];
     }
 
@@ -107,9 +102,7 @@ internal sealed class SettingsWindow : Window
         }
 
         localization.LocalizationChanged += this.OnLocalizationChanged;
-
-        this.fools26Active = this.IsApplicableForFools26();
-
+        
         base.OnOpen();
     }
 
@@ -161,12 +154,35 @@ internal sealed class SettingsWindow : Window
     /// <inheritdoc/>
     public override void Draw()
     {
+        using (ImRaii.Disabled(this.tabs.Any(x => x.Entries.Any(y => !y.IsValid)))) 
+        {
+            using (ImRaii.PushStyle(ImGuiStyleVar.FrameRounding, 100f))
+            {
+                using var font = ImRaii.PushFont(InterfaceManager.IconFont);
+                if (ImGui.Button(FontAwesomeIcon.Save.ToIconString(), new Vector2(-1, ImGui.GetTextLineHeightWithSpacing() * 1.5f)))
+                {
+                    this.Save();
+
+                    if (!ImGui.IsKeyDown(ImGuiKey.ModShift))
+                        this.IsOpen = false;
+                }
+            }
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(!ImGui.IsKeyDown(ImGuiKey.ModShift)
+                                     ? Loc.Localize("DalamudSettingsSaveAndExit", "Save changes and close")
+                                     : Loc.Localize("DalamudSettingsSave",        "Save changes"));
+            }
+        }
+        
+        ImGui.Spacing();
+        
         ImGui.SetNextItemWidth(-1);
         using (ImRaii.Disabled(this.CurrentlyOpenTab is SettingsTabAbout))
-            ImGui.InputTextWithHint("###searchInput"u8, Loc.Localize("DalamudSettingsSearchPlaceholder", "Search for settings..."), ref this.searchInput, 100, ImGuiInputTextFlags.AutoSelectAll);
+            ImGui.InputTextWithHint("###searchInput"u8, "搜索设置项...", ref this.searchInput, 100, ImGuiInputTextFlags.AutoSelectAll);
+        
         ImGui.Spacing();
-
-        var windowSize = ImGui.GetWindowSize();
 
         using (var tabBar = ImRaii.TabBar("###settingsTabs"u8))
         {
@@ -178,85 +194,11 @@ internal sealed class SettingsWindow : Window
                     this.DrawSearchResults();
             }
         }
-
-        ImGui.SetCursorPos(windowSize - ImGuiHelpers.ScaledVector2(70));
-
-        using (var buttonChild = ImRaii.Child("###settingsFinishButton"u8))
-        {
-            if (buttonChild)
-            {
-                using var disabled = ImRaii.Disabled(this.tabs.Any(x => x.Entries.Any(y => !y.IsValid)));
-
-                using (ImRaii.PushStyle(ImGuiStyleVar.FrameRounding, 100f))
-                {
-                    using var font = ImRaii.PushFont(InterfaceManager.IconFont);
-
-                    if (ImGui.Button(FontAwesomeIcon.Save.ToIconString(), new Vector2(40)))
-                    {
-                        this.Save();
-
-                        if (!ImGui.IsKeyDown(ImGuiKey.ModShift))
-                            this.IsOpen = false;
-                    }
-                }
-
-                if (ImGui.IsItemHovered())
-                {
-                    ImGui.SetTooltip(!ImGui.IsKeyDown(ImGuiKey.ModShift)
-                                         ? Loc.Localize("DalamudSettingsSaveAndExit", "Save changes and close")
-                                         : Loc.Localize("DalamudSettingsSave", "Save changes"));
-                }
-            }
-        }
     }
-
-    private bool IsApplicableForFools26()
-    {
-        var config = Service<DalamudConfiguration>.Get();
-        var cid = Service<PlayerState>.Get().ContentId;
-
-        if (cid == 0)
-            return false;
-
-        if (!config.AllowSeasonalEvents)
-            return false;
-
-        if (config.Fools26Dismissed)
-            return false;
-
-        if (config.Fools26CompletedContentIds.Contains(cid))
-            return false;
-
-        if (config.EffectiveLanguage != "en")
-            return false;
-
-        // var localZone = TimeZoneInfo.Local;
-        // var offset = localZone.GetUtcOffset(DateTime.UtcNow);
-        // var isEuOrAmerica = offset.TotalHours is >= -10 and <= 3;
-        // if (!isEuOrAmerica)
-        //     return false;
-
-        var now = DateTime.Now;
-        var aprilFirstStart = new DateTime(now.Year, 3, 31, 12, 0, 0, DateTimeKind.Utc);
-        var aprilFirstEnd = new DateTime(now.Year, 4,  1, 23, 59, 59, DateTimeKind.Utc);
-
-        return now >= aprilFirstStart && now < aprilFirstEnd;
-    }
-
+    
     private void DrawTabs()
     {
         var activeTabs = this.tabs.ToList();
-
-        if (this.fools26Active)
-        {
-            activeTabs.Insert(0, this.fools26Tab);
-
-            if (this.fools26NeedSet)
-            {
-                this.setActiveTab = this.fools26Tab;
-                this.fools26NeedSet = false;
-            }
-        }
 
         foreach (var settingsTab in activeTabs)
         {
@@ -306,7 +248,7 @@ internal sealed class SettingsWindow : Window
 
     private void DrawSearchResults()
     {
-        using var tab = ImRaii.TabItem(Loc.Localize("DalamudSettingsSearchResults", "Search Results"));
+        using var tab = ImRaii.TabItem("搜索结果");
         if (!tab) return;
 
         var any = false;
@@ -335,7 +277,7 @@ internal sealed class SettingsWindow : Window
         }
 
         if (!any)
-            ImGui.TextColored(ImGuiColors.DalamudGrey, Loc.Localize("DalamudSettingsNoSearchResultsFound", "No results found..."));
+            ImGui.TextColored(ImGuiColors.DalamudGrey, "无搜索结果...");
     }
 
     private void Save()

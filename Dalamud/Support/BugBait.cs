@@ -15,8 +15,6 @@ namespace Dalamud.Support;
 /// </summary>
 internal static class BugBait
 {
-    private const string BugBaitUrl = "https://kiko.goats.dev/feedback";
-
     /// <summary>
     /// Send feedback to Discord.
     /// </summary>
@@ -26,32 +24,9 @@ internal static class BugBait
     /// <param name="reporter">The reporter name.</param>
     /// <param name="includeException">Whether the most recent exception to occur should be included in the report.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    public static async Task SendFeedback(IPluginManifest plugin, bool isTesting, string content, string reporter, bool includeException)
+    public static Task SendFeedback(IPluginManifest plugin, bool isTesting, string content, string reporter, bool includeException)
     {
-        if (content.IsNullOrWhitespace())
-            return;
-
-        var model = new FeedbackModel
-        {
-            Content = content,
-            Reporter = reporter,
-            Name = plugin.InternalName,
-            Version = isTesting ? plugin.TestingAssemblyVersion?.ToString() : plugin.AssemblyVersion.ToString(),
-            Platform = Util.GetHostPlatform().ToString(),
-            DalamudHash = Versioning.GetScmVersion(),
-        };
-
-        if (includeException)
-        {
-            model.Exception = Troubleshooting.LastException == null ? "Was included, but none happened" : Troubleshooting.LastException?.ToString();
-        }
-
-        var httpClient = Service<HappyHttpClient>.Get().SharedHttpClient;
-
-        var postContent = new StringContent(JsonConvert.SerializeObject(model), Encoding.UTF8, "application/json");
-        var response = await httpClient.PostAsync(BugBaitUrl, postContent);
-
-        response.EnsureSuccessStatusCode();
+        return Task.CompletedTask;
     }
 
     private class FeedbackModel

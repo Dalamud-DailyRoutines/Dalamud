@@ -33,17 +33,19 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dalamud.CorePlugin", "Dalam
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FFXIVClientStructs", "lib\FFXIVClientStructs\FFXIVClientStructs\FFXIVClientStructs.csproj", "{C9B87BD7-AF49-41C3-91F1-D550ADEB7833}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFXIVClientStructs.Generators", "lib\FFXIVClientStructs\FFXIVClientStructs.Generators\FFXIVClientStructs.Generators.csproj", "{E0D51896-604F-4B40-8CFE-51941607B3A1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FFXIVClientStructs.Generators", "lib\FFXIVClientStructs\FFXIVClientStructs.Generators\FFXIVClientStructs.Generators.csproj", "{E0D51896-604F-4B40-8CFE-51941607B3A1}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DalamudCrashHandler", "DalamudCrashHandler\DalamudCrashHandler.vcxproj", "{317A264C-920B-44A1-8A34-F3A6827B0705}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dalamud.Common", "Dalamud.Common\Dalamud.Common.csproj", "{F21B13D2-D7D0-4456-B70F-3F8D695064E2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dalamud.LocExporter", "tools\Dalamud.LocExporter\Dalamud.LocExporter.csproj", "{A568929D-6FF6-4DFA-9D14-5D7DC08FA5E0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dalamud.LocExporter", "tools\Dalamud.LocExporter\Dalamud.LocExporter.csproj", "{A568929D-6FF6-4DFA-9D14-5D7DC08FA5E0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteropGenerator", "lib\FFXIVClientStructs\InteropGenerator\InteropGenerator.csproj", "{3620414C-7DFC-423E-929F-310E19F5D930}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InteropGenerator", "lib\FFXIVClientStructs\InteropGenerator\InteropGenerator.csproj", "{3620414C-7DFC-423E-929F-310E19F5D930}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteropGenerator.Runtime", "lib\FFXIVClientStructs\InteropGenerator.Runtime\InteropGenerator.Runtime.csproj", "{A6AA1C3F-9470-4922-9D3F-D4549657AB22}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InteropGenerator.Runtime", "lib\FFXIVClientStructs\InteropGenerator.Runtime\InteropGenerator.Runtime.csproj", "{A6AA1C3F-9470-4922-9D3F-D4549657AB22}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FfxivArgLauncher", "lib\FfxivArgLauncher\FfxivArgLauncher.csproj", "{98452E69-C90D-4893-8B0E-CAA0AE86B176}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utilities", "Utilities", "{8F079208-C227-4D96-9427-2BEBE0003944}"
 EndProject
@@ -69,22 +71,22 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StandaloneImGuiTestbed", "i
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImGuiScene", "imgui\ImGuiScene\ImGuiScene.csproj", "{66753AC7-0029-4373-9CC4-7760B1F46141}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Lumina", "Lumina", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lumina", "lib\Lumina\src\Lumina\Lumina.csproj", "{9ECBBDED-79BD-42BC-956B-661724EA2197}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lumina.Excel.Generator", "lib\Lumina.Excel\src\Lumina.Excel.Generator\Lumina.Excel.Generator.csproj", "{5A44DF0C-C9DA-940F-4D6B-4A11D13AEA3D}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CN", "CN", "{9723B3BA-11AF-4C54-8EB5-428C1B65A4C6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lumina.Excel", "lib\Lumina.Excel\src\Lumina.Excel\Lumina.Excel.csproj", "{88FB719B-EB41-73C5-8D25-C03E0C69904F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lumina.Excel", "lib\Lumina.Excel\src\Lumina.Excel\Lumina.Excel.csproj", "{12DA895C-C064-4759-A278-8CDE9F49BFCA}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source Generators", "Source Generators", "{50BEC23B-FFFD-427B-A95D-27E1D1958FFF}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source Generators", "Source Generators", "{3AB9894A-F1AA-4DC4-8FF2-6DCDB170F56E}"
 	ProjectSection(SolutionItems) = preProject
 		generators\Directory.Build.props = generators\Directory.Build.props
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dalamud.EnumGenerator", "generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator\Dalamud.EnumGenerator.csproj", "{27AA9F87-D2AA-41D9-A559-0F1EBA38C5F8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dalamud.EnumGenerator", "generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator\Dalamud.EnumGenerator.csproj", "{C25BBEB1-CF8A-4833-8F24-426EF16D15BA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dalamud.EnumGenerator.Sample", "generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator.Sample\Dalamud.EnumGenerator.Sample.csproj", "{8CDAEB2D-5022-450A-A97F-181C6270185F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dalamud.EnumGenerator.Sample", "generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator.Sample\Dalamud.EnumGenerator.Sample.csproj", "{464909DE-F2E2-40C7-9885-45FC979963EC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dalamud.EnumGenerator.Tests", "generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator.Tests\Dalamud.EnumGenerator.Tests.csproj", "{F5D92D2D-D36F-4471-B657-8B9AA6C98AD6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dalamud.EnumGenerator.Tests", "generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator.Tests\Dalamud.EnumGenerator.Tests.csproj", "{D14008C8-9AA9-42EF-8015-A127ADE9D5E1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -144,6 +146,10 @@ Global
 		{A6AA1C3F-9470-4922-9D3F-D4549657AB22}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A6AA1C3F-9470-4922-9D3F-D4549657AB22}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A6AA1C3F-9470-4922-9D3F-D4549657AB22}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98452E69-C90D-4893-8B0E-CAA0AE86B176}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98452E69-C90D-4893-8B0E-CAA0AE86B176}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98452E69-C90D-4893-8B0E-CAA0AE86B176}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98452E69-C90D-4893-8B0E-CAA0AE86B176}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8430077C-F736-4246-A052-8EA1CECE844E}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{8430077C-F736-4246-A052-8EA1CECE844E}.Debug|Any CPU.Build.0 = Debug|x64
 		{8430077C-F736-4246-A052-8EA1CECE844E}.Release|Any CPU.ActiveCfg = Release|x64
@@ -176,26 +182,26 @@ Global
 		{66753AC7-0029-4373-9CC4-7760B1F46141}.Debug|Any CPU.Build.0 = Debug|x64
 		{66753AC7-0029-4373-9CC4-7760B1F46141}.Release|Any CPU.ActiveCfg = Release|x64
 		{66753AC7-0029-4373-9CC4-7760B1F46141}.Release|Any CPU.Build.0 = Release|x64
-		{5A44DF0C-C9DA-940F-4D6B-4A11D13AEA3D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5A44DF0C-C9DA-940F-4D6B-4A11D13AEA3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5A44DF0C-C9DA-940F-4D6B-4A11D13AEA3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5A44DF0C-C9DA-940F-4D6B-4A11D13AEA3D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{88FB719B-EB41-73C5-8D25-C03E0C69904F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{88FB719B-EB41-73C5-8D25-C03E0C69904F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{88FB719B-EB41-73C5-8D25-C03E0C69904F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{88FB719B-EB41-73C5-8D25-C03E0C69904F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{27AA9F87-D2AA-41D9-A559-0F1EBA38C5F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{27AA9F87-D2AA-41D9-A559-0F1EBA38C5F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{27AA9F87-D2AA-41D9-A559-0F1EBA38C5F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{27AA9F87-D2AA-41D9-A559-0F1EBA38C5F8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8CDAEB2D-5022-450A-A97F-181C6270185F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8CDAEB2D-5022-450A-A97F-181C6270185F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8CDAEB2D-5022-450A-A97F-181C6270185F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8CDAEB2D-5022-450A-A97F-181C6270185F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F5D92D2D-D36F-4471-B657-8B9AA6C98AD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F5D92D2D-D36F-4471-B657-8B9AA6C98AD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F5D92D2D-D36F-4471-B657-8B9AA6C98AD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F5D92D2D-D36F-4471-B657-8B9AA6C98AD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9ECBBDED-79BD-42BC-956B-661724EA2197}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9ECBBDED-79BD-42BC-956B-661724EA2197}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9ECBBDED-79BD-42BC-956B-661724EA2197}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9ECBBDED-79BD-42BC-956B-661724EA2197}.Release|Any CPU.Build.0 = Release|Any CPU
+		{12DA895C-C064-4759-A278-8CDE9F49BFCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12DA895C-C064-4759-A278-8CDE9F49BFCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12DA895C-C064-4759-A278-8CDE9F49BFCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12DA895C-C064-4759-A278-8CDE9F49BFCA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C25BBEB1-CF8A-4833-8F24-426EF16D15BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C25BBEB1-CF8A-4833-8F24-426EF16D15BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C25BBEB1-CF8A-4833-8F24-426EF16D15BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C25BBEB1-CF8A-4833-8F24-426EF16D15BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{464909DE-F2E2-40C7-9885-45FC979963EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{464909DE-F2E2-40C7-9885-45FC979963EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{464909DE-F2E2-40C7-9885-45FC979963EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{464909DE-F2E2-40C7-9885-45FC979963EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D14008C8-9AA9-42EF-8015-A127ADE9D5E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D14008C8-9AA9-42EF-8015-A127ADE9D5E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D14008C8-9AA9-42EF-8015-A127ADE9D5E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D14008C8-9AA9-42EF-8015-A127ADE9D5E1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -217,12 +223,12 @@ Global
 		{9C70BD06-D52C-425E-9C14-5D66BC6046EF} = {A217B3DF-607A-4EFB-B107-3C4809348043}
 		{4702A911-2513-478C-A434-2776393FDE77} = {A217B3DF-607A-4EFB-B107-3C4809348043}
 		{66753AC7-0029-4373-9CC4-7760B1F46141} = {A217B3DF-607A-4EFB-B107-3C4809348043}
-		{02EA681E-C7D8-13C7-8484-4AC65E1B71E8} = {E15BDA6D-E881-4482-94BA-BE5527E917FF}
-		{5A44DF0C-C9DA-940F-4D6B-4A11D13AEA3D} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
-		{88FB719B-EB41-73C5-8D25-C03E0C69904F} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
-		{27AA9F87-D2AA-41D9-A559-0F1EBA38C5F8} = {50BEC23B-FFFD-427B-A95D-27E1D1958FFF}
-		{8CDAEB2D-5022-450A-A97F-181C6270185F} = {50BEC23B-FFFD-427B-A95D-27E1D1958FFF}
-		{F5D92D2D-D36F-4471-B657-8B9AA6C98AD6} = {50BEC23B-FFFD-427B-A95D-27E1D1958FFF}
+		{98452E69-C90D-4893-8B0E-CAA0AE86B176} = {9723B3BA-11AF-4C54-8EB5-428C1B65A4C6}
+		{9ECBBDED-79BD-42BC-956B-661724EA2197} = {9723B3BA-11AF-4C54-8EB5-428C1B65A4C6}
+		{12DA895C-C064-4759-A278-8CDE9F49BFCA} = {9723B3BA-11AF-4C54-8EB5-428C1B65A4C6}
+		{C25BBEB1-CF8A-4833-8F24-426EF16D15BA} = {3AB9894A-F1AA-4DC4-8FF2-6DCDB170F56E}
+		{464909DE-F2E2-40C7-9885-45FC979963EC} = {3AB9894A-F1AA-4DC4-8FF2-6DCDB170F56E}
+		{D14008C8-9AA9-42EF-8015-A127ADE9D5E1} = {3AB9894A-F1AA-4DC4-8FF2-6DCDB170F56E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {79B65AC9-C940-410E-AB61-7EA7E12C7599}

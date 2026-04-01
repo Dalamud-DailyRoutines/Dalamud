@@ -18,6 +18,13 @@ internal sealed class ButtonSettingsEntry : SettingsEntry
         this.runs = runs;
         this.Name = name;
     }
+    
+    public ButtonSettingsEntry(string name, string description, Action runs)
+    {
+        this.description = new(description, description);
+        this.runs        = runs;
+        this.Name        = new(name, name);
+    }
 
     public override void Load()
     {

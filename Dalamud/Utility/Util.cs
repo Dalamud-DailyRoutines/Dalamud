@@ -45,7 +45,8 @@ namespace Dalamud.Utility;
 /// </summary>
 public static partial class Util
 {
-    private static readonly string[] PageProtectionFlagNames = [
+    private static readonly string[] PageProtectionFlagNames = 
+    [
         "PAGE_NOACCESS",
         "PAGE_READONLY",
         "PAGE_READWRITE",
@@ -461,37 +462,34 @@ public static partial class Util
     /// <returns>If Windows 11 has been detected.</returns>
     public static bool IsWindows11() => Environment.OSVersion.Version.Build >= 22000;
 
-    /// <summary>
     /// Open a link in the default browser, and attempts to focus the newly launched application.
-    /// </summary>
     /// <param name="url">The link to open.</param>
-    public static void OpenLink(string url) => new Thread(
-        static url =>
+    public static void OpenLink(string url) => new Thread(static url =>
+    {
+        try
         {
-            try
+            var psi = new ProcessStartInfo((string)url!)
             {
-                var psi = new ProcessStartInfo((string)url!)
-                {
-                    UseShellExecute = true,
-                    ErrorDialogParentHandle = Service<InterfaceManager>.GetNullable() is { } im
-                                                  ? im.GameWindowHandle
-                                                  : 0,
-                    Verb = "open",
-                };
-                if (Process.Start(psi) is not { } process)
-                    return;
+                UseShellExecute = true,
+                ErrorDialogParentHandle = Service<InterfaceManager>.GetNullable() is { } im
+                                              ? im.GameWindowHandle
+                                              : 0,
+                Verb = "open",
+            };
+            if (Process.Start(psi) is not { } process)
+                return;
 
-                if (process.Id != 0)
-                    TerraFX.Interop.Windows.Windows.AllowSetForegroundWindow((uint)process.Id);
-                process.WaitForInputIdle();
-                TerraFX.Interop.Windows.Windows.SetForegroundWindow(
-                    (TerraFX.Interop.Windows.HWND)process.MainWindowHandle);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "{fn}: failed to open {url}", nameof(OpenLink), url);
-            }
-        }).Start(url);
+            if (process.Id != 0)
+                TerraFX.Interop.Windows.Windows.AllowSetForegroundWindow((uint)process.Id);
+            process.WaitForInputIdle();
+            TerraFX.Interop.Windows.Windows.SetForegroundWindow(
+                (TerraFX.Interop.Windows.HWND)process.MainWindowHandle);
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "{fn}: failed to open {url}", nameof(OpenLink), url);
+        }
+    }).Start(url);
 
     /// <summary>
     /// Perform a "zipper merge" (A, 1, B, 2, C, 3) of multiple enumerables, allowing for lists to end early.
@@ -614,7 +612,7 @@ public static partial class Util
     internal static string GetRandomName()
     {
         var data = Service<DataManager>.Get();
-        var names = data.GetExcelSheet<BNpcName>(ClientLanguage.English)!;
+        var names = data.GetExcelSheet<BNpcName>(ClientLanguage.ChineseSimplified)!;
         var rng = new Random();
 
         return names.GetRowAt(rng.Next(0, names.Count - 1)).Singular.ExtractText();

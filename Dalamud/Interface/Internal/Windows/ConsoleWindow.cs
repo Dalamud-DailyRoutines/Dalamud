@@ -341,7 +341,7 @@ internal class ConsoleWindow : Window, IDisposable
 
         if (hadColor) ImGui.PopStyleColor();
 
-        if (ImGui.Button("Send"u8, sendButtonSize))
+        if (ImGui.Button("发送", sendButtonSize))
         {
             this.ProcessCommand();
         }
@@ -349,13 +349,13 @@ internal class ConsoleWindow : Window, IDisposable
 
     private static string GetTextForLogEventLevel(LogEventLevel level) => level switch
     {
-        LogEventLevel.Error => "ERR",
-        LogEventLevel.Verbose => "VRB",
-        LogEventLevel.Debug => "DBG",
-        LogEventLevel.Information => "INF",
-        LogEventLevel.Warning => "WRN",
-        LogEventLevel.Fatal => "FTL",
-        _ => "???",
+        LogEventLevel.Error       => "错误", // Error
+        LogEventLevel.Verbose     => "冗长", // Verbose
+        LogEventLevel.Debug       => "调试", // Debug
+        LogEventLevel.Information => "信息", // Information
+        LogEventLevel.Warning     => "警告", // Warning
+        LogEventLevel.Fatal       => "致命", // Fatal
+        _                         => "未知", // 未知级别
     };
 
     private static uint GetColorForLogEventLevel(LogEventLevel level) => level switch
@@ -465,7 +465,7 @@ internal class ConsoleWindow : Window, IDisposable
             new()
             {
                 Title = this.WindowName,
-                Content = $"{n:n0} line(s) copied.",
+                Content = $"复制了 {n:n0} 行日志",
                 Type = NotificationType.Success,
             });
     }
@@ -505,14 +505,14 @@ internal class ConsoleWindow : Window, IDisposable
 
         this.settingsPopupWasOpen = settingsPopup;
 
-        if (this.DrawToggleButtonWithTooltip("show_settings", "Show settings", FontAwesomeIcon.List, ref settingsPopup))
-            ImGui.OpenPopup("##console_settings"u8);
+        if (this.DrawToggleButtonWithTooltip("show_settings", "显示设置", FontAwesomeIcon.List, ref settingsPopup))
+            ImGui.OpenPopup("##console_settings");
 
         ImGui.SameLine();
 
         if (this.DrawToggleButtonWithTooltip(
                 "show_filters",
-                "Show filter toolbar",
+                "显示搜索工具栏",
                 FontAwesomeIcon.Search,
                 ref this.showFilterToolbar))
         {
@@ -523,7 +523,7 @@ internal class ConsoleWindow : Window, IDisposable
 
         if (this.DrawToggleButtonWithTooltip(
                 "show_uncaught_exceptions",
-                "Show uncaught exception while filtering",
+                "搜索时显示未捕获的异常",
                 FontAwesomeIcon.Bug,
                 ref this.filterShowUncaughtExceptions))
         {
@@ -537,13 +537,13 @@ internal class ConsoleWindow : Window, IDisposable
             this.QueueClear();
         }
 
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Clear Log"u8);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("清除日志");
 
         ImGui.SameLine();
 
         if (this.DrawToggleButtonWithTooltip(
                 "copy_mode",
-                "Enable Copy Mode\nRight-click to copy entire log",
+                "启用复制模式\n右键单击以复制全部日志",
                 FontAwesomeIcon.Copy,
                 ref this.copyMode))
         {
@@ -573,7 +573,7 @@ internal class ConsoleWindow : Window, IDisposable
                 this.killGameArmed = true;
         }
 
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Kill game"u8);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("关闭游戏");
 
         ImGui.SameLine();
 
@@ -595,8 +595,8 @@ internal class ConsoleWindow : Window, IDisposable
 
         ImGui.PushItemWidth(inputWidth);
         if (ImGui.InputTextWithHint(
-                "##textHighlight"u8,
-                "regex highlight"u8,
+                "##textHighlight",
+                "高亮显示 (正则匹配)",
                 ref this.textHighlight,
                 2048,
                 ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll)
@@ -623,8 +623,8 @@ internal class ConsoleWindow : Window, IDisposable
 
         ImGui.PushItemWidth(inputWidth);
         if (ImGui.InputTextWithHint(
-                "##textFilter"u8,
-                "regex global filter"u8,
+                "##textFilter",
+                "搜索 (正则匹配)",
                 ref this.textFilter,
                 2048,
                 ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll)

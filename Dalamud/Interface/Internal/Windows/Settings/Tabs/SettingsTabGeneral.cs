@@ -1,9 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 
 using CheapLoc;
-
+using Dalamud.Bindings.ImGui;
+using Dalamud.Configuration.Internal;
 using Dalamud.Game.Text;
+using Dalamud.Interface.Colors;
 using Dalamud.Interface.Internal.Windows.Settings.Widgets;
+using Dalamud.Interface.Utility;
+using Dalamud.Plugin.Internal;
+using Dalamud.Plugin.Internal.Types;
 using Dalamud.Utility.Internal;
 
 namespace Dalamud.Interface.Internal.Windows.Settings.Tabs;
@@ -35,9 +40,9 @@ internal sealed class SettingsTabGeneral : SettingsTab
                 return null;
             },
             fallbackValue: XivChatType.Debug),
-
+        
         new GapSettingsEntry(5),
-
+        
         new SettingsEntry<bool>(
             LazyLoc.Localize("DalamudSettingsWaitForPluginsOnStartup", "Wait for plugins before game loads"),
             LazyLoc.Localize("DalamudSettingsWaitForPluginsOnStartupHint", "Do not let the game load, until plugins are loaded."),
@@ -81,5 +86,7 @@ internal sealed class SettingsTabGeneral : SettingsTab
             LazyLoc.Localize("DalamudSettingDoMbCollectHint", "Anonymously provide data about in-game economics to Universalis when browsing the market board. This data can't be tied to you in any way and everyone benefits!"),
             c => c.IsMbCollect,
             (v, c) => c.IsMbCollect = v),
+        
+        new GapSettingsEntry(5),
     ];
 }

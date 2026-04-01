@@ -56,7 +56,7 @@ internal class PluginManager : IInternalDisposableService
 
     private readonly object pluginListLock = new();
     private readonly DirectoryInfo pluginDirectory;
-    private readonly BannedPlugin[]? bannedPlugins;
+    private readonly BannedPlugin[] bannedPlugins = [];
 
     private readonly List<LocalPlugin> installedPluginsList = [];
     private readonly List<RemotePluginManifest> availablePluginsList = [];
@@ -98,7 +98,7 @@ internal class PluginManager : IInternalDisposableService
         try
         {
             var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var safeModeFile = Path.Combine(appdata, "XIVLauncher", ".dalamud_safemode");
+            var safeModeFile = Path.Combine(appdata, "XIVLauncherCN", ".dalamud_safemode");
 
             if (File.Exists(safeModeFile))
             {
@@ -119,12 +119,8 @@ internal class PluginManager : IInternalDisposableService
 
         this.PluginConfigs = new PluginConfigurations(Path.Combine(Path.GetDirectoryName(this.dalamud.StartInfo.ConfigurationPath) ?? string.Empty, "pluginConfigs"));
 
-        var bannedPluginsJson = File.ReadAllText(Path.Combine(this.dalamud.StartInfo.AssetDirectory!, "UIRes", "bannedplugin.json"));
-        this.bannedPlugins = JsonConvert.DeserializeObject<BannedPlugin[]>(bannedPluginsJson);
-        if (this.bannedPlugins == null)
-        {
-            throw new InvalidDataException("Couldn't deserialize banned plugins manifest.");
-        }
+
+        this.bannedPlugins = [];
 
         this.openInstallerWindowPluginChangelogsLink =
             Service<ChatGui>.GetAsync().ContinueWith(
@@ -229,7 +225,7 @@ internal class PluginManager : IInternalDisposableService
     /// <summary>
     /// Gets the main repository.
     /// </summary>
-    public PluginRepository MainRepo { get; }
+    public PluginRepository MainRepo { get; set; }
 
     /// <summary>
     /// Gets a list of all plugin repositories. The main repo should always be first.
@@ -264,7 +260,7 @@ internal class PluginManager : IInternalDisposableService
     /// <summary>
     /// Gets or sets a value indicating whether banned plugins will be loaded.
     /// </summary>
-    public bool LoadBannedPlugins { get; set; }
+    public bool LoadBannedPlugins { get; set; } = true;
 
     /// <summary>
     /// Gets a tracker for plugins that are loading at startup, used to display information to the user.
@@ -432,11 +428,25 @@ internal class PluginManager : IInternalDisposableService
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task SetPluginReposFromConfigAsync(bool notify)
     {
-        var repos = new List<PluginRepository> { this.MainRepo };
+        if (this.MainRepo.PluginMasterUrl != this.configuration.MainRepoUrl)
+        {
+            this.MainRepo = PluginRepository.CreateMainRepo(this.happyHttpClient);
+        }
+
+        var repos = new List<PluginRepository>();
+        repos.AddRange(this.MainRepo);
         repos.AddRange(this.configuration.ThirdRepoList
                            .Where(repo => repo.IsEnabled)
                            .DistinctBy(x => x.Url)
                            .Select(repo => new PluginRepository(this.happyHttpClient, repo.Url, repo.IsEnabled)));
+
+        if (Service<DalamudConfiguration>.Get().AddPresetThirdRepos)
+        {
+            var missingUrls = PluginRepository.PresetRepos
+                                              .ExceptBy(repos.Select(r => r.PluginMasterUrl), url => url, StringComparer.OrdinalIgnoreCase);
+            foreach (var url in missingUrls)
+                repos.Add(new(happyHttpClient, url, true));
+        }
 
         this.Repos = repos;
         await this.ReloadAllReposAsync();
@@ -559,30 +569,18 @@ internal class PluginManager : IInternalDisposableService
             {
                 // Manifests are now required for devPlugins
                 var manifestFile = LocalPluginManifest.GetManifestFile(dllFile);
-                if (!manifestFile.Exists)
-                {
-                    Log.Error("DLL at {DllPath} has no manifest, this is no longer valid", dllFile.FullName);
-                    continue;
-                }
+                if (!manifestFile.Exists) continue;
 
                 var manifest = LocalPluginManifest.Load(manifestFile);
-                if (manifest == null)
-                {
-                    Log.Error("Could not deserialize manifest for DLL at {DllPath}", dllFile.FullName);
-                    continue;
-                }
+                if (manifest == null) continue;
 
-                if (manifest != null && manifest.InternalName.IsNullOrEmpty())
-                {
-                    Log.Error("InternalName for dll at {Path} was null", manifestFile.FullName);
-                    continue;
-                }
+                if (manifest != null && manifest.InternalName.IsNullOrEmpty()) continue;
 
                 devPluginDefs.Add(new PluginDef(dllFile, manifest, true));
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Could not load manifest for dev at {Directory}", dllFile.FullName);
+                Log.Error(ex, "无法加载 {Directory} 处的开发版插件", dllFile.FullName);
             }
         }
 
@@ -781,18 +779,10 @@ internal class PluginManager : IInternalDisposableService
 
             // Manifests are now required for devPlugins
             var manifestFile = LocalPluginManifest.GetManifestFile(dllFile);
-            if (!manifestFile.Exists)
-            {
-                Log.Error("DLL at {DllPath} has no manifest, this is no longer valid", dllFile.FullName);
-                continue;
-            }
+            if (!manifestFile.Exists) continue;
 
             var manifest = LocalPluginManifest.Load(manifestFile);
-            if (manifest == null)
-            {
-                Log.Error("Could not deserialize manifest for DLL at {DllPath}", dllFile.FullName);
-                continue;
-            }
+            if (manifest == null) continue;
 
             try
             {
@@ -836,9 +826,6 @@ internal class PluginManager : IInternalDisposableService
     /// <param name="plugin">Plugin to remove.</param>
     public void RemovePlugin(LocalPlugin plugin)
     {
-        if (plugin.State != PluginState.Unloaded && plugin.HasEverStartedLoad)
-            throw new InvalidPluginOperationException($"Unable to remove {plugin.Name}, not unloaded and had loaded before");
-
         lock (this.pluginListLock)
         {
             this.installedPluginsList.Remove(plugin);
@@ -1195,10 +1182,7 @@ internal class PluginManager : IInternalDisposableService
     /// <returns>A value indicating whether the plugin/manifest has been banned.</returns>
     public bool IsManifestBanned(PluginManifest manifest)
     {
-        Debug.Assert(this.bannedPlugins != null, "this.bannedPlugins != null");
-
-        if (this.LoadBannedPlugins)
-            return false;
+        Debug.Assert(this.bannedPlugins != null);
 
         var config = Service<DalamudConfiguration>.Get();
 
@@ -1749,7 +1733,8 @@ internal class PluginManager : IInternalDisposableService
 
                 var updates = this.AvailablePlugins
                                   .Where(remoteManifest => plugin.Manifest.InternalName == remoteManifest.InternalName)
-                                  .Where(remoteManifest => plugin.Manifest.InstalledFromUrl == remoteManifest.SourceRepo.PluginMasterUrl || !remoteManifest.SourceRepo.IsThirdParty)
+                                  .Where(remoteManifest => plugin.Manifest.InstalledFromUrl == remoteManifest.SourceRepo.PluginMasterUrl ||
+                                                           (plugin.Manifest.InstalledFromUrl == SpecialPluginSource.MainRepo && !remoteManifest.SourceRepo.IsThirdParty))
                                   .Where(remoteManifest => remoteManifest.MinimumDalamudVersion == null || Versioning.GetAssemblyVersionParsed() >= remoteManifest.MinimumDalamudVersion)
                                   .Where(remoteManifest =>
                                   {

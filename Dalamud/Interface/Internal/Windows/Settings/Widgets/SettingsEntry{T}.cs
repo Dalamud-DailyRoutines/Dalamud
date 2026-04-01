@@ -39,13 +39,33 @@ internal sealed class SettingsEntry<T> : SettingsEntry
         this.CheckVisibility = visibility;
     }
 
+    public SettingsEntry(
+        string              name,
+        string              description,
+        LoadSettingDelegate load,
+        SaveSettingDelegate save,
+        Action<T?>?         change     = null,
+        Func<T?, string?>?  warning    = null,
+        Func<T?, string?>?  validity   = null,
+        Func<bool>?         visibility = null)
+    {
+        this.load            = load;
+        this.save            = save;
+        this.change          = change;
+        this.Name            = new(name, name);
+        this.Description     = new(description, description);
+        this.CheckWarning    = warning;
+        this.CheckValidity   = validity;
+        this.CheckVisibility = visibility;
+    }
+
     public delegate T? LoadSettingDelegate(DalamudConfiguration config);
 
     public delegate void SaveSettingDelegate(T? value, DalamudConfiguration config);
 
     public T? Value
     {
-        get => this.valueBacking == default ? default : (T)this.valueBacking;
+        get => this.valueBacking == null ? default : (T)this.valueBacking;
         set
         {
             if (Equals(value, this.valueBacking))

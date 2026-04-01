@@ -1,4 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -37,4 +38,5 @@
         <Copy SourceFiles="$(SolutionDir)bin\$(Configuration)\cimgui.dll" DestinationFolder="$(OutDir)" />
         <Copy SourceFiles="$(SolutionDir)bin\$(Configuration)\cimgui.pdb" DestinationFolder="$(OutDir)" />
     </Target>
+
 </Project>
