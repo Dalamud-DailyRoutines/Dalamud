@@ -102,7 +102,7 @@ internal sealed class SettingsWindow : Window
         }
 
         localization.LocalizationChanged += this.OnLocalizationChanged;
-        
+
         base.OnOpen();
     }
 
@@ -195,12 +195,10 @@ internal sealed class SettingsWindow : Window
             }
         }
     }
-    
+
     private void DrawTabs()
     {
-        var activeTabs = this.tabs.ToList();
-
-        foreach (var settingsTab in activeTabs)
+        foreach (var settingsTab in this.tabs)
         {
             var flags = ImGuiTabItemFlags.NoCloseWithMiddleMouseButton;
 
