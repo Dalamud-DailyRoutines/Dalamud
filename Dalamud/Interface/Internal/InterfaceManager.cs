@@ -491,15 +491,6 @@ internal partial class InterfaceManager : IInternalDisposableService
     }
 
     /// <summary>
-    /// Clear font, style, and color stack. Dangerous, only use when you know
-    /// no one else has something pushed they may try to pop.
-    /// </summary>
-    public void ClearStacks()
-    {
-        ImGuiHelpers.ClearStacksOnContext();
-    }
-
-    /// <summary>
     /// Applies immersive dark mode to the game window based on the current system theme setting.
     /// </summary>
     internal void SetImmersiveModeFromSystemTheme()
@@ -704,13 +695,20 @@ internal partial class InterfaceManager : IInternalDisposableService
 
             if (configuration.SavedStyles == null)
             {
-                configuration.SavedStyles = [StyleModelV1.DalamudStandard, StyleModelV1.DalamudClassic];
+                configuration.SavedStyles = [StyleModelV1.DalamudStandard, StyleModelV1.DalamudClassic, StyleModelV1.DalamudHazy];
                 configuration.ChosenStyle = StyleModelV1.DalamudStandard.Name;
             }
 
-            configuration.SavedStyles[0] = StyleModelV1.DalamudStandard;
-            configuration.SavedStyles[1] = StyleModelV1.DalamudClassic;
+            // Ensure built-in styles are pinned to the start of the list
+            for (var i = 0; i < builtInStyles.Length; i++)
+            {
+                if (configuration.SavedStyles.Count <= i || configuration.SavedStyles[i].Name != builtInStyles[i].Name)
+                    configuration.SavedStyles.Insert(i, builtInStyles[i]);
+                else
+                    configuration.SavedStyles[i] = builtInStyles[i];
+            }
 
+            // Use standard if the chosen style isn't there anymore
             var style = configuration.SavedStyles.FirstOrDefault(x => x.Name == configuration.ChosenStyle);
             if (style == null)
             {

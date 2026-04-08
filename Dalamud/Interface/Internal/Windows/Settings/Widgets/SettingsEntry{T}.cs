@@ -149,7 +149,7 @@ internal sealed class SettingsEntry<T> : SettingsEntry
 
             if (!this.IsValid)
             {
-                using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.DalamudRed))
+                using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ErrorForeground))
                 {
                     ImGui.Text(validityMsg);
                 }
@@ -164,7 +164,7 @@ internal sealed class SettingsEntry<T> : SettingsEntry
 
         if (warningMessage != null)
         {
-            using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.DalamudRed))
+            using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ErrorForeground))
             {
                 ImGui.Text(warningMessage);
             }

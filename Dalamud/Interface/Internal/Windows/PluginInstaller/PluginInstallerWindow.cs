@@ -646,7 +646,7 @@ internal class PluginInstallerWindow : Window, IDisposable
             if (DateTime.Now - this.timeLoaded > TimeSpan.FromSeconds(30) && !pluginManager.PluginsReady)
             {
                 ImGuiHelpers.ScaledDummy(10);
-                ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
+                ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.AttentionForeground);
                 ImGuiHelpers.CenteredText("任一插件正在阻碍插件安装器加载, 请自行检查\n然后使用安全模式重启, 并删除相关插件");
                 ImGui.PopStyleColor();
 
@@ -1027,7 +1027,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             if (this.deletePluginConfigWarningModalExplainTesting)
             {
-                ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudOrange);
+                ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.WarningForeground);
                 ImGui.Text(Locs.DeletePluginConfigWarningModal_ExplainTesting());
                 ImGui.PopStyleColor();
             }
@@ -1083,7 +1083,7 @@ internal class PluginInstallerWindow : Window, IDisposable
             if (this.pluginListUpdatable.Any(
                     up => up.InstalledPlugin.Manifest.InternalName == this.feedbackPlugin?.InternalName))
             {
-                ImGui.TextColored(ImGuiColors.DalamudRed, Locs.FeedbackModal_HasUpdate);
+                ImGui.TextColored(ImGuiColors.AttentionForeground, Locs.FeedbackModal_HasUpdate);
             }
 
             ImGui.Spacing();
@@ -1106,7 +1106,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
             ImGui.Text(Locs.FeedbackModal_ContactInformationHelp);
 
-            ImGui.TextColored(ImGuiColors.DalamudRed, Locs.FeedbackModal_ContactInformationWarning);
+            ImGui.TextColored(ImGuiColors.WarningForeground, Locs.FeedbackModal_ContactInformationWarning);
 
             ImGui.Spacing();
 
@@ -1755,7 +1755,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             ImGuiHelpers.ScaledDummy(10);
 
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudOrange);
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.WarningForeground);
             ImGui.PushFont(InterfaceManager.IconFont);
             ImGuiHelpers.CenteredText(FontAwesomeIcon.ExclamationTriangle.ToIconString());
             ImGui.PopFont();
@@ -2094,7 +2094,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                 return;
             }
 
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
 
             if (imageTask.Exception is { } exc)
             {
@@ -2194,7 +2194,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                               .Select(repo => $"{failText} ({repo.PluginMasterUrl})")
                               .Aggregate((s1, s2) => $"{s1}\n{s2}");
 
-            ImGui.TextColored(ImGuiColors.DalamudRed, aggFailText);
+            ImGui.TextColored(ImGuiColors.ErrorForeground, aggFailText);
         }
 
         return ready;
@@ -2398,6 +2398,13 @@ internal class PluginInstallerWindow : Window, IDisposable
         // Outdated warning
         if (flags.HasFlag(PluginHeaderFlags.IsIncompatible))
         {
+            using var color = ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
+            ImGui.TextWrapped(Locs.PluginBody_Incompatible);
+        }
+        else if (plugin is { IsOutdated: true, IsBanned: false } || flags.HasFlag(PluginHeaderFlags.IsInstallableOutdated))
+        {
+            using var color = ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
+
             var bodyText = $"插件 API 版本 ({plugin?.APILevel ?? 0}) 与 Dalamud API 版本 ({PluginManager.DalamudApiLevel}) 不对应, 无法使用" + " ";
             if (flags.HasFlag(PluginHeaderFlags.UpdateAvailable))
                 bodyText += "\n存在可用更新, 可以尝试更新后再试";
@@ -2410,7 +2417,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         else if (plugin is { IsBanned: true })
         {
             // Banned warning
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
 
             var bodyText = plugin.BanReason.IsNullOrEmpty()
                                ? Locs.PluginBody_Banned
@@ -2428,19 +2435,19 @@ internal class PluginInstallerWindow : Window, IDisposable
         }
         else if (plugin is { IsOrphaned: true })
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
             ImGui.TextWrapped(Locs.PluginBody_Orphaned);
             ImGui.PopStyleColor();
         }
         else if (plugin is { IsDecommissioned: true, IsThirdParty: false })
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
             ImGui.TextWrapped(Locs.PluginBody_NoServiceOfficial);
             ImGui.PopStyleColor();
         }
         else if (plugin is { IsDecommissioned: true, IsThirdParty: true })
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
 
             ImGui.TextWrapped(
                 flags.HasFlag(PluginHeaderFlags.MainRepoCrossUpdate)
@@ -2451,14 +2458,14 @@ internal class PluginInstallerWindow : Window, IDisposable
         }
         else if (plugin != null && !plugin.CheckPolicy())
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
             ImGui.TextWrapped(Locs.PluginBody_Policy);
             ImGui.PopStyleColor();
         }
         else if (plugin is { State: PluginState.LoadError or PluginState.DependencyResolutionFailed })
         {
             // Load failed warning
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
             ImGui.TextWrapped(Locs.PluginBody_LoadFailed);
             ImGui.PopStyleColor();
         }
@@ -3519,7 +3526,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                 ImGui.Text(FontAwesomeIcon.Check.ToIconString());
                 ImGui.PopFont();
                 ImGui.SameLine();
-                ImGui.TextColoredWrapped(ImGuiColors.HealerGreen, "No validation issues found in this plugin!"u8);
+                ImGui.TextColoredWrapped(ImGuiColors.SuccessForeground, "No validation issues found in this plugin!"u8);
             }
             else
             {
@@ -3530,7 +3537,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                     $"Found {problems.Count} validation issue{(problems.Count > 1 ? "s" : string.Empty)} in this plugin!" :
                     $"{problems.Count} dismissed validation issue{(problems.Count > 1 ? "s" : string.Empty)} in this plugin.";
 
-                using var col = ImRaii.PushColor(ImGuiCol.Text, shouldBother ? ImGuiColors.DalamudOrange : ImGuiColors.DalamudGrey);
+                using var col = ImRaii.PushColor(ImGuiCol.Text, shouldBother ? ImGuiColors.WarningForeground : ImGuiColors.DalamudGrey);
                 using var tree = ImRaii.TreeNode($"{validationIssuesText}###validationIssueCollapsible");
                 if (tree.Success)
                 {
@@ -3561,9 +3568,9 @@ internal class PluginInstallerWindow : Window, IDisposable
 
                         var iconColor = problem.Severity switch
                         {
-                            PluginValidator.ValidationSeverity.Fatal => ImGuiColors.DalamudRed,
-                            PluginValidator.ValidationSeverity.Warning => ImGuiColors.DalamudOrange,
-                            PluginValidator.ValidationSeverity.Information => ImGuiColors.TankBlue,
+                            PluginValidator.ValidationSeverity.Fatal => ImGuiColors.ErrorForeground,
+                            PluginValidator.ValidationSeverity.Warning => ImGuiColors.WarningForeground,
+                            PluginValidator.ValidationSeverity.Information => ImGuiColors.InfoForeground,
                             _ => ImGuiColors.DalamudGrey,
                         };
 
