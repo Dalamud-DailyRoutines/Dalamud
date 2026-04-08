@@ -33,7 +33,6 @@ internal sealed class SettingsTabExperimental : SettingsTab
                 var v = e.Value;
                 if (ImGui.SliderFloat($"###{e}", ref v, 0f, 10f, "%.1f%%"))
                     e.Value = v;
-                ImGui.SameLine();
             },
         },
 
