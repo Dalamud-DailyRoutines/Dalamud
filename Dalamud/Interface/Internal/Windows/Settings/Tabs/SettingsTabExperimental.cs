@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 
 using CheapLoc;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Configuration.Internal;
 using Dalamud.Interface.Internal.ReShadeHandling;
 using Dalamud.Interface.Internal.Windows.Settings.Widgets;
@@ -19,6 +20,25 @@ internal sealed class SettingsTabExperimental : SettingsTab
 
     public override SettingsEntry[] Entries { get; } =
     [
+        new SettingsEntry<float>(
+            Loc.Localize("DalamudSettingBackgroundBlur", "插件窗口背景磨砂效果系数"),
+            Loc.Localize("DalamudSettingBackgroundBlurHint", "控制插件窗口背景的磨砂效果强度。设置为 0 以禁用磨砂效果。\n本效果需要各插件主动适配。"),
+            c => c.PluginUiBackgroundBlurStrength,
+            (v, c) => c.PluginUiBackgroundBlurStrength = v)
+        {
+            CustomDraw = static e =>
+            {
+                ImGui.TextWrapped(e.Name!);
+
+                var v = e.Value;
+                if (ImGui.SliderFloat($"###{e}", ref v, 0f, 10f, "%.1f%%"))
+                    e.Value = v;
+                ImGui.SameLine();
+            },
+        },
+
+        new GapSettingsEntry(5, true),
+        
         new EnumSettingsEntry<ReShadeHandlingMode>(
             Loc.Localize("DalamudSettingsReShadeHandlingMode", "ReShade 处理模式"),
             Loc.Localize(
@@ -58,28 +78,5 @@ internal sealed class SettingsTabExperimental : SettingsTab
                 _                                                     => "<无效值>",
             },
         },
-
-        /* // Making this a console command instead, for now
-        new GapSettingsEntry(5, true),
-
-        new EnumSettingsEntry<SwapChainHelper.HookMode>(
-            Loc.Localize("DalamudSettingsSwapChainHookMode", "Swap chain hooking mode"),
-            Loc.Localize(
-                "DalamudSettingsSwapChainHookModeHint",
-                "Depending on addons aside from Dalamud you use, you may have to use different options for Dalamud and other addons to cooperate.\nRestart is required for changes to take effect."),
-            c => c.SwapChainHookMode,
-            (v, c) => c.SwapChainHookMode = v,
-            fallbackValue: SwapChainHelper.HookMode.ByteCode),
-            */
-
-        /* Disabling profiles after they've been enabled doesn't make much sense, at least not if the user has already created profiles.
-        new GapSettingsEntry(5, true),
-
-        new SettingsEntry<bool>(
-            Loc.Localize("DalamudSettingsEnableProfiles", "Enable plugin collections"),
-            Loc.Localize("DalamudSettingsEnableProfilesHint", "Enables plugin collections, which lets you create toggleable lists of plugins."),
-            c => c.ProfilesEnabled,
-            (v, c) => c.ProfilesEnabled = v),
-            */
     ];
 }

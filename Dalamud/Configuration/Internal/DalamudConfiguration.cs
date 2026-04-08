@@ -255,6 +255,12 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     /// </summary>
     [SuppressMessage("ReSharper", "InconsistentNaming", Justification = "ABI")]
     public bool EnablePluginUISoundEffects { get; set; } = true;
+    
+    /// <summary>
+    /// Gets or sets the "sigma" value passed into the shader for Windows. 0 == disabled.
+    /// </summary>
+    [JsonProperty("PluginUiBackgroundBlurStrengthExperimental")]
+    public float PluginUiBackgroundBlurStrength { get; set; } = 0f;
 
     /// <summary>
     /// Gets or sets a value indicating whether an additional button allowing pinning and clickthrough options should be shown
