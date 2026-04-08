@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -693,6 +694,7 @@ internal partial class InterfaceManager : IInternalDisposableService
 
             StyleModel.TransferOldModels();
 
+            List<StyleModel> builtInStyles = [StyleModelV1.DalamudStandard, StyleModelV1.DalamudClassic, StyleModelV1.DalamudHazy];
             if (configuration.SavedStyles == null)
             {
                 configuration.SavedStyles = [StyleModelV1.DalamudStandard, StyleModelV1.DalamudClassic, StyleModelV1.DalamudHazy];
@@ -700,7 +702,7 @@ internal partial class InterfaceManager : IInternalDisposableService
             }
 
             // Ensure built-in styles are pinned to the start of the list
-            for (var i = 0; i < builtInStyles.Length; i++)
+            for (var i = 0; i < builtInStyles.Count; i++)
             {
                 if (configuration.SavedStyles.Count <= i || configuration.SavedStyles[i].Name != builtInStyles[i].Name)
                     configuration.SavedStyles.Insert(i, builtInStyles[i]);
