@@ -21,8 +21,8 @@ internal sealed class SettingsTabExperimental : SettingsTab
     public override SettingsEntry[] Entries { get; } =
     [
         new SettingsEntry<float>(
-            Loc.Localize("DalamudSettingBackgroundBlur", "插件窗口背景磨砂效果系数"),
-            Loc.Localize("DalamudSettingBackgroundBlurHint", "控制插件窗口背景的磨砂效果强度。设置为 0 以禁用磨砂效果。\n本效果需要各插件主动适配。"),
+            Loc.Localize("DalamudSettingBackgroundBlur", "窗口毛玻璃效果强度系数"),
+            Loc.Localize("DalamudSettingBackgroundBlurHint", "控制插件窗口背景的毛玻璃效果强度。设置为 0 以禁用。\n本效果需要各插件主动适配。"),
             c => c.PluginUiBackgroundBlurStrength,
             (v, c) => c.PluginUiBackgroundBlurStrength = v)
         {
