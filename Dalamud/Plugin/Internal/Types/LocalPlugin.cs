@@ -335,6 +335,7 @@ internal class LocalPlugin : IAsyncDisposable
             this.State = PluginState.Loading;
             Log.Information($"正在加载 {this.DllFile.Name}");
 
+            var hasExistingLoader = this.loader != null;
             this.EnsureLoader();
 
             if (this.DllFile.DirectoryName != null &&
@@ -357,9 +358,8 @@ internal class LocalPlugin : IAsyncDisposable
 
             this.HasEverStartedLoad = true;
 
-            this.loader ??= PluginLoader.CreateFromAssemblyFile(this.DllFile.FullName, SetupLoaderConfig);
-
-            if (reloading || this.IsDev)
+            var shouldReloadLoader = reloading || (this.IsDev && hasExistingLoader);
+            if (shouldReloadLoader)
             {
                 if (this.IsDev)
                 {
@@ -370,7 +370,7 @@ internal class LocalPlugin : IAsyncDisposable
                     this.pluginType = null;
                 }
 
-                this.loader.Reload();
+                this.loader!.Reload();
                 this.RefreshAssemblyInformation();
             }
 
