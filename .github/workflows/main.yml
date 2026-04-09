@@ -7,14 +7,20 @@ concurrency:
 jobs:
   build:
     name: Build on Windows
+    timeout-minutes: 45
     permissions:
-      id-token: write
       contents: write
-      attestations: write
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      NUGET_XMLDOC_MODE: skip
     steps:
       - name: Checkout Dalamud
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           submodules: recursive
           fetch-depth: 0
@@ -26,83 +32,110 @@ jobs:
           $tzId = "China Standard Time"
           $utcNow = [DateTime]::UtcNow
           $cstTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($utcNow, $tzId)
-          
-          # 东八区
+
+          # 以东八区时间生成形如 yy-MM-dd-xx 的标签
           $datePart = $cstTime.ToString("yy-MM-dd")
-          
-          # 获取当天所有标签
-          git fetch --tags  # 显式获取远程标签
+
+          # checkout 已拉取完整历史与标签，这里直接读取本地标签
           $tags = git tag --list "$datePart-*"
-          
-          # 查找最大序号
+
+          # 查找当天已有标签的最大序号
           $maxNumber = 0
           foreach ($tag in $tags) {
-              $numberPart = $tag.Split('-')[-1]
-              if ($numberPart -match '^\d{2}$') {
-                  $currentNumber = [int]$numberPart
-                  $maxNumber = [Math]::Max($maxNumber, $currentNumber)
-              }
+            $numberPart = $tag.Split('-')[-1]
+            if ($numberPart -match '^\d{2}$') {
+              $currentNumber = [int]$numberPart
+              $maxNumber = [Math]::Max($maxNumber, $currentNumber)
+            }
           }
-          
-          # 生成新序号
+
+          # 递增序号并写入输出变量
           $nextNumber = $maxNumber + 1
           $newTag = "{0}-{1:D2}" -f $datePart, $nextNumber
           echo "new_tag=$newTag" >> $env:GITHUB_OUTPUT
           echo "TAG=$newTag" >> $env:GITHUB_ENV
 
+      - name: Setup MSBuild Path
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path -LiteralPath $vswhere)) {
+            throw "未找到 vswhere，无法定位 MSBuild。"
+          }
+
+          $msbuildPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
+          if (-not $msbuildPath) {
+            throw "未找到 MSBuild.exe，请确认 Runner 已安装 Visual Studio Build Tools。"
+          }
+
+          $msbuildDir = Split-Path -Path $msbuildPath -Parent
+          $msbuildDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Write-Host "MSBuild 路径：$msbuildPath"
+
       - name: Create and Push Git Tag
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a ${{ env.TAG }} -m "Release ${{ env.TAG }}"
-          git push origin ${{ env.TAG }}
+          git tag -a "${{ env.TAG }}" -m "Release ${{ env.TAG }}"
+          git push origin "${{ env.TAG }}"
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v1.0.2
-
-      - uses: actions/setup-dotnet@v3
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.0.100'
+          dotnet-version: "10.0.100"
+
       - name: Define VERSION
         run: |
-          # 包含生成的 TAG
+          # VERSION 文件包含仓库名、分支名、短提交哈希与发布标签
           $env:TAG = "${{ env.TAG }}"
           $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
           $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
           $env:BRANCH = $env:GITHUB_REF -replace '.*/'
 
-          ($env:REPO_NAME) >> VERSION
-          ($env:BRANCH) >> VERSION
-          ($env:COMMIT) >> VERSION
-          ($env:TAG) >> VERSION
-          
+          @(
+            $env:REPO_NAME
+            $env:BRANCH
+            $env:COMMIT
+            $env:TAG
+          ) | Set-Content -LiteralPath VERSION -Encoding utf8
+
       - name: Build and Test Dalamud
         run: .\build.ps1 ci
-        
+
       - name: Create hashlist
         run: .\CreateHashList.ps1 .\bin\Release
 
       - name: Install 7-Zip
-        run: choco install 7zip -y
+        run: |
+          if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) {
+            choco install 7zip -y --no-progress
+          } else {
+            Write-Host "7-Zip 已安装，跳过安装步骤。"
+          }
 
       - name: Compress Release files
         run: |
-          # 进入 Release 目录后压缩，避免保留父目录结构
-          cd bin/Release
-          7z a -t7z latest.7z * -mx=9
+          # 仅压缩 Release 目录内容，避免携带上级目录结构
+          Push-Location -LiteralPath .\bin\Release
+          try {
+            7z a -t7z latest.7z * -mx=9
+          } finally {
+            Pop-Location
+          }
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.TAG }}
-          name: Release ${{ env.TAG }}
-          body: |
-            Automated Release
-            Build Date: ${{ env.TAG }} (UTC+8)
-            Commit: ${{ github.sha }}
-            Branch: ${{ github.ref_name }}
-          files: |
-            bin/Release/latest.7z
-            bin/Release/hashes.json
-          draft: false
-          prerelease: false
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseNotes = @"
+          Automated Release
+          Build Date: ${{ env.TAG }} (UTC+8)
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+          "@
+
+          gh release create "${{ env.TAG }}" `
+            "bin/Release/latest.7z" `
+            "bin/Release/hashes.json" `
+            --title "Release ${{ env.TAG }}" `
+            --notes $releaseNotes `
+            --verify-tag
