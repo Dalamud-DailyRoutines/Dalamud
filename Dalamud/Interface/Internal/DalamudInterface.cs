@@ -879,18 +879,12 @@ internal class DalamudInterface : IInternalDisposableService
                             ImGui.PopStyleVar();
                         }
 
-                        if (ImGui.MenuItem("Raise external event through boot"))
+                        if (ImGui.MenuItem("通过 boot 触发外部事件"))
                         {
                             ErrorHandling.CrashWithContext("Tést");
                         }
 
                         ImGui.EndMenu();
-                    }
-
-                    if (ImGui.MenuItem("上报在游戏终止时产生的崩溃"u8, (byte*)null, this.configuration.ReportShutdownCrashes))
-                    {
-                        this.configuration.ReportShutdownCrashes ^= true;
-                        this.configuration.QueueSave();
                     }
 
                     ImGui.MenuItem(this.dalamud.StartInfo.GameVersion?.ToString() ?? "未知版本", false, false);
