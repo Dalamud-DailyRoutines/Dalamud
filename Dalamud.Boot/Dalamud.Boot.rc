@@ -1,4 +1,4 @@
-// Microsoft Visual C++ generated resource script.
+﻿// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 
@@ -17,7 +17,7 @@
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
+#pragma code_page(65001)
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -34,32 +34,32 @@ RT_MANIFEST_THEMES      RT_MANIFEST             "themes.manifest"
 
 STRINGTABLE
 BEGIN
-    IDS_APPNAME             "Dalamud Boot"
+    IDS_APPNAME             "Dalamud 启动器"
     IDS_MSVCRT_ACTION_OPENDOWNLOAD
-                            "Download Microsoft Visual C++ Redistributable 2022\nExit the game and download the latest setup file from Microsoft."
+                            "下载 Microsoft Visual C++ Redistributable 2022\n退出游戏, 并从 Microsoft 下载最新版安装程序"
     IDS_MSVCRT_ACTION_IGNORE
-                            "Ignore and Continue\nAttempt to continue with the currently installed version.\nDalamud or plugins may fail to load."
+                            "忽略并继续\n尝试使用当前已安装的版本继续运行\nDalamud 或插件可能会加载失败"
     IDS_MSVCRT_DIALOG_MAININSTRUCTION
-                            "Outdated Microsoft Visual C++ Redistributable"
+                            "Microsoft Visual C++ Redistributable 版本过旧"
     IDS_MSVCRT_DIALOG_CONTENT
-                            "The Microsoft Visual C++ Redistributable version detected on this computer (v{0}.{1}.{2}.{3}) is out of date and may not work with Dalamud."
+                            "当前计算机检测到的 Microsoft Visual C++ Redistributable 版本为 v{0}.{1}.{2}.{3}, 版本过旧, 可能无法正常运行 Dalamud"
     IDS_MSVCRT_DOWNLOADURL  "https://aka.ms/vs/17/release/vc_redist.x64.exe"
-    IDS_INITIALIZEFAIL_ACTION_ABORT "Abort\nExit the game."
+    IDS_INITIALIZEFAIL_ACTION_ABORT "中止\n退出游戏"
     IDS_INITIALIZEFAIL_ACTION_CONTINUE
-                            "Load game without Dalamud\nThe game will launch without Dalamud enabled."
-    IDS_INITIALIZEFAIL_DIALOG_MAININSTRUCTION "Failed to load Dalamud."
+                            "不加载 Dalamud 启动游戏\n游戏将以未启用 Dalamud 的状态启动"
+    IDS_INITIALIZEFAIL_DIALOG_MAININSTRUCTION "Dalamud 加载失败"
     IDS_INITIALIZEFAIL_DIALOG_CONTENT
-                            "An error is preventing Dalamud from being loaded along with the game."
-    IDS_SAC_ACTION_OPENGUIDE      "Open troubleshooting guide\nOpen a web page with steps to disable Smart App Control."
-    IDS_SAC_DIALOG_MAININSTRUCTION "Windows Smart App Control has blocked Dalamud from loading, and the game cannot continue."
-    IDS_SAC_DIALOG_CONTENT        "You must disable Smart App Control or Dalamud to start the game.\n\nPress the button below to open a guide in your web browser."
+                            "由于发生错误, Dalamud 无法随游戏一起加载"
+    IDS_SAC_ACTION_OPENGUIDE      "打开排查指南\n在浏览器中打开禁用 Smart App Control 的操作说明"
+    IDS_SAC_DIALOG_MAININSTRUCTION "Windows Smart App Control 已阻止 Dalamud 加载, 游戏无法继续启动"
+    IDS_SAC_DIALOG_CONTENT        "必须禁用 Smart App Control 或禁用 Dalamud, 才能启动游戏\n\n点击下方按钮, 在浏览器中打开操作指南"
     IDS_SAC_GUIDE_URL             "https://goatcorp.github.io/faq/xl_troubleshooting#q-how-do-i-disable-smart-app-control"
 END
 
 STRINGTABLE
 BEGIN
     IDS_INITIALIZEFAIL_DIALOG_FOOTER
-                            "Last operation: {0}\nHRESULT: 0x{1:08X}\nDescription: {2}"
+                            "最后一步操作: {0}\nHRESULT: 0x{1:08X}\n说明: {2}"
 END
 
 #endif    // English (United States) resources
@@ -71,7 +71,7 @@ END
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
-#pragma code_page(1252)
+#pragma code_page(65001)
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -122,4 +122,3 @@ IDI_ICON1               ICON                    "dalamud.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
-

@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include "logging.h"
 #include "utils.h"
@@ -92,9 +92,9 @@ namespace thunks {
 void read_process_memory_or_throw(HANDLE hProcess, void* pAddress, void* data, size_t len) {
     SIZE_T read = 0;
     if (!ReadProcessMemory(hProcess, pAddress, data, len, &read))
-        throw std::runtime_error("ReadProcessMemory failure");
+        throw std::runtime_error("ReadProcessMemory 失败");
     if (read != len)
-        throw std::runtime_error("ReadProcessMemory read size does not match requested size");
+        throw std::runtime_error("ReadProcessMemory 的读取长度与请求长度不一致");
 }
 
 template<typename T>
@@ -106,9 +106,9 @@ void write_process_memory_or_throw(HANDLE hProcess, void* pAddress, const void* 
     SIZE_T written = 0;
     const utils::memory_tenderizer tenderizer(hProcess, pAddress, len, PAGE_EXECUTE_READWRITE);
     if (!WriteProcessMemory(hProcess, pAddress, data, len, &written))
-        throw std::runtime_error("WriteProcessMemory failure");
+        throw std::runtime_error("WriteProcessMemory 失败");
     if (written != len)
-        throw std::runtime_error("WriteProcessMemory written size does not match requested size");
+        throw std::runtime_error("WriteProcessMemory 的写入长度与请求长度不一致");
 }
 
 template<typename T>
@@ -133,7 +133,7 @@ void* get_mapped_image_base_address(HANDLE hProcess, const std::filesystem::path
     IMAGE_DOS_HEADER exe_dos_header;
     exe.read(reinterpret_cast<char*>(&exe_dos_header), sizeof exe_dos_header);
     if (!exe || exe_dos_header.e_magic != IMAGE_DOS_SIGNATURE)
-        throw std::runtime_error("Game executable is corrupt (DOS header).");
+        throw std::runtime_error("游戏可执行文件已损坏 (DOS 头无效)");
 
     union {
         IMAGE_NT_HEADERS32 exe_nt_header32;
@@ -142,13 +142,13 @@ void* get_mapped_image_base_address(HANDLE hProcess, const std::filesystem::path
     exe.seekg(exe_dos_header.e_lfanew, std::ios::beg);
     exe.read(reinterpret_cast<char*>(&exe_nt_header64), sizeof exe_nt_header64);
     if (!exe || exe_nt_header64.Signature != IMAGE_NT_SIGNATURE)
-        throw std::runtime_error("Game executable is corrupt (NT header).");
+        throw std::runtime_error("游戏可执行文件已损坏 (NT 头无效)");
 
     std::vector<IMAGE_SECTION_HEADER> exe_section_headers(exe_nt_header64.FileHeader.NumberOfSections);
     exe.seekg(exe_dos_header.e_lfanew + offsetof(IMAGE_NT_HEADERS32, OptionalHeader) + exe_nt_header64.FileHeader.SizeOfOptionalHeader, std::ios::beg);
     exe.read(reinterpret_cast<char*>(&exe_section_headers[0]), sizeof IMAGE_SECTION_HEADER * exe_section_headers.size());
     if (!exe)
-        throw std::runtime_error("Game executable is corrupt (Truncated section header).");
+        throw std::runtime_error("游戏可执行文件已损坏 (节表不完整)");
 
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
@@ -220,11 +220,11 @@ void* get_mapped_image_base_address(HANDLE hProcess, const std::filesystem::path
             return mbi.AllocationBase;
 
         } catch (const std::exception& e) {
-            logging::W("Failed to check memory block 0x{:X}(len=0x{:X}): {}", mbi.BaseAddress, mbi.RegionSize, e.what());
+            logging::W("检查内存块 0x{:X} (长度 = 0x{:X}) 失败: {}", mbi.BaseAddress, mbi.RegionSize, e.what());
             continue;
         }
     }
-    throw std::runtime_error("corresponding base address not found");
+    throw std::runtime_error("找不到对应的基址");
 }
 
 /// @brief Rewrite target process' entry point so that this DLL can be loaded and executed first.
@@ -356,7 +356,7 @@ extern "C" void WINAPI RewrittenEntryPoint_AdjustedStack(RewrittenEntryPointPara
         hMainThreadContinue = CreateEventW(nullptr, true, false, nullptr);
         last_operation = L"hMainThreadContinue = CreateEventW";
         if (!hMainThreadContinue)
-            throw std::runtime_error("CreateEventW");
+            throw std::runtime_error("CreateEventW 调用失败");
 
         last_operation = L"InitializeImpl";
         hr = InitializeImpl(pLoadInfo, hMainThreadContinue);

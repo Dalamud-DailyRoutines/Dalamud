@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "DalamudStartInfo.h"
 
 #include "utils.h"
@@ -46,7 +46,7 @@ IMAGE_SECTION_HEADER& utils::loaded_module::section_header(const char* pcszSecti
             return section;
     }
 
-    throw std::out_of_range(std::format("Section [{}] not found", pcszSectionName));
+    throw std::out_of_range(std::format("找不到节 [{}]", pcszSectionName));
 }
 
 std::span<char> utils::loaded_module::section(size_t index) const {
@@ -146,7 +146,7 @@ void* utils::loaded_module::get_imported_function_pointer(const char* pcszDllNam
     if (void* ppImportTableItem{}; find_imported_function_pointer(pcszDllName, pcszFunctionName, hintOrOrdinal, ppImportTableItem))
         return ppImportTableItem;
 
-    throw std::runtime_error(std::format("Failed to find import for {}!{} ({}).", pcszDllName, pcszFunctionName ? pcszFunctionName : "<unnamed>", hintOrOrdinal));
+    throw std::runtime_error(std::format("找不到 {}!{} ({}) 的导入项", pcszDllName, pcszFunctionName ? pcszFunctionName : "<未命名>", hintOrOrdinal));
 }
 
 DalamudExpected<std::unique_ptr<std::remove_pointer_t<HGLOBAL>, decltype(&FreeResource)>> utils::loaded_module::get_resource(LPCWSTR lpName, LPCWSTR lpType) const {
@@ -289,7 +289,7 @@ utils::signature_finder& utils::signature_finder::look_in(const loaded_module& m
 
 utils::signature_finder& utils::signature_finder::look_for(std::string_view pattern, std::string_view mask, char cExactMatch, char cWildcard) {
     if (pattern.size() != mask.size())
-        throw std::runtime_error("Length of pattern does not match the length of mask.");
+            throw std::runtime_error("模式长度与掩码长度不一致");
 
     std::string buf;
     buf.reserve(pattern.size() * 4);
@@ -381,20 +381,20 @@ utils::signature_finder& utils::signature_finder::look_for_hex(std::string_view 
 const char* utils::signature_finder::result::resolve_jump_target(size_t instructionOffset) const {
     nmd_x86_instruction instruction{};
     if (!nmd_x86_decode(&Match[instructionOffset], NMD_X86_MAXIMUM_INSTRUCTION_LENGTH, &instruction, NMD_X86_MODE_64, NMD_X86_DECODER_FLAGS_ALL))
-        throw std::runtime_error("Matched address does not have a valid assembly instruction");
+        throw std::runtime_error("匹配地址处不存在有效的汇编指令");
 
     size_t numExplicitOperands = 0;
     for (size_t i = 0; i < instruction.num_operands; i++)
         numExplicitOperands += instruction.operands[i].is_implicit ? 0 : 1;
     if (numExplicitOperands != 1)
-        throw std::runtime_error("Number of operands at the instruction at matched address is not 1");
+        throw std::runtime_error("匹配地址处指令的操作数数量不是 1");
 
     if (!(instruction.group & NMD_GROUP_CALL) && !(instruction.group & NMD_GROUP_JUMP))
-        throw std::runtime_error("The instruction at matched address is not a call or jump instruction");
+        throw std::runtime_error("匹配地址处的指令不是 call 或 jump");
 
     const auto& arg1 = instruction.operands[0];
     if (arg1.type != NMD_X86_OPERAND_TYPE_IMMEDIATE)
-        throw std::runtime_error("The first operand for the instruction at matched address is not an immediate value");
+        throw std::runtime_error("匹配地址处指令的第一个操作数不是立即数");
 
     return &Match[instructionOffset] + instruction.length + arg1.fields.imm;
 }
@@ -420,7 +420,7 @@ std::vector<utils::signature_finder::result> utils::signature_finder::find(size_
 
                     if (bErrorOnMoreThanMaximum) {
                         if (res.size() > maxCount)
-                            throw std::runtime_error(std::format("Found {} result(s), wanted at most {} results", res.size(), maxCount));
+                            throw std::runtime_error(std::format("找到 {} 个结果, 期望最多 {} 个", res.size(), maxCount));
                     } else if (res.size() == maxCount)
                         return res;
                 }
@@ -429,7 +429,7 @@ std::vector<utils::signature_finder::result> utils::signature_finder::find(size_
     }
 
     if (res.size() < minCount)
-        throw std::runtime_error(std::format("Found {} result(s), wanted at least {} results", res.size(), minCount));
+        throw std::runtime_error(std::format("找到 {} 个结果, 期望至少 {} 个", res.size(), minCount));
 
     return res;
 }
@@ -453,7 +453,7 @@ utils::memory_tenderizer::memory_tenderizer(HANDLE hProcess, const void* pAddres
             MEMORY_BASIC_INFORMATION region{};
             if (!VirtualQueryEx(hProcess, pCoveredAddress, &region, sizeof region)) {
                 throw std::runtime_error(std::format(
-                    "VirtualQuery(addr=0x{:X}, ..., cb={}) failed with Win32 code 0x{:X}",
+                    "VirtualQuery(addr = 0x{:X}, ..., cb = {}) 失败, Win32 错误码为 0x{:X}",
                     reinterpret_cast<size_t>(pCoveredAddress),
                     sizeof region,
                     GetLastError()));
@@ -461,7 +461,7 @@ utils::memory_tenderizer::memory_tenderizer(HANDLE hProcess, const void* pAddres
 
             if (!VirtualProtectEx(hProcess, region.BaseAddress, region.RegionSize, dwNewProtect, &region.Protect)) {
                 throw std::runtime_error(std::format(
-                    "(Change)VirtualProtect(addr=0x{:X}, size=0x{:X}, ..., ...) failed with Win32 code 0x{:X}",
+                    "(Change)VirtualProtect(addr = 0x{:X}, size = 0x{:X}, ..., ...) 失败, Win32 错误码为 0x{:X}",
                     reinterpret_cast<size_t>(region.BaseAddress),
                     region.RegionSize,
                     GetLastError()));
@@ -503,13 +503,13 @@ std::shared_ptr<void> utils::allocate_executable_heap(size_t len) {
             if (const auto hHeapRaw = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0); hHeapRaw)
                 s_hHeap = hHeap = std::shared_ptr<void>(hHeapRaw, HeapDestroy);
             else
-                throw std::runtime_error("Failed to create heap.");
+                throw std::runtime_error("创建堆失败");
         }
     }
 
     const auto pAllocRaw = HeapAlloc(hHeap.get(), 0, len);
     if (!pAllocRaw)
-        throw std::runtime_error("Failed to allocate memory.");
+        throw std::runtime_error("分配内存失败");
 
     return {
         pAllocRaw,
@@ -527,11 +527,11 @@ std::shared_ptr<void> utils::create_thunk(void* pfnFunction, void* pThis, uint64
         if (i == sourceCode.size() || !nmd_x86_decode(&sourceCode[i], sourceCode.size() - i, &instruction, NMD_X86_MODE_64, NMD_X86_DECODER_FLAGS_ALL)) {
             sourceCode.insert(sourceCode.end(), &pcBaseFn[sourceCode.size()], &pcBaseFn[sourceCode.size() + 512]);
             if (!nmd_x86_decode(&sourceCode[i], sourceCode.size() - i, &instruction, NMD_X86_MODE_64, NMD_X86_DECODER_FLAGS_ALL))
-                throw std::runtime_error("Failed to find detour function");
+                throw std::runtime_error("找不到目标跳板函数");
         }
 
         if (instruction.opcode == 0xCC)
-            throw std::runtime_error("Failed to find detour function");
+            throw std::runtime_error("找不到目标跳板函数");
 
         // msvc debugger related
         if ((instruction.group & NMD_GROUP_CALL) && (instruction.imm_mask & NMD_X86_IMM_ANY))
@@ -551,7 +551,7 @@ std::shared_ptr<void> utils::create_thunk(void* pfnFunction, void* pThis, uint64
     }
 
     if (!placeholderFound)
-        throw std::runtime_error("Failed to find detour function");
+        throw std::runtime_error("找不到目标跳板函数");
 
     return allocate_executable_heap(std::span(sourceCode));
 }
@@ -690,14 +690,14 @@ std::wstring utils::format_win32_error(DWORD err) {
         0,
         nullptr);
     if (pwszMsg) {
-        std::wstring result = std::format(L"Win32 error ({}=0x{:X}): {}", err, err, pwszMsg);
+        std::wstring result = std::format(L"Win32 错误 ({} = 0x{:X}): {}", err, err, pwszMsg);
         while (!result.empty() && std::isspace(result.back()))
             result.pop_back();
         LocalFree(pwszMsg);
         return result;
     }
 
-    return std::format(L"Win32 error ({}=0x{:X})", err, err);
+    return std::format(L"Win32 错误 ({} = 0x{:X})", err, err);
 }
 
 utils::scoped_dpi_awareness_context::scoped_dpi_awareness_context()

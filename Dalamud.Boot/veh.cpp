@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include "veh.h"
 
@@ -199,7 +199,7 @@ LONG exception_handler(EXCEPTION_POINTERS* ex)
     }
     else if (!g_clr)
     {
-        stackTrace = L"(no CLR stack trace available)";
+        stackTrace = L"(没有可用的 CLR 栈跟踪)";
     }
     else if (void* fn; const auto err = static_cast<DWORD>(g_clr->get_function_pointer(
         L"Dalamud.EntryPoint, Dalamud",
@@ -207,7 +207,7 @@ LONG exception_handler(EXCEPTION_POINTERS* ex)
         L"Dalamud.EntryPoint+VehDelegate, Dalamud",
         nullptr, nullptr, &fn)))
     {
-        stackTrace = std::format(L"Failed to read stack trace: 0x{:08x}", err);
+        stackTrace = std::format(L"读取栈跟踪失败: 0x{:08x}", err);
     }
     else
     {
@@ -239,13 +239,13 @@ LONG exception_handler(EXCEPTION_POINTERS* ex)
 
     switch (waitResult) {
     case WAIT_OBJECT_0:
-        logging::E("DalamudCrashHandler.exe exited unexpectedly");
+        logging::E("DalamudCrashHandler.exe 意外退出");
         break;
     case WAIT_OBJECT_0 + 1:
-        logging::I("Crashing thread was resumed");
+        logging::I("崩溃线程已恢复运行");
         break;
     default:
-        logging::E("Unexpected WaitForMultipleObjects return code 0x{:x}", waitResult);
+        logging::E("WaitForMultipleObjects 返回了未预期的代码 0x{:x}", waitResult);
     }
 
     return EXCEPTION_CONTINUE_SEARCH;
@@ -297,7 +297,7 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory)
     g_HookSetUnhandledExceptionFilter.emplace("kernel32.dll!SetUnhandledExceptionFilter (lpTopLevelExceptionFilter)", "kernel32.dll", "SetUnhandledExceptionFilter", 0);
     g_HookSetUnhandledExceptionFilter->set_detour([](LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter) -> LPTOP_LEVEL_EXCEPTION_FILTER
     {
-        logging::I("Overwriting UnhandledExceptionFilter from {} to {}", reinterpret_cast<ULONG_PTR>(lpTopLevelExceptionFilter), reinterpret_cast<ULONG_PTR>(structured_exception_handler));
+        logging::I("正在将 UnhandledExceptionFilter 从 {} 覆盖为 {}", reinterpret_cast<ULONG_PTR>(lpTopLevelExceptionFilter), reinterpret_cast<ULONG_PTR>(structured_exception_handler));
         return g_HookSetUnhandledExceptionFilter->call_original(structured_exception_handler);
     });
     SetUnhandledExceptionFilter(structured_exception_handler);
@@ -317,13 +317,13 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory)
         }
         else
         {
-            logging::W("Failed to launch DalamudCrashHandler.exe: DuplicateHandle(1) error 0x{:x}", GetLastError());
+            logging::W("启动 DalamudCrashHandler.exe 失败: DuplicateHandle(1) 错误 0x{:x}", GetLastError());
             return false;
         }
     }
     else
     {
-        logging::W("Failed to launch DalamudCrashHandler.exe: CreatePipe error 0x{:x}", GetLastError());
+        logging::W("启动 DalamudCrashHandler.exe 失败: CreatePipe 错误 0x{:x}", GetLastError());
         return false;
     }
 
@@ -341,7 +341,7 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory)
     {
         if (const auto err = GetLastError(); err != ERROR_INSUFFICIENT_BUFFER)
         {
-            logging::W("Failed to launch DalamudCrashHandler.exe: InitializeProcThreadAttributeList(1) error 0x{:x}", err);
+            logging::W("启动 DalamudCrashHandler.exe 失败: InitializeProcThreadAttributeList(1) 错误 0x{:x}", err);
             return false;
         }
 
@@ -349,13 +349,13 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory)
         siex.lpAttributeList = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(&attributeListBuf[0]);
         if (!InitializeProcThreadAttributeList(siex.lpAttributeList, 1, 0, &size))
         {
-            logging::W("Failed to launch DalamudCrashHandler.exe: InitializeProcThreadAttributeList(2) error 0x{:x}", GetLastError());
+            logging::W("启动 DalamudCrashHandler.exe 失败: InitializeProcThreadAttributeList(2) 错误 0x{:x}", GetLastError());
             return false;
         }
     }
     else
     {
-        logging::W("Failed to launch DalamudCrashHandler.exe: InitializeProcThreadAttributeList(0) was supposed to fail");
+        logging::W("启动 DalamudCrashHandler.exe 失败: InitializeProcThreadAttributeList(0) 本应返回失败");
         return false;
     }
     std::unique_ptr<std::remove_pointer_t<LPPROC_THREAD_ATTRIBUTE_LIST>, decltype(&DeleteProcThreadAttributeList)> cleanAttributeList(siex.lpAttributeList, &DeleteProcThreadAttributeList);
@@ -365,7 +365,7 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory)
     HANDLE hInheritableCurrentProcess;
     if (!DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &hInheritableCurrentProcess, 0, TRUE, DUPLICATE_SAME_ACCESS))
     {
-        logging::W("Failed to launch DalamudCrashHandler.exe: DuplicateHandle(2) error 0x{:x}", GetLastError());
+        logging::W("启动 DalamudCrashHandler.exe 失败: DuplicateHandle(2) 错误 0x{:x}", GetLastError());
         return false;
     }
     handles.push_back(hInheritableCurrentProcess);
@@ -382,13 +382,13 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory)
             ? path->parent_path().wstring()
             : std::filesystem::path(unicode::convert<std::wstring>(g_startInfo.BootLogPath)).parent_path().wstring()));
     } else {
-        logging::W("Failed to read path of the Dalamud Boot module: {}", path.error().describe());
+        logging::W("读取 Dalamud Boot 模块路径失败: {}", path.error().describe());
         return false;
     }
 
     args.emplace_back(L"--");
     if (auto r = append_injector_launch_args(args); !r) {
-        logging::W("Failed to generate injector launch args: {}", r.error().describe());
+        logging::W("生成注入器启动参数失败: {}", r.error().describe());
         return false;
     }
 
@@ -401,7 +401,7 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory)
 
     if (!handles.empty() && !UpdateProcThreadAttribute(siex.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles[0], std::span(handles).size_bytes(), nullptr, nullptr))
     {
-        logging::W("Failed to launch DalamudCrashHandler.exe: UpdateProcThreadAttribute error 0x{:x}", GetLastError());
+        logging::W("启动 DalamudCrashHandler.exe 失败: UpdateProcThreadAttribute 错误 0x{:x}", GetLastError());
         return false;
     }
 
@@ -418,13 +418,13 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory)
         &pi                            // Pointer to PROCESS_INFORMATION structure (removed extra parentheses)
         ))
     {
-        logging::W("Failed to launch DalamudCrashHandler.exe: CreateProcessW error 0x{:x}", GetLastError());
+        logging::W("启动 DalamudCrashHandler.exe 失败: CreateProcessW 错误 0x{:x}", GetLastError());
         return false;
     }
 
     if (!(g_crashhandler_event = CreateEventW(NULL, FALSE, FALSE, NULL)))
     {
-        logging::W("Failed to create crash synchronization event: CreateEventW error 0x{:x}", GetLastError());
+        logging::W("创建崩溃同步事件失败: CreateEventW 错误 0x{:x}", GetLastError());
         return false;
     }
 
@@ -432,7 +432,7 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory)
 
     g_crashhandler_process = pi.hProcess;
     g_crashhandler_pipe_write = hWritePipe->release();
-    logging::I("Launched DalamudCrashHandler.exe: PID {}", pi.dwProcessId);
+    logging::I("已启动 DalamudCrashHandler.exe: PID {}", pi.dwProcessId);
     return true;
 }
 

@@ -1,4 +1,4 @@
-#include "error_info.h"
+﻿#include "error_info.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -15,12 +15,12 @@ DalamudBootError::DalamudBootError(DalamudBootErrorDescription dalamudErrorDescr
 const char* DalamudBootError::describe() const {
     switch (m_dalamudErrorDescription) {
         case DalamudBootErrorDescription::ModuleResourceLoadFail:
-            return "Failed to load resource.";
+            return "资源加载失败";
         case DalamudBootErrorDescription::ModuleResourceVersionReadFail:
-            return "Failed to query version information.";
+            return "读取版本信息失败";
         case DalamudBootErrorDescription::ModuleResourceVersionSignatureFail:
-            return "Invalid version info found.";
+            return "检测到无效的版本信息";
         default:
-            return "(unavailable)";
+            return "无可用说明";
     }
 }

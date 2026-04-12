@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include "xivfixes.h"
 
@@ -22,7 +22,7 @@ void xivfixes::unhook_dll(bool bApply) {
         const auto path = mod.path();
         if (!path) {
             logging::W(
-                "{} [{}/{}] Module 0x{:X}: Failed to resolve path: {}",
+                "{} [{}/{}] 模块 0x{:X}: 解析路径失败: {}",
                 LogTag,
                 i + 1,
                 mods.size(),
@@ -33,13 +33,13 @@ void xivfixes::unhook_dll(bool bApply) {
 
         const auto version = mod.get_file_version()
             .transform([](const auto& v) { return utils::format_file_version(v.get()); })
-            .value_or(L"<unknown>");
+            .value_or(L"<未知>");
 
         const auto description = mod.get_description()
-            .value_or(L"<unknown>");
+            .value_or(L"<未知>");
 
         logging::I(
-            R"({} [{}/{}] Module 0x{:X} ~ 0x{:X} (0x{:X}): "{}" ("{}" ver {}))",
+            R"({} [{}/{}] 模块 0x{:X} ~ 0x{:X} (0x{:X}): "{}" ("{}" 版本 {}))",
             LogTagW,
             i + 1,
             mods.size(),
@@ -55,13 +55,13 @@ void xivfixes::unhook_dll(bool bApply) {
         const auto& sectionHeader = mod.section_header(".text");
         const auto section = mod.span_as<char>(sectionHeader.VirtualAddress, sectionHeader.Misc.VirtualSize);
         if (section.empty()) {
-            logging::W("{} Error: .text[VA:VA + VS] is empty", LogTag);
+            logging::W("{} 错误: .text[VA:VA + VS] 为空", LogTag);
             return;
         }
 
         auto hFsDllRaw = CreateFileW(path->c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
         if (hFsDllRaw == INVALID_HANDLE_VALUE) {
-            logging::W("{} Module loaded in current process but could not open file: Win32 error {}", LogTag, GetLastError());
+            logging::W("{} 模块已加载到当前进程, 但无法打开文件: Win32 错误 {}", LogTag, GetLastError());
             return;
         }
 
@@ -70,11 +70,11 @@ void xivfixes::unhook_dll(bool bApply) {
         SetFilePointer(hFsDll.get(), sectionHeader.PointerToRawData, nullptr, FILE_CURRENT);
         if (DWORD read{}; ReadFile(hFsDll.get(), &buf[0], static_cast<DWORD>(buf.size()), &read, nullptr)) {
             if (read < section.size_bytes()) {
-                logging::W("{} ReadFile: read {} bytes < requested {} bytes", LogTagW, read, section.size_bytes());
+                logging::W("{} ReadFile: 已读取 {} 字节, 少于请求的 {} 字节", LogTagW, read, section.size_bytes());
                 return;
             }
         } else {
-            logging::I("{} ReadFile: Win32 error {}", LogTagW, GetLastError());
+            logging::I("{} ReadFile: Win32 错误 {}", LogTagW, GetLastError());
             return;
         }
 
@@ -114,16 +114,16 @@ void xivfixes::unhook_dll(bool bApply) {
                             std::string_view name;
                             if (const char* pcszName = mod.address_as<char>(names[nameIndex]); pcszName < mod.address() || pcszName >= mod.address() + mod.image_size()) {
                                 if (IsBadReadPtr(pcszName, 256)) {
-                                    logging::W("{} Name #{} points to an invalid address outside the executable. Skipping.", LogTag, nameIndex);
+                                    logging::W("{} 名称 #{} 指向了可执行映像外的无效地址, 已跳过", LogTag, nameIndex);
                                     continue;
                                 }
 
                                 name = std::string_view(pcszName, strnlen(pcszName, 256));
-                                logging::W("{} Name #{} points to a seemingly valid address outside the executable: {}", LogTag, nameIndex, name);
+                                logging::W("{} 名称 #{} 指向了可执行映像外看似有效的地址: {}", LogTag, nameIndex, name);
                             }
 
                             if (ordinals[nameIndex] >= functions.size()) {
-                                logging::W("{} Ordinal #{} points to function index #{} >= #{}. Skipping.", LogTag, nameIndex, ordinals[nameIndex], functions.size());
+                                logging::W("{} 序号 #{} 指向的函数索引 #{} >= #{}, 已跳过", LogTag, nameIndex, ordinals[nameIndex], functions.size());
                                 continue;
                             }
 
@@ -147,12 +147,12 @@ void xivfixes::unhook_dll(bool bApply) {
             }
 
             if (tenderizer)
-                logging::I("{} Verification and overwriting complete.", LogTag);
+                logging::I("{} 校验并覆盖完成", LogTag);
             else if (doRestore)
-                logging::I("{} Verification complete. Overwriting was not required.", LogTag);
+                logging::I("{} 校验完成, 无需覆盖", LogTag);
 
         } catch (const std::exception& e) {
-            logging::W("{} Error: {}", LogTag, e.what());
+            logging::W("{} 错误: {}", LogTag, e.what());
         }
     }
 }
@@ -183,11 +183,11 @@ void xivfixes::prevent_devicechange_crashes(bool bApply) {
         if (uMsg == WM_DEVICECHANGE && wParam == DBT_DEVNODES_CHANGED) {
             try {
                 if (!GetGetInputDeviceManager(hWnd)()) {
-                    logging::I("{} WndProc(0x{:X}, WM_DEVICECHANGE, DBT_DEVNODES_CHANGED, {}) called but the game does not have InputDeviceManager initialized; doing nothing.", LogTag, reinterpret_cast<size_t>(hWnd), lParam);
+                    logging::I("{} WndProc(0x{:X}, WM_DEVICECHANGE, DBT_DEVNODES_CHANGED, {}) 已调用, 但游戏尚未初始化 InputDeviceManager, 不执行任何操作", LogTag, reinterpret_cast<size_t>(hWnd), lParam);
                     return 0;
                 }
             } catch (const std::exception& e) {
-                logging::W("{} WndProc(0x{:X}, WM_DEVICECHANGE, DBT_DEVNODES_CHANGED, {}) called, but failed to resolve address for GetInputDeviceManager: {}", LogTag, reinterpret_cast<size_t>(hWnd), lParam, e.what());
+                logging::W("{} WndProc(0x{:X}, WM_DEVICECHANGE, DBT_DEVNODES_CHANGED, {}) 已调用, 但解析 GetInputDeviceManager 地址失败: {}", LogTag, reinterpret_cast<size_t>(hWnd), lParam, e.what());
             }
         }
 
@@ -203,7 +203,7 @@ void xivfixes::prevent_devicechange_crashes(bool bApply) {
 
     if (bApply) {
         if (!g_startInfo.BootEnabledGameFixes.contains("prevent_devicechange_crashes")) {
-            logging::I("{} Turned off via environment variable.", LogTag);
+            logging::I("{} 已通过环境变量关闭", LogTag);
             return;
         }
 
@@ -230,11 +230,11 @@ void xivfixes::prevent_devicechange_crashes(bool bApply) {
             return s_hookRegisterClassExA->call_original(&wndClassExA);
         });
 
-        logging::I("{} Enable", LogTag);
+        logging::I("{} 已启用", LogTag);
 
     } else {
         if (s_hookRegisterClassExA) {
-            logging::I("{} Disable RegisterClassExA", LogTag);
+            logging::I("{} 正在禁用 RegisterClassExA 挂钩", LogTag);
             s_hookRegisterClassExA.reset();
         }
 
@@ -304,22 +304,22 @@ void xivfixes::disable_game_openprocess_access_check(bool bApply) {
 
     if (bApply) {
         if (!g_startInfo.BootEnabledGameFixes.contains("disable_game_openprocess_access_check")) {
-            logging::I("{} Turned off via environment variable.", LogTag);
+            logging::I("{} 已通过环境变量关闭", LogTag);
             return;
         }
         if (is_openprocess_already_dealt_with()) {
-            logging::I("{} Someone else already did it.", LogTag);
+            logging::I("{} 已由其他模块处理", LogTag);
             return;
         }
 
         s_hook.emplace("kernel32.dll!OpenProcess (import, disable_game_openprocess_access_check)", "kernel32.dll", "OpenProcess", 0);
         s_hook->set_detour([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId)->HANDLE {
-            logging::I("{} OpenProcess(0x{:08X}, {}, {}) was invoked by thread {}.", LogTag, dwDesiredAccess, bInheritHandle, dwProcessId, GetCurrentThreadId());
+            logging::I("{} 线程 {} 调用了 OpenProcess(0x{:08X}, {}, {})", LogTag, GetCurrentThreadId(), dwDesiredAccess, bInheritHandle, dwProcessId);
 
             if (dwProcessId == GetCurrentProcessId()) {
                 // Prevent game from feeling unsafe that it restarts
                 if (dwDesiredAccess & PROCESS_VM_WRITE) {
-                    logging::I("{} Returning failure with last error code set to ERROR_ACCESS_DENIED(5).", LogTag);
+                    logging::I("{} 正在返回失败, 并将最后错误码设为 ERROR_ACCESS_DENIED(5)", LogTag);
                     SetLastError(ERROR_ACCESS_DENIED);
                     return {};
                 }
@@ -328,10 +328,10 @@ void xivfixes::disable_game_openprocess_access_check(bool bApply) {
             return s_hook->call_original(dwDesiredAccess, bInheritHandle, dwProcessId);
         });
 
-        logging::I("{} Enable", LogTag);
+        logging::I("{} 已启用", LogTag);
     } else {
         if (s_hook) {
-            logging::I("{} Disable OpenProcess", LogTag);
+            logging::I("{} 正在禁用 OpenProcess 挂钩", LogTag);
             s_hook.reset();
         }
     }
@@ -345,11 +345,11 @@ void xivfixes::redirect_openprocess(bool bApply) {
 
     if (bApply) {
         if (!g_startInfo.BootEnabledGameFixes.contains("redirect_openprocess")) {
-            logging::I("{} Turned off via environment variable.", LogTag);
+            logging::I("{} 已通过环境变量关闭", LogTag);
             return;
         }
         if (is_openprocess_already_dealt_with()) {
-            logging::I("{} Someone else already did it.", LogTag);
+            logging::I("{} 已由其他模块处理", LogTag);
             return;
         }
 
@@ -358,7 +358,7 @@ void xivfixes::redirect_openprocess(bool bApply) {
             hook->set_detour([hook = hook.get()](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId)->HANDLE {
                 if (dwProcessId == GetCurrentProcessId()) {
                     if (s_silenceSet.emplace(GetCurrentThreadId()).second)
-                        logging::I("{} OpenProcess(0x{:08X}, {}, {}) was invoked by thread {}. Redirecting to DuplicateHandle.", LogTag, dwDesiredAccess, bInheritHandle, dwProcessId, GetCurrentThreadId());
+                        logging::I("{} 线程 {} 调用了 OpenProcess(0x{:08X}, {}, {}), 正在重定向到 DuplicateHandle", LogTag, GetCurrentThreadId(), dwDesiredAccess, bInheritHandle, dwProcessId);
 
                     if (HANDLE res; DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &res, dwDesiredAccess, bInheritHandle, 0))
                         return res;
@@ -369,14 +369,14 @@ void xivfixes::redirect_openprocess(bool bApply) {
             });
             s_hook = std::dynamic_pointer_cast<hooks::base_untyped_hook>(std::move(hook));
 
-            logging::I("{} Enable via import_hook", LogTag);
+            logging::I("{} 已通过 import_hook 启用", LogTag);
 
         } else {
             auto hook = std::make_shared<hooks::direct_hook<decltype(OpenProcess)>>("kernel32.dll!OpenProcess (direct, redirect_openprocess)", OpenProcess);
             hook->set_detour([hook = hook.get()](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId)->HANDLE {
                 if (dwProcessId == GetCurrentProcessId()) {
                     if (s_silenceSet.emplace(GetCurrentThreadId()).second)
-                        logging::I("{} OpenProcess(0x{:08X}, {}, {}) was invoked by thread {}. Redirecting to DuplicateHandle.", LogTag, dwDesiredAccess, bInheritHandle, dwProcessId, GetCurrentThreadId());
+                        logging::I("{} 线程 {} 调用了 OpenProcess(0x{:08X}, {}, {}), 正在重定向到 DuplicateHandle", LogTag, GetCurrentThreadId(), dwDesiredAccess, bInheritHandle, dwProcessId);
 
                     if (HANDLE res; DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &res, dwDesiredAccess, bInheritHandle, 0))
                         return res;
@@ -387,7 +387,7 @@ void xivfixes::redirect_openprocess(bool bApply) {
             });
             s_hook = std::dynamic_pointer_cast<hooks::base_untyped_hook>(std::move(hook));
 
-            logging::I("{} Enable via direct_hook", LogTag);
+            logging::I("{} 已通过 direct_hook 启用", LogTag);
         }
 
         //std::thread([]() {
@@ -398,7 +398,7 @@ void xivfixes::redirect_openprocess(bool bApply) {
 
     } else {
         if (s_hook) {
-            logging::I("{} Disable OpenProcess", LogTag);
+            logging::I("{} 正在禁用 OpenProcess 挂钩", LogTag);
             s_hook.reset();
         }
     }
@@ -413,7 +413,7 @@ void xivfixes::backup_userdata_save(bool bApply) {
 
     if (bApply) {
         if (!g_startInfo.BootEnabledGameFixes.contains("backup_userdata_save")) {
-            logging::I("{} Turned off via environment variable.", LogTag);
+            logging::I("{} 已通过环境变量关闭", LogTag);
             return;
         }
 
@@ -469,7 +469,7 @@ void xivfixes::backup_userdata_save(bool bApply) {
                     try {
                         rename(finalPath, oldPath);
                     } catch (const std::exception& e) {
-                        logging::E("{0} Failed to rename {1} to {2}: {3}",
+                        logging::E("{0} 无法将 {1} 重命名为 {2}: {3}",
                             LogTag,
                             unicode::convert<std::string>(finalPath.c_str()),
                             unicode::convert<std::string>(oldPath.c_str()),
@@ -484,7 +484,7 @@ void xivfixes::backup_userdata_save(bool bApply) {
                 renameInfo.FileNameLength = static_cast<DWORD>(pathwstr.size() * 2);
                 memcpy(renameInfo.FileName, &pathwstr[0], renameInfo.FileNameLength);
                 if (!SetFileInformationByHandle(handle, FileRenameInfo, &renameInfoBuf[0], static_cast<DWORD>(renameInfoBuf.size()))) {
-                    logging::E("{0} Failed to rename {1} to {2}: Win32 error {3}(0x{3})",
+                    logging::E("{0} 无法将 {1} 重命名为 {2}: Win32 错误 {3}(0x{3})",
                         LogTag,
                         unicode::convert<std::string>(tempPath.c_str()),
                         unicode::convert<std::string>(finalPath.c_str()),
@@ -494,10 +494,10 @@ void xivfixes::backup_userdata_save(bool bApply) {
             return s_hookCloseHandle->call_original(handle);
         });
 
-        logging::I("{} Enable", LogTag);
+        logging::I("{} 已启用", LogTag);
     } else {
         if (s_hookCreateFileW) {
-            logging::I("{} Disable OpenProcess", LogTag);
+            logging::I("{} 正在禁用 CreateFileW 挂钩", LogTag);
             s_hookCreateFileW.reset();
         }
     }
@@ -510,7 +510,7 @@ void xivfixes::prevent_icmphandle_crashes(bool bApply) {
 
     if (bApply) {
         if (!g_startInfo.BootEnabledGameFixes.contains("prevent_icmphandle_crashes")) {
-            logging::I("{} Turned off via environment variable.", LogTag);
+            logging::I("{} 已通过环境变量关闭", LogTag);
             return;
         }
 
@@ -520,17 +520,17 @@ void xivfixes::prevent_icmphandle_crashes(bool bApply) {
             // this is exactly how windows behaves, however calling IcmpCloseHandle with
             // an invalid handle will segfault on wine...
             if (IcmpHandle == INVALID_HANDLE_VALUE) {
-                logging::W("{} IcmpCloseHandle was called with INVALID_HANDLE_VALUE", LogTag);
+                logging::W("{} IcmpCloseHandle 收到了 INVALID_HANDLE_VALUE", LogTag);
                 return FALSE;
             }
             return s_hookIcmpCloseHandle->call_original(IcmpHandle);
         });
 
-        logging::I("{} Enable", LogTag);
+        logging::I("{} 已启用", LogTag);
     }
     else {
         if (s_hookIcmpCloseHandle) {
-            logging::I("{} Disable", LogTag);
+            logging::I("{} 已禁用", LogTag);
             s_hookIcmpCloseHandle.reset();
         }
     }
@@ -573,28 +573,28 @@ void xivfixes::symbol_load_patches(bool bApply) {
                         sep = std::find(pathSpan.rbegin(), pathSpan.rend(), '\\');
                     if (sep != pathSpan.rend()) {
                         logging::I(
-                            "{} Stripping pdb path folder: {} to {}",
+                            "{} 正在移除 pdb 路径中的目录部分: {} -> {}",
                             LogTag,
                             pathSpan,
                             &*sep + 1);
                         memmove(const_cast<char*>(pathSpan.data()), &*sep + 1, sep - pathSpan.rbegin() + 1);
                     } else {
-                        logging::I("{} Leaving pdb path unchanged: {}", LogTag, pathSpan);
+                        logging::I("{} 保持 pdb 路径不变: {}", LogTag, pathSpan);
                     }
                 } else {
-                    logging::I("{} Leaving pdb path unchanged: {}", LogTag, pathSpan);
+                    logging::I("{} 保持 pdb 路径不变: {}", LogTag, pathSpan);
                 }
             } else {
-                logging::I("{} CODEVIEW struct signature mismatch: got {:08X} instead.", LogTag, pdbref.Signature);
+                logging::I("{} CODEVIEW 结构签名不匹配, 当前值为 {:08X}", LogTag, pdbref.Signature);
             }
         } else {
-            logging::I("{} Debug directory: type {} is unsupported.", LogTag, ddir.Type);
+            logging::I("{} 调试目录类型 {} 不受支持", LogTag, ddir.Type);
         }
     };
 
     if (bApply) {
         if (!g_startInfo.BootEnabledGameFixes.contains("symbol_load_patches")) {
-            logging::I("{} Turned off via environment variable.", LogTag);
+            logging::I("{} 已通过环境变量关闭", LogTag);
             return;
         }
 
@@ -612,23 +612,23 @@ void xivfixes::symbol_load_patches(bool bApply) {
                 &s_dllNotificationCookie);
 
             if (res != STATUS_SUCCESS) {
-                logging::E("{} LdrRegisterDllNotification failure: 0x{:08X}", LogTag, res);
+                logging::E("{} LdrRegisterDllNotification 失败: 0x{:08X}", LogTag, res);
                 s_dllNotificationCookie = nullptr;
             }
         }
 
         s_hookSymInitialize.emplace("dbghelp.dll!SymInitialize (import, symbol_load_patches)", "dbghelp.dll", "SymInitialize", 0);
         s_hookSymInitialize->set_detour([](HANDLE hProcess, PCSTR UserSearchPath, BOOL fInvadeProcess) noexcept {
-            logging::I("{} Suppressed SymInitialize.", LogTag);
+            logging::I("{} 已拦截 SymInitialize", LogTag);
             SetLastError(ERROR_NOT_SUPPORTED);
             return FALSE;
         });
 
-        logging::I("{} Enable", LogTag);
+        logging::I("{} 已启用", LogTag);
     }
     else {
         if (s_hookSymInitialize) {
-            logging::I("{} Disable", LogTag);
+            logging::I("{} 已禁用", LogTag);
             s_hookSymInitialize.reset();
         }
 
@@ -645,16 +645,16 @@ void xivfixes::disable_game_debugging_protection(bool bApply) {
 
     if (bApply) {
         if (!g_startInfo.BootEnabledGameFixes.contains("disable_game_debugging_protection")) {
-            logging::I("{} Turned off via environment variable.", LogTag);
+            logging::I("{} 已通过环境变量关闭", LogTag);
             return;
         }
 
         s_hookIsDebuggerPresent.emplace("kernel32.dll!IsDebuggerPresent", "kernel32.dll", "IsDebuggerPresent", 0);
         s_hookIsDebuggerPresent->set_detour([]() { return false; });
-        logging::I("{} Enable", LogTag);
+        logging::I("{} 已启用", LogTag);
     } else {
         if (s_hookIsDebuggerPresent) {
-            logging::I("{} Disable", LogTag);
+            logging::I("{} 已禁用", LogTag);
             s_hookIsDebuggerPresent.reset();
         }
     }
@@ -678,16 +678,16 @@ void xivfixes::apply_all(bool bApply) {
 
         } catch (const std::exception& e) {
             if (bApply)
-                logging::W("Error trying to activate fixup [{}]: {}", taskName, e.what());
+                logging::W("启用修复项 [{}] 时出错: {}", taskName, e.what());
             else
-                logging::W("Error trying to deactivate fixup [{}]: {}", taskName, e.what());
+                logging::W("停用修复项 [{}] 时出错: {}", taskName, e.what());
 
             continue;
         }
 
         if (bApply)
-            logging::I("Fixup [{}] activated.", taskName);
+            logging::I("修复项 [{}] 已启用", taskName);
         else
-            logging::I("Fixup [{}] deactivated.", taskName);
+            logging::I("修复项 [{}] 已停用", taskName);
     }
 }

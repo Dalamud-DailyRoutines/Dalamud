@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include "hooks.h"
 
@@ -26,17 +26,17 @@ hooks::getprocaddress_singleton_import_hook::~getprocaddress_singleton_import_ho
 std::shared_ptr<void> hooks::getprocaddress_singleton_import_hook::set_handler(std::wstring dllName, std::string functionName, void* pfnDetour, std::function<void(void*)> fnOnOriginalAddressAvailable) {
     const auto hModule = GetModuleHandleW(dllName.c_str());
     if (!hModule)
-        throw std::out_of_range("Specified DLL is not found.");
+        throw std::out_of_range("找不到指定的 DLL");
 
     const auto pfn = m_pfnGetProcAddress(hModule, functionName.c_str());
     if (!pfn)
-        throw std::out_of_range("Could not find the specified function.");
+        throw std::out_of_range("找不到指定的函数");
 
     fnOnOriginalAddressAvailable(pfn);
 
     auto& target = m_targetFns[hModule][functionName];
     if (target)
-        throw std::runtime_error("Specified function has already been hooked.");
+        throw std::runtime_error("指定函数已被挂钩");
 
     target = pfnDetour;
     m_dllNameMap[hModule] = unicode::convert<std::string>(dllName);
@@ -86,12 +86,12 @@ void hooks::getprocaddress_singleton_import_hook::initialize() {
             utils::loaded_module mod(pData->Loaded.DllBase);
             const auto version = mod.get_file_version()
                 .transform([](const auto& v) { return utils::format_file_version(v.get()); })
-                .value_or(L"<unknown>");
+                .value_or(L"<未知>");
 
             const auto description = mod.get_description()
-                .value_or(L"<unknown>");
+                .value_or(L"<未知>");
 
-            logging::I(R"({} "{}" ("{}" ver {}) has been loaded at 0x{:X} ~ 0x{:X} (0x{:X}); finding import table items to hook.)",
+            logging::I(R"({} "{}" ("{}" 版本 {}) 已加载到 0x{:X} ~ 0x{:X} (0x{:X}), 正在查找需要挂钩的导入表项)",
                 LogTag, dllName, description, version,
                 reinterpret_cast<size_t>(pData->Loaded.DllBase),
                 reinterpret_cast<size_t>(pData->Loaded.DllBase) + pData->Loaded.SizeOfImage,
@@ -99,7 +99,7 @@ void hooks::getprocaddress_singleton_import_hook::initialize() {
             reinterpret_cast<getprocaddress_singleton_import_hook*>(context)->hook_module(utils::loaded_module(pData->Loaded.DllBase));
         } else if (notiReason == LDR_DLL_NOTIFICATION_REASON_UNLOADED) {
             const auto dllName = unicode::convert<std::string>(pData->Unloaded.FullDllName->Buffer);
-            logging::I(R"({} "{}" has been unloaded.)", LogTag, dllName);
+            logging::I(R"({} "{}" 已卸载)", LogTag, dllName);
         }
     }, this, &m_ldrDllNotificationCookie);
 }
@@ -107,7 +107,7 @@ void hooks::getprocaddress_singleton_import_hook::initialize() {
 FARPROC hooks::getprocaddress_singleton_import_hook::get_proc_address_handler(HMODULE hModule, LPCSTR lpProcName) {
     if (const auto it1 = m_targetFns.find(hModule); it1 != m_targetFns.end()) {
         if (const auto it2 = it1->second.find(lpProcName); it2 != it1->second.end()) {
-            logging::I(R"({} Redirecting GetProcAddress("{}", "{}"))", LogTag, m_dllNameMap[hModule], lpProcName);
+            logging::I(R"({} 正在重定向 GetProcAddress("{}", "{}"))", LogTag, m_dllNameMap[hModule], lpProcName);
 
             return reinterpret_cast<FARPROC>(it2->second);
         }
@@ -121,7 +121,7 @@ void hooks::getprocaddress_singleton_import_hook::hook_module(const utils::loade
 
     const auto path = mod.path()
         .transform([](const auto& p) { return unicode::convert<std::string>(p.wstring()); })
-        .value_or("<unknown>");
+        .value_or("<未知>");
 
     for (const auto& [hModule, targetFns] : m_targetFns) {
         for (const auto& [targetFn, pfnThunk] : targetFns) {
@@ -129,7 +129,7 @@ void hooks::getprocaddress_singleton_import_hook::hook_module(const utils::loade
             if (void* pGetProcAddressImport; mod.find_imported_function_pointer(dllName.c_str(), targetFn.c_str(), 0, pGetProcAddressImport)) {
                 auto& hook = m_hooks[hModule][targetFn][mod];
                 if (!hook) {
-                    logging::I("{} Hooking {}!{} imported by {}", LogTag, dllName, targetFn, path);
+                    logging::I("{} 正在挂钩由 {} 导入的 {}!{}", LogTag, path, dllName, targetFn);
 
                     hook.emplace(std::format("getprocaddress_singleton_import_hook::hook_module({}!{})", dllName, targetFn), static_cast<void**>(pGetProcAddressImport), pfnThunk);
                 }

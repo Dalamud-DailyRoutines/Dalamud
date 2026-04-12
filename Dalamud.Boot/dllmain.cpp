@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include <d3d11.h>
 #include <dxgi1_3.h>
@@ -45,7 +45,7 @@ static void CheckMsvcrtVersion() {
     for (const auto& runtimeDllName : RuntimeDllNames) {
         const utils::loaded_module mod(GetModuleHandleW(runtimeDllName));
         if (!mod) {
-            logging::E("MSVCRT DLL not found: {}", runtimeDllName);
+            logging::E("未找到 MSVCRT DLL: {}", runtimeDllName);
             continue;
         }
 
@@ -55,7 +55,7 @@ static void CheckMsvcrtVersion() {
 
         if (const auto versionResult = mod.get_file_version()) {
             const auto& versionFull = versionResult->get();
-            logging::I("MSVCRT DLL {} has version {}.", path, utils::format_file_version(versionFull));
+            logging::I("MSVCRT DLL {} 的版本为 {}", path, utils::format_file_version(versionFull));
 
             const auto version = 0ULL |
                 (static_cast<uint64_t>(versionFull.dwFileVersionMS) << 32) |
@@ -64,7 +64,7 @@ static void CheckMsvcrtVersion() {
             if (version < RequiredMsvcrtVersion && (lowestVersion == 0 || lowestVersion > version))
                 lowestVersion = version;
         } else {
-            logging::E("Failed to detect MSVCRT DLL version for {}: {}", path, versionResult.error().describe());
+            logging::E("无法检测 {} 的 MSVCRT DLL 版本: {}", path, versionResult.error().describe());
         }
     }
 
@@ -149,22 +149,22 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
     if (logFilePath.empty()) {
         attemptFallbackLog = true;
 
-        logging::I("No log file path given; not logging to file.");
+        logging::I("未提供日志文件路径, 不写入文件日志");
     } else {
         try {
             logging::start_file_logging(logFilePath, !g_startInfo.BootShowConsole);
-            logging::I("Logging to file: {}", logFilePath);
+            logging::I("正在写入日志文件: {}", logFilePath);
 
         } catch (const std::exception& e) {
             attemptFallbackLog = true;
 
-            logging::E("Couldn't open log file: {}", logFilePath);
-            logging::E("Error: {} / {}", errno, e.what());
+            logging::E("无法打开日志文件: {}", logFilePath);
+            logging::E("错误: {} / {}", errno, e.what());
         }
     }
 
     if (!jsonParseError.empty())
-        logging::E("Couldn't parse input JSON: {}", jsonParseError);
+        logging::E("无法解析输入 JSON: {}", jsonParseError);
 
     if (attemptFallbackLog) {
         std::wstring logFilePath(PATHCCH_MAX_CCH + 1, L'\0');
@@ -181,38 +181,38 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
 
         try {
             logging::start_file_logging(logFilePath, !g_startInfo.BootShowConsole);
-            logging::I("Logging to fallback log file: {}", logFilePath);
+            logging::I("正在写入备用日志文件: {}", logFilePath);
 
         } catch (const std::exception& e) {
             if (!g_startInfo.BootShowConsole && !g_startInfo.BootDisableFallbackConsole)
-                ConsoleSetup(L"Dalamud Boot - Fallback Console");
+                ConsoleSetup(L"Dalamud 启动器 - 备用控制台");
 
-            logging::E("Couldn't open fallback log file: {}", logFilePath);
-            logging::E("Error: {} / {}", errno, e.what());
+            logging::E("无法打开备用日志文件: {}", logFilePath);
+            logging::E("错误: {} / {}", errno, e.what());
         }
     }
 
     auto minHookLoaded = false;
     if (const auto mhStatus = MH_Initialize(); mhStatus == MH_OK) {
-        logging::I("MinHook initialized.");
+        logging::I("MinHook 已初始化");
         minHookLoaded = true;
     } else if (mhStatus == MH_ERROR_ALREADY_INITIALIZED) {
-        logging::I("MinHook already initialized.");
+        logging::I("MinHook 已初始化过");
         minHookLoaded = true;
     } else {
-        logging::E("Failed to initialize MinHook (status={}({}))", MH_StatusToString(mhStatus), static_cast<int>(mhStatus));
+        logging::E("初始化 MinHook 失败 (状态 = {}, 代码 = {})", MH_StatusToString(mhStatus), static_cast<int>(mhStatus));
     }
 
-    logging::I("Dalamud.Boot Injectable, (c) 2021 XIVLauncher Contributors");
-    logging::I("Built at: " __DATE__ "@" __TIME__);
+    logging::I("Dalamud.Boot 可注入模块, (c) 2021 XIVLauncher Contributors");
+    logging::I("构建时间: " __DATE__ "@" __TIME__);
 
     if ((g_startInfo.BootWaitMessageBox & DalamudStartInfo::WaitMessageboxFlags::BeforeInitialize) != DalamudStartInfo::WaitMessageboxFlags::None)
-        MessageBoxW(nullptr, L"Press OK to continue (BeforeInitialize)", L"Dalamud Boot", MB_OK);
+        MessageBoxW(nullptr, L"点击确定继续 (BeforeInitialize)", L"Dalamud 启动器", MB_OK);
 
     CheckMsvcrtVersion();
 
     if (g_startInfo.BootDebugDirectX) {
-        logging::I("Enabling DirectX Debugging.");
+        logging::I("正在启用 DirectX 调试");
 
         const auto hD3D11 = GetModuleHandleW(L"d3d11.dll");
         const auto hDXGI = GetModuleHandleW(L"dxgi.dll");
@@ -247,7 +247,7 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
                     ppImmediateContext);
             });
         } else {
-            logging::W("Could not find d3d11!D3D11CreateDevice.");
+            logging::W("找不到 d3d11!D3D11CreateDevice");
         }
 
         const auto pfnCreateDXGIFactory = static_cast<decltype(&CreateDXGIFactory)>(
@@ -270,23 +270,23 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
                 return pfnCreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, riid, ppFactory);
             });
         } else {
-            logging::W("Could not find dxgi!CreateDXGIFactory2.");
+            logging::W("找不到 dxgi!CreateDXGIFactory2");
         }
     }
 
     if (minHookLoaded) {
-        logging::I("Applying fixes...");
+        logging::I("正在应用修复项");
         std::thread([] { xivfixes::apply_all(true); }).join();
-        logging::I("Fixes OK");
+        logging::I("修复项应用完成");
     } else {
-        logging::W("Skipping fixes, as MinHook has failed to load.");
+        logging::W("MinHook 加载失败, 跳过修复项");
     }
 
     if (g_startInfo.BootWaitDebugger) {
-        logging::I("Waiting for debugger to attach...");
+        logging::I("正在等待调试器附加");
         while (!IsDebuggerPresent())
             Sleep(100);
-        logging::I("Debugger attached.");
+        logging::I("调试器已附加");
         __debugbreak();
     }
 
@@ -298,7 +298,7 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
 
     // ============================== CLR ========================================= //
 
-    logging::I("Calling InitializeClrAndGetEntryPoint");
+    logging::I("正在调用 InitializeClrAndGetEntryPoint");
 
     void* entrypoint_vfn;
     const auto result = InitializeClrAndGetEntryPoint(
@@ -319,16 +319,16 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
 
     // ============================== VEH ======================================== //
 
-    logging::I("Initializing VEH...");
+    logging::I("正在初始化 VEH");
     if (g_startInfo.UnhandledException == DalamudStartInfo::UnhandledExceptionHandlingMode::None) {
-        logging::W("=> Exception handlers are disabled from DalamudStartInfo.");
+        logging::W("=> DalamudStartInfo 已禁用异常处理器");
     } else if (g_startInfo.BootVehEnabled) {
         if (veh::add_handler(g_startInfo.BootVehFull, g_startInfo.WorkingDirectory))
-            logging::I("=> Done!");
+            logging::I("=> 完成");
         else
-            logging::I("=> Failed!");
+            logging::I("=> 失败");
     } else {
-        logging::I("VEH was disabled manually");
+        logging::I("VEH 已被手动禁用");
     }
 
     // ============================== CLR Reporting =================================== //
@@ -362,7 +362,7 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
         }
 
         if (wNumStrings == 0 || lpStrings == nullptr) {
-            logging::W("ReportEventW called with no strings.");
+            logging::W("ReportEventW 调用时未提供字符串");
             return hook->call_original(hEventLog, wType, wCategory, dwEventID, lpUserSid, wNumStrings, dwDataSize, lpStrings, lpRawData);
         }
 
@@ -374,19 +374,19 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
 
         return original_ret;
     });
-    logging::I("ReportEventW hook installed.");
+    logging::I("ReportEventW 钩子已安装");
 
     // ============================== Dalamud ==================================== //
 
     if (static_cast<int>(g_startInfo.BootWaitMessageBox) & static_cast<int>(DalamudStartInfo::WaitMessageboxFlags::BeforeDalamudEntrypoint))
-        MessageBoxW(nullptr, L"Press OK to continue (BeforeDalamudEntrypoint)", L"Dalamud Boot", MB_OK);
+        MessageBoxW(nullptr, L"点击确定继续 (BeforeDalamudEntrypoint)", L"Dalamud 启动器", MB_OK);
 
     // We don't need to do this anymore, Dalamud now loads without needing the window to be there. Speed!
     // utils::wait_for_game_window();
 
-    logging::I("Initializing Dalamud...");
+    logging::I("正在初始化 Dalamud");
     entrypoint_fn(lpParam, hMainThreadContinue);
-    logging::I("Done!");
+    logging::I("完成");
 
     return S_OK;
 }
@@ -417,7 +417,7 @@ BOOL APIENTRY DllMain(const HMODULE hModule, const DWORD dwReason, LPVOID lpRese
 
             MH_DisableHook(MH_ALL_HOOKS);
             if (const auto mhStatus = MH_Uninitialize(); MH_OK != mhStatus && MH_ERROR_NOT_INITIALIZED != mhStatus) {
-                logging::E("Failed to uninitialize MinHook (status={})", static_cast<int>(mhStatus));
+                logging::E("反初始化 MinHook 失败 (状态 = {})", static_cast<int>(mhStatus));
                 __fastfail(logging::MinHookUnload);
             }
 
