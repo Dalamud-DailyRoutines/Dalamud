@@ -125,6 +125,8 @@ public class StyleEditorWindow : Window
 
         if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash) && this.currentSel != 0)
         {
+            var deletingChosenStyle = config.ChosenStyle == config.SavedStyles[this.currentSel].Name;
+
             this.currentSel--;
             var newStyle = config.SavedStyles[this.currentSel];
             newStyle.Apply();
@@ -132,6 +134,9 @@ public class StyleEditorWindow : Window
             appliedThisFrame = true;
 
             config.SavedStyles.RemoveAt(this.currentSel + 1);
+
+            if (deletingChosenStyle)
+                config.ChosenStyle = newStyle.Name;
 
             config.QueueSave();
         }
@@ -368,8 +373,10 @@ public class StyleEditorWindow : Window
                     Loc.Localize(
                         "DalamudSettingBackgroundBlurHint",
                         "This will allow you to set the strength of the blur effect for plugin windows.\n" +
-                        "Set to 0%% to disable the blur effect. This may not be supported by all of your plugins. Contact the plugin author if you want them to support this feature."));
+                        "Set to 0% to disable the blur effect. This may not be supported by all of your plugins. Contact the plugin author if you want them to support this feature."));
                 ImGui.PopStyleColor();
+
+                ImGui.EndTabItem();
             }
 
             if (changes)
