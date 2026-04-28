@@ -825,7 +825,7 @@ internal class DalamudInterface : IInternalDisposableService
                     var addonLifecycle = Service<AddonLifecycle>.Get();
                     var agentLifecycle = Service<AgentLifecycle>.Get();
 
-                    if (ImGui.MenuItem("启用/禁用 Addon Lifecycle", (byte*)null, addonLifecycle.IsEnabled))
+                    if (ImGui.MenuItem("启用 Addon Lifecycle", (byte*)null, addonLifecycle.IsEnabled))
                     {
                         if (addonLifecycle.IsEnabled)
                         {
@@ -837,7 +837,7 @@ internal class DalamudInterface : IInternalDisposableService
                         }
                     }
 
-                    if (ImGui.MenuItem("启用/禁用 Agent Lifecycle", (byte*)null, agentLifecycle.IsEnabled))
+                    if (ImGui.MenuItem("启用 Agent Lifecycle", (byte*)null, agentLifecycle.IsEnabled))
                     {
                         if (agentLifecycle.IsEnabled)
                         {
