@@ -42,9 +42,8 @@ internal class LocalPlugin : IAsyncDisposable
     private readonly SemaphoreSlim pluginLoadStateLock = new(1);
 
     private PluginLoader? loader;
-    private Assembly? pluginAssembly;
     private Type? pluginType;
-    private IDalamudPlugin? instance;
+    private object? instance;
     private IServiceScope? serviceScope;
     private DalamudPluginInterface? dalamudInterface;
 
@@ -139,10 +138,9 @@ internal class LocalPlugin : IAsyncDisposable
     public PluginState State { get; protected set; }
 
     /// <summary>
-    /// 获取插件的 AssemblyName，在 <see cref="LoadAsync"/> 期间填充。
+    /// Gets the plugin's Assembly, populated during <see cref="LoadAsync"/>.
     /// </summary>
-    /// <returns>插件类型。</returns>
-    public AssemblyName? AssemblyName { get; private set; }
+    public Assembly? Assembly { get; private set; }
 
     /// <summary>
     /// 从清单获取插件名称。
@@ -249,11 +247,20 @@ internal class LocalPlugin : IAsyncDisposable
     /// <summary>
     /// 加载此插件。
     /// </summary>
-    /// <param name="reason">加载此插件的原因。</param>
-    /// <param name="reloading">是否在重新加载。</param>
-    /// <returns>一个任务。</returns>
-    public async Task LoadAsync(PluginLoadReason reason, bool reloading = false)
+    /// <param name="reason">The reason why this plugin is being loaded.</param>
+    /// <param name="reloading">Load while reloading.</param>
+    /// <param name="cancellationToken">Token that may be used to cancel the load.</param>
+    /// <returns>A task.</returns>
+    public async Task LoadAsync(PluginLoadReason reason, bool reloading = false, CancellationToken cancellationToken = default)
     {
+        // Default timeout, if none is passed
+        if (cancellationToken == CancellationToken.None)
+        {
+            var cts = new CancellationTokenSource();
+            cancellationToken = cts.Token;
+            cts.CancelAfter(TimeSpan.FromSeconds(60));
+        }
+
         var ioc = await Service<ServiceContainer>.GetAsync();
         var pluginManager = await Service<PluginManager>.GetAsync();
         var dalamud = await Service<Dalamud>.GetAsync();
@@ -261,7 +268,7 @@ internal class LocalPlugin : IAsyncDisposable
         if (this.manifest.LoadRequiredState == 0)
             _ = await Service<InterfaceManager.InterfaceManagerWithScene>.GetAsync();
 
-        await this.pluginLoadStateLock.WaitAsync();
+        await this.pluginLoadStateLock.WaitAsync(cancellationToken);
         try
         {
             if (reloading)
@@ -363,10 +370,11 @@ internal class LocalPlugin : IAsyncDisposable
             {
                 if (this.IsDev)
                 {
-                    // 如果开发插件设置为不在启动时自动加载，但我们想在任意加载时间重新加载它，
-                    // 我们需要实质上"卸载"插件，但由于加载状态检查，我们不能调用 plugin.Unload。
-                    // 将对程序集和类型的任何引用置空，然后继续进行常规重新加载操作。
-                    this.pluginAssembly = null;
+                    // If a dev plugin is set to not autoload on boot, but we want to reload it at the arbitrary load
+                    // time, we need to essentially "Unload" the plugin, but we can't call plugin.Unload because of the
+                    // load state checks. Null any references to the assembly and types, then proceed with regular reload
+                    // operations.
+                    this.Assembly = null;
                     this.pluginType = null;
                 }
 
@@ -377,7 +385,7 @@ internal class LocalPlugin : IAsyncDisposable
             Log.Verbose("{Name} ({Guid}): 具有类型", this.InternalName, this.EffectiveWorkingPluginId);
 
             // Check for any loaded plugins with the same assembly name
-            var assemblyName = this.pluginAssembly!.GetName().Name;
+            var assemblyName = this.Assembly!.GetName().Name;
             foreach (var otherPlugin in pluginManager.InstalledPlugins)
             {
                 // 在热重载期间，这个插件将在插件列表中，并且实例将已被处置
@@ -402,11 +410,13 @@ internal class LocalPlugin : IAsyncDisposable
 
             try
             {
+                Log.Information("Creating plugin instance for {PluginName} (async={IsAsync})", this.InternalName, this.pluginType == typeof(IAsyncDalamudPlugin));
                 this.instance = await CreatePluginInstance(
                                     this.manifest,
                                     this.serviceScope,
                                     this.pluginType!,
-                                    this.dalamudInterface);
+                                    this.dalamudInterface,
+                                    cancellationToken);
                 this.State = PluginState.Loaded;
                 Log.Information("完成加载 {PluginName}", this.InternalName);
 
@@ -587,24 +597,46 @@ internal class LocalPlugin : IAsyncDisposable
     {
     }
 
-    /// <summary>创建插件的新实例。</summary>
-    /// <param name="manifest">插件清单。</param>
-    /// <param name="scope">服务作用域。</param>
-    /// <param name="type">插件主类的类型。</param>
-    /// <param name="dalamudInterface"><see cref="IDalamudPluginInterface"/> 的实例。</param>
-    /// <returns>插件的新实例。</returns>
-    private static async Task<IDalamudPlugin> CreatePluginInstance(
+    private static Type? FindPluginImpl(Assembly assembly)
+    {
+        return assembly.GetTypes().FirstOrDefault(
+            type => type.IsAssignableTo(typeof(IDalamudPlugin)) ||
+                    type.IsAssignableTo(typeof(IAsyncDalamudPlugin)));
+    }
+
+    /// <summary>Creates a new instance of the plugin.</summary>
+    /// <param name="manifest">Plugin manifest.</param>
+    /// <param name="scope">Service scope.</param>
+    /// <param name="type">Type of the plugin main class.</param>
+    /// <param name="dalamudInterface">Instance of <see cref="IDalamudPluginInterface"/>.</param>
+    /// <param name="cancellationToken">Token that may be used to cancel the load.</param>
+    /// <returns>A new instance of the plugin.</returns>
+    private static async Task<object> CreatePluginInstance(
         LocalPluginManifest manifest,
         IServiceScope scope,
         Type type,
-        DalamudPluginInterface dalamudInterface)
+        DalamudPluginInterface dalamudInterface,
+        CancellationToken cancellationToken = default)
     {
-        var framework = await Service<Framework>.GetAsync();
-        var forceFrameworkThread = manifest.LoadSync && manifest.LoadRequiredState is 0 or 1;
-        var newInstanceTask = forceFrameworkThread ? framework.RunOnFrameworkThread(Create) : Create();
-        return await newInstanceTask.ConfigureAwait(false);
+        if (type.IsAssignableTo(typeof(IDalamudPlugin)))
+        {
+            // Legacy load
+            var framework = await Service<Framework>.GetAsync();
+            var forceFrameworkThread = manifest.LoadSync && manifest.LoadRequiredState is 0 or 1;
+            var newInstanceTask = forceFrameworkThread ? framework.RunOnFrameworkThread(Create) : Create();
+            return await newInstanceTask.ConfigureAwait(false);
 
-        async Task<IDalamudPlugin> Create() => (IDalamudPlugin)await scope.CreateAsync(type, ObjectInstanceVisibility.ExposedToPlugins, dalamudInterface);
+            async Task<IDalamudPlugin> Create() => (IDalamudPlugin)await scope.CreateAsync(type, ObjectInstanceVisibility.ExposedToPlugins, dalamudInterface);
+        }
+
+        if (type.IsAssignableTo(typeof(IAsyncDalamudPlugin)))
+        {
+            var plugin = (IAsyncDalamudPlugin)await scope.CreateAsync(type, ObjectInstanceVisibility.ExposedToPlugins, dalamudInterface).ConfigureAwait(false);
+            await plugin.LoadAsync(CancellationToken.None).ConfigureAwait(false);
+            return plugin;
+        }
+
+        throw new Exception($"Unknown plugin type: {type}");
     }
 
     private static void SetupLoaderConfig(LoaderConfig config)
@@ -656,8 +688,7 @@ internal class LocalPlugin : IAsyncDisposable
 
         try
         {
-            this.pluginAssembly = this.loader.LoadDefaultAssembly();
-            this.AssemblyName = this.pluginAssembly.GetName();
+            this.Assembly = this.loader.LoadDefaultAssembly();
         }
         catch (Exception ex)
         {
@@ -666,7 +697,7 @@ internal class LocalPlugin : IAsyncDisposable
             throw new InvalidPluginException(this.DllFile);
         }
 
-        if (this.pluginAssembly == null)
+        if (this.Assembly == null)
         {
             this.ResetLoader();
             Log.Error("插件程序集为空: {DllFileFullName}", this.DllFile.FullName);
@@ -675,7 +706,7 @@ internal class LocalPlugin : IAsyncDisposable
 
         try
         {
-            this.pluginType = this.pluginAssembly.GetTypes().FirstOrDefault(type => type.IsAssignableTo(typeof(IDalamudPlugin)));
+            this.pluginType = FindPluginImpl(this.Assembly);
         }
         catch (ReflectionTypeLoadException ex)
         {
@@ -687,14 +718,14 @@ internal class LocalPlugin : IAsyncDisposable
         if (this.pluginType == null)
         {
             this.ResetLoader();
-            Log.Error("没有任何类继承自 IDalamudPlugin: {DllFileFullName}", this.DllFile.FullName);
+            Log.Error("没有任何类继承自 IDalamudPlugin 或 IAsyncDalamudPlugin: {DllFileFullName}", this.DllFile.FullName);
             throw new InvalidPluginException(this.DllFile);
         }
     }
 
     private void ResetLoader()
     {
-        this.pluginAssembly = null;
+        this.Assembly = null;
         this.pluginType = null;
         this.loader?.Dispose();
         this.loader = null;
@@ -706,11 +737,12 @@ internal class LocalPlugin : IAsyncDisposable
     {
         List<Exception>? exceptions = null;
         Log.Verbose(
-            "{name}({id}): {fn}(处置模式={disposalMode})",
+            "{name}({id}): {fn}(处置模式={disposalMode}) async={isAsync}",
             this.InternalName,
             this.EffectiveWorkingPluginId,
             nameof(this.ClearAndDisposeAllResources),
-            disposalMode);
+            disposalMode,
+            this.pluginType == typeof(IAsyncDalamudPlugin));
 
         // 首先清除插件实例。
         if (!await AttemptCleanup(
@@ -720,10 +752,23 @@ internal class LocalPlugin : IAsyncDisposable
             static async (inst, manifest) =>
             {
                 var framework = Service<Framework>.GetNullable();
-                if (manifest.CanUnloadAsync || framework is null)
-                    inst.Dispose();
-                else
-                    await framework.RunOnFrameworkThread(inst.Dispose).ConfigureAwait(false);
+
+                switch (inst)
+                {
+                    // Sync plugins that can unload async will unload async, if we are in off the main thread.
+                    case IDalamudPlugin syncInstance when manifest.CanUnloadAsync || framework is null:
+                        syncInstance.Dispose();
+                        break;
+
+                    case IDalamudPlugin syncInstance:
+                        await framework.RunOnFrameworkThread(syncInstance.Dispose).ConfigureAwait(false);
+                        break;
+
+                    // Async plugins always unload async.
+                    case IAsyncDalamudPlugin asyncDalamudPlugin:
+                        await asyncDalamudPlugin.DisposeAsync().ConfigureAwait(false);
+                        break;
+                }
             }))
         {
             // 插件未加载；加载器无论如何都不会被引用，所以不需要等待。
@@ -733,7 +778,7 @@ internal class LocalPlugin : IAsyncDisposable
         // 下面的字段预期在插件被（尝试）处置之前保持活动状态。
         // 在此点之后清除它们。
         this.pluginType = null;
-        this.pluginAssembly = null;
+        this.Assembly = null;
 
         await AttemptCleanup(
             nameof(this.serviceScope),

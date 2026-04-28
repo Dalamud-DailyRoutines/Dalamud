@@ -588,7 +588,7 @@ internal sealed partial class FontAtlasFactory
                     builder = builder.WithLanguage("ja").WithLanguage("ko");
 
                 this.AddDalamudAssetFont(
-                    DalamudAsset.NotoSansCJKRegular,
+                    DalamudAsset.NotoSansCjkRegular,
                     fontConfig with
                     {
                         FontNo = fontNo,
@@ -636,7 +636,7 @@ internal sealed partial class FontAtlasFactory
             if (this.data.ConfigData.Length == 0)
             {
                 this.AddDalamudAssetFont(
-                    DalamudAsset.NotoSansCJKMedium,
+                    DalamudAsset.NotoSansCjkMedium,
                     new() { GlyphRanges = [' ', ' ', '\0'], SizePx = 1 });
             }
 

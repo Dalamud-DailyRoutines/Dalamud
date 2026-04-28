@@ -13,6 +13,7 @@ using Dalamud.Bindings.ImPlot;
 using Dalamud.Configuration.Internal;
 using Dalamud.Console;
 using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Agent;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Gui;
@@ -821,7 +822,36 @@ internal class DalamudInterface : IInternalDisposableService
 
                     ImGui.Separator();
 
-                    if (ImGui.BeginMenu("崩溃游戏"))
+                    var addonLifecycle = Service<AddonLifecycle>.Get();
+                    var agentLifecycle = Service<AgentLifecycle>.Get();
+
+                    if (ImGui.MenuItem("启用/禁用 Addon Lifecycle", (byte*)null, addonLifecycle.IsEnabled))
+                    {
+                        if (addonLifecycle.IsEnabled)
+                        {
+                            addonLifecycle.UnloadAddonLifecycle();
+                        }
+                        else
+                        {
+                            addonLifecycle.InitializeAddonLifecycle();
+                        }
+                    }
+
+                    if (ImGui.MenuItem("启用/禁用 Agent Lifecycle", (byte*)null, agentLifecycle.IsEnabled))
+                    {
+                        if (agentLifecycle.IsEnabled)
+                        {
+                            agentLifecycle.UnloadAgentLifecycle();
+                        }
+                        else
+                        {
+                            agentLifecycle.InitializeAgentLifecycle();
+                        }
+                    }
+
+                    ImGui.Separator();
+
+                    if (ImGui.BeginMenu("崩溃游戏"u8))
                     {
                         if (ImGui.MenuItem("非法访问"))
                         {
@@ -830,40 +860,31 @@ internal class DalamudInterface : IInternalDisposableService
 
                         if (ImGui.MenuItem("设置 UIModule 为 NULL"))
                         {
-                            unsafe
-                            {
-                                var framework = Framework.Instance();
-                                framework->UIModule = (UIModule*)0;
-                            }
+                            var framework = Framework.Instance();
+                            framework->UIModule = (UIModule*)0;
                         }
 
                         if (ImGui.MenuItem("为 UIModule 写入非法地址"))
                         {
-                            unsafe
-                            {
-                                var framework = Framework.Instance();
-                                framework->UIModule = (UIModule*)0x12345678;
-                            }
+                            var framework = Framework.Instance();
+                            framework->UIModule = (UIModule*)0x12345678;
                         }
 
                         if (ImGui.MenuItem("为 Hook 传入空引用"))
                         {
-                            unsafe
-                            {
-                                var hook = Hook<CrashDebugDelegate>.FromAddress(
-                                    (nint)UIModule.StaticVirtualTablePointer->GetUIInputData,
-                                    self =>
-                                    {
-                                        _ = *(byte*)0;
-                                        return (nint)UIModule.Instance()->GetUIInputData();
-                                    });
-                                hook.Enable();
-                            }
+                            var hook = Hook<CrashDebugDelegate>.FromAddress(
+                                (nint)UIModule.StaticVirtualTablePointer->GetUIInputData,
+                                self =>
+                                {
+                                    _ = *(byte*)0;
+                                    return (nint)UIModule.Instance()->GetUIInputData();
+                                });
+                            hook.Enable();
                         }
 
                         if (ImGui.MenuItem("触发 CLR 快速失败"))
                         {
-                            static unsafe void CauseFastFail()
+                            static void CauseFastFail()
                             {
                                 // ReSharper disable once NotAccessedVariable
                                 var texture = Unsafe.AsRef<AtkTexture>((void*)0x12345678);

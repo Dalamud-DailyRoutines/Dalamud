@@ -892,8 +892,8 @@ public sealed class SingleFontChooserDialog : IDisposable
             this.selectedFontWeight = font.Weight;
             this.selectedFontStretch = font.Stretch;
             this.selectedFontStyle = font.Style;
-            var fontNo = 0;
-            if (family is DalamudAssetFontAndFamilyId { Asset: DalamudAsset.NotoSansCJKRegular or DalamudAsset.NotoSansCJKMedium })
+            int fontNo = 0;
+            if (family is DalamudAssetFontAndFamilyId { Asset: DalamudAsset.NotoSansCjkRegular or DalamudAsset.NotoSansCjkMedium })
             {
                 var dalamudConfiguration = Service<DalamudConfiguration>.Get();
                 fontNo = dalamudConfiguration.EffectiveLanguage switch
