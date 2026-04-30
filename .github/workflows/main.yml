@@ -83,6 +83,14 @@ jobs:
         with:
           dotnet-version: "10.0.100"
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets', 'global.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
       - name: Define VERSION
         run: |
           # VERSION 文件包含仓库名、分支名、短提交哈希与发布标签

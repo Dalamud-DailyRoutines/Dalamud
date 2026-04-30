@@ -13,8 +13,10 @@ $PSScriptRoot = Split-Path $MyInvocation.MyCommand.Path -Parent
 # CONFIGURATION
 ###########################################################################
 
-$BuildProjectFile = "$PSScriptRoot\build\build.csproj"
 $TempDirectory = "$PSScriptRoot\\.nuke\temp"
+$BuildProjectFile = "$PSScriptRoot\build\build.csproj"
+$BuildOutputDirectory = "$TempDirectory\build"
+$BuildAssemblyFile = "$BuildOutputDirectory\build.dll"
 
 $DotNetGlobalFile = "$PSScriptRoot\\global.json"
 $DotNetInstallUrl = "https://dot.net/v1/dotnet-install.ps1"
@@ -22,7 +24,11 @@ $DotNetChannel = "Current"
 
 $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = 1
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = 1
+$env:DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE = 1
 $env:DOTNET_MULTILEVEL_LOOKUP = 0
+$env:DOTNET_NOLOGO = 1
+$env:NUGET_XMLDOC_MODE = "skip"
+$env:NUKE_TELEMETRY_OPTOUT = 1
 
 ###########################################################################
 # EXECUTION
@@ -65,5 +71,5 @@ else {
 
 Write-Output "Microsoft (R) .NET Core SDK version $(& $env:DOTNET_EXE --version)"
 
-ExecSafe { & $env:DOTNET_EXE build $BuildProjectFile /nodeReuse:false /p:UseSharedCompilation=false -nologo -clp:NoSummary --verbosity quiet }
-ExecSafe { & $env:DOTNET_EXE run --project $BuildProjectFile --no-build -- $BuildArguments }
+ExecSafe { & $env:DOTNET_EXE build $BuildProjectFile --output $BuildOutputDirectory -nologo "-clp:ErrorsOnly" --verbosity quiet }
+ExecSafe { & $env:DOTNET_EXE $BuildAssemblyFile $BuildArguments }

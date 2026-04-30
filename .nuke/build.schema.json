@@ -35,6 +35,7 @@
         "CompileDalamudCrashHandler",
         "CompileImGuiNatives",
         "CompileInjector",
+        "CompileTests",
         "Restore",
         "SetCILogging",
         "Test"

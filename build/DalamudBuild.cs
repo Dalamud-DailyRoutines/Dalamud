@@ -70,7 +70,8 @@ public class DalamudBuild : NukeBuild
         .Executes(() =>
         {
             DotNetTasks.DotNetRestore(s => s
-                .SetProjectFile(Solution));
+                .SetProjectFile(Solution)
+                .SetProcessAdditionalArguments("--verbosity quiet", MSBUILD_CONSOLE_LOGGER));
         });
 
     Target CompileCImGui => _ => _
@@ -85,6 +86,8 @@ public class DalamudBuild : NukeBuild
                 .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
 #endif
                 .SetConfiguration(Configuration)
+                .SetMaxCpuCount(Environment.ProcessorCount)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .SetTargetPlatform(MSBuildTargetPlatform.x64));
         });
 
@@ -101,6 +104,8 @@ public class DalamudBuild : NukeBuild
                 .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
 #endif
                 .SetConfiguration(Configuration)
+                .SetMaxCpuCount(Environment.ProcessorCount)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .SetTargetPlatform(MSBuildTargetPlatform.x64));
         });
 
@@ -117,6 +122,8 @@ public class DalamudBuild : NukeBuild
                 .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
 #endif
                 .SetConfiguration(Configuration)
+                .SetMaxCpuCount(Environment.ProcessorCount)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .SetTargetPlatform(MSBuildTargetPlatform.x64));
         });
 
@@ -135,12 +142,8 @@ public class DalamudBuild : NukeBuild
                 s = s
                        .SetProjectFile(DalamudProjectFile)
                        .SetConfiguration(Configuration)
+                       .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                        .EnableNoRestore();
-                if (IsCIBuild)
-                {
-                    s = s
-                        .SetProcessAdditionalArguments("/clp:NoSummary"); // Disable MSBuild summary on CI builds
-                }
                 // We need to emit compiler generated files for the docs build, since docfx can't run generators directly
                 // TODO: This fails every build after this because of redefinitions...
 
@@ -162,6 +165,8 @@ public class DalamudBuild : NukeBuild
 #if DEBUG
                 .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
 #endif
+                .SetMaxCpuCount(Environment.ProcessorCount)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .SetConfiguration(Configuration));
         });
     
@@ -173,6 +178,8 @@ public class DalamudBuild : NukeBuild
 #if DEBUG
                                       .SetProcessToolPath(Environment.GetEnvironmentVariable("MSBuild"))
 #endif
+                                      .SetMaxCpuCount(Environment.ProcessorCount)
+                                      .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                                       .SetConfiguration(Configuration));
         });
 
@@ -183,6 +190,7 @@ public class DalamudBuild : NukeBuild
             DotNetTasks.DotNetBuild(s => s
                 .SetProjectFile(InjectorProjectFile)
                 .SetConfiguration(Configuration)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .EnableNoRestore());
         });
 
@@ -216,6 +224,7 @@ public class DalamudBuild : NukeBuild
                 .SetProjectFile(TestProjectFile)
                 .SetConfiguration(Configuration)
                 .AddProperty("WarningLevel", "0")
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .EnableNoRestore());
         });
 
@@ -225,36 +234,49 @@ public class DalamudBuild : NukeBuild
             MSBuildTasks.MSBuild(s => s
                 .SetProjectFile(CImGuiProjectFile)
                 .SetConfiguration(Configuration)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .SetTargets("Clean"));
 
             MSBuildTasks.MSBuild(s => s
                 .SetProjectFile(CImPlotProjectFile)
                 .SetConfiguration(Configuration)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .SetTargets("Clean"));
 
             MSBuildTasks.MSBuild(s => s
                 .SetProjectFile(CImGuizmoProjectFile)
                 .SetConfiguration(Configuration)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .SetTargets("Clean"));
 
             DotNetTasks.DotNetClean(s => s
                 .SetProject(DalamudProjectFile)
-                .SetConfiguration(Configuration));
+                .SetConfiguration(Configuration)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER));
 
             MSBuildTasks.MSBuild(s => s
                 .SetProjectFile(DalamudBootProjectFile)
                 .SetConfiguration(Configuration)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .SetTargets("Clean"));
             
             MSBuildTasks.MSBuild(s => s
                 .SetProjectFile(DalamudCrashHandlerProjectFile)
                 .SetConfiguration(Configuration)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER)
                 .SetTargets("Clean"));
 
             DotNetTasks.DotNetClean(s => s
                 .SetProject(InjectorProjectFile)
-                .SetConfiguration(Configuration));
+                .SetConfiguration(Configuration)
+                .SetProcessAdditionalArguments(MSBUILD_CONSOLE_LOGGER));
 
             ArtifactsDirectory.CreateOrCleanDirectory();
         });
+
+    #region Constants
+
+    private const string MSBUILD_CONSOLE_LOGGER = "/clp:ErrorsOnly";
+
+    #endregion
 }
