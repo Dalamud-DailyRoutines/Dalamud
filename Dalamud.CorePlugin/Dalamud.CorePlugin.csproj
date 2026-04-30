@@ -24,7 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="$(SolutionDir)\lib\Lumina\src\Lumina\Lumina.csproj" />
+        <PackageReference Include="Lumina" />
         <PackageReference Include="Newtonsoft.Json" />
         <PackageReference Include="StyleCop.Analyzers">
             <PrivateAssets>all</PrivateAssets>

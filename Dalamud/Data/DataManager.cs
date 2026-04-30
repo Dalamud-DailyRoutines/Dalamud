@@ -31,6 +31,9 @@ namespace Dalamud.Data;
 #pragma warning restore SA1015
 internal sealed class DataManager : IInternalDisposableService, IDataManager
 {
+    // REGION TODO: 固定为简体中文
+    private const ClientLanguage DefaultLanguage = ClientLanguage.ChineseSimplified;
+    
     private readonly Thread luminaResourceThread;
     private readonly CancellationTokenSource luminaCancellationTokenSource;
     private readonly RsvResolver rsvResolver;
@@ -38,7 +41,7 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
     [ServiceManager.ServiceConstructor]
     private DataManager(Dalamud dalamud)
     {
-        this.Language = (ClientLanguage)dalamud.StartInfo.Language;
+        this.Language = DefaultLanguage;
 
         this.rsvResolver = new();
 
@@ -156,11 +159,11 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
 
     /// <inheritdoc/>
     public ExcelSheet<T> GetExcelSheet<T>(ClientLanguage? language = null, string? name = null) where T : struct, IExcelRow<T>
-        => this.Excel.GetSheet<T>(ClientLanguage.ChineseSimplified.ToLumina(), name);
+        => this.Excel.GetSheet<T>(Language.ToLumina(), name);
 
     /// <inheritdoc/>
     public SubrowExcelSheet<T> GetSubrowExcelSheet<T>(ClientLanguage? language = null, string? name = null) where T : struct, IExcelSubrow<T>
-        => this.Excel.GetSubrowSheet<T>(ClientLanguage.ChineseSimplified.ToLumina(), name);
+        => this.Excel.GetSubrowSheet<T>(Language.ToLumina(), name);
 
     /// <inheritdoc/>
     public FileResource? GetFile(string path)
