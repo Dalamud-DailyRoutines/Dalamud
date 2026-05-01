@@ -79,6 +79,8 @@ internal sealed unsafe class DalamudAtkTweaks : IInternalDisposableService
 
     private string LocDalamudLoadingPluginsForCharacter => Loc.Localize("LoadingPluginsForCharacter", "Loading plugins for this character...");
 
+    private const ushort ColorType = 32;
+
     /// <inheritdoc/>
     void IInternalDisposableService.DisposeService() => this.Dispose(true);
 
@@ -176,7 +178,7 @@ internal sealed unsafe class DalamudAtkTweaks : IInternalDisposableService
             using var rssb = new RentedSeStringBuilder();
 
             addonSelectYesno->PromptText->SetText(rssb.Builder
-                .PushColorType(539)
+                .PushColorType(ColorType)
                 .Append($"{SeIconChar.BoxedLetterD.ToIconString()} ")
                 .PopColorType()
                 .Append(this.LocDalamudLoadingPluginsForCharacter)
@@ -281,13 +283,12 @@ internal sealed unsafe class DalamudAtkTweaks : IInternalDisposableService
         values[3].SetInt(newMenuSize);
 
         // set our new entries to dummy commands
-        const int color = 539;
         using var rssb = new RentedSeStringBuilder();
         var entryIndex = startIndex;
 
         values[entryIndex].SetInt(69420);
         values[entryIndex + maxEntries].SetManagedString(rssb.Builder
-            .PushColorType(color)
+            .PushColorType(ColorType)
             .Append($"{SeIconChar.BoxedLetterD.ToIconString()} ")
             .PopColorType()
             .Append(this.LocDalamudPlugins)
@@ -298,7 +299,7 @@ internal sealed unsafe class DalamudAtkTweaks : IInternalDisposableService
 
         values[entryIndex].SetInt(69421);
         values[entryIndex + maxEntries].SetManagedString(rssb.Builder
-            .PushColorType(color)
+            .PushColorType(ColorType)
             .Append($"{SeIconChar.BoxedLetterD.ToIconString()} ")
             .PopColorType()
             .Append(this.LocDalamudSettings)
