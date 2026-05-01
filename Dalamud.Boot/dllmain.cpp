@@ -314,7 +314,7 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
     if (FAILED(result))
         return result;
 
-    using custom_component_entry_point_fn = void (CORECLR_DELEGATE_CALLTYPE*)(LPVOID, HANDLE);
+    using custom_component_entry_point_fn = LPVOID (CORECLR_DELEGATE_CALLTYPE*)(LPVOID, HANDLE);
     const auto entrypoint_fn = reinterpret_cast<custom_component_entry_point_fn>(entrypoint_vfn);
 
     // ============================== VEH ======================================== //
@@ -384,9 +384,10 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
     // We don't need to do this anymore, Dalamud now loads without needing the window to be there. Speed!
     // utils::wait_for_game_window();
 
-    logging::I("正在初始化 Dalamud");
-    entrypoint_fn(lpParam, hMainThreadContinue);
-    logging::I("完成");
+    logging::I("正在初始化 Dalamud...");
+    const LPVOID managed_stacktrace_fun = entrypoint_fn(lpParam, hMainThreadContinue);
+    veh::set_managed_stacktrace_fun(managed_stacktrace_fun);
+    logging::I("完成! (managed_stacktrace_fun={})", managed_stacktrace_fun);
 
     return S_OK;
 }

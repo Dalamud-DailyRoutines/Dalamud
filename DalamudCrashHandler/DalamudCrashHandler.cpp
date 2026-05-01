@@ -1093,7 +1093,12 @@ int main() {
             log << std::format(L"显卡描述: {}", adapterDescription.Description) << std::endl;
         }
 
-        log << L"\n" << stackTrace << std::endl;
+        if (!stackTrace.empty())
+        {
+            log << L"\nManaged Call Stack\n{";
+            log << L"\n" << stackTrace << std::endl;
+            log << L"\n}\n";
+        }
 
         if (pProgressDialog)
             pProgressDialog->SetLine(3, L"正在刷新模块列表", FALSE, NULL);
