@@ -14,14 +14,4 @@
         <CETCompat>false</CETCompat>
     </PropertyGroup>
 
-    <!-- Code analysis settings for all Dalamud projects. -->
-    <ItemGroup Label="Code Analysis">
-        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="All" />
-        <AdditionalFiles Include="$(MSBuildThisFileDirectory)tools\BannedSymbols.txt" />
-    </ItemGroup>
-    <!--
-    <PropertyGroup Label="Code Analysis">
-        <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)tools\dalamud.ruleset</CodeAnalysisRuleSet>
-    </PropertyGroup>
-    -->
 </Project>

@@ -20,16 +20,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <AdditionalFiles Include="..\stylecop.json" />
-    </ItemGroup>
-
-    <ItemGroup>
         <PackageReference Include="Lumina" />
         <PackageReference Include="Newtonsoft.Json" />
-        <PackageReference Include="StyleCop.Analyzers">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>

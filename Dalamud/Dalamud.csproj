@@ -78,10 +78,6 @@
         <PackageReference Include="Serilog.Sinks.Console" />
         <PackageReference Include="Serilog.Sinks.File" />
         <PackageReference Include="sqlite-net-pcl" />
-        <PackageReference Include="StyleCop.Analyzers">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
         <PackageReference Include="System.Reactive" />
         <PackageReference Include="System.Reflection.MetadataLoadContext" />
         <PackageReference Include="TerraFX.Interop.Windows" />
@@ -132,10 +128,6 @@
         <ProjectReference Include="..\lib\FFXIVClientStructs\FFXIVClientStructs\FFXIVClientStructs.csproj" />
         <ProjectReference Include="..\lib\FFXIVClientStructs\InteropGenerator.Runtime\InteropGenerator.Runtime.csproj" />
         <ProjectReference Include="..\lib\Lumina.Excel\src\Lumina.Excel\Lumina.Excel.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <AdditionalFiles Include="..\stylecop.json" />
     </ItemGroup>
 
     <ItemGroup>
