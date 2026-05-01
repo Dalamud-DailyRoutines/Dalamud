@@ -183,17 +183,12 @@ internal class LocalPlugin : IAsyncDisposable
     /// <summary>
     /// 获取插件当前的 APILevel
     /// </summary>
-    public int APILevel => this.manifest.EffectiveApiLevel;
-    
-    /// <summary>
-    /// 获取一个值，表示此插件的 API 级别是否已过时。
-    /// </summary>
-    public bool IsOutdated => this.manifest.EffectiveApiLevel != PluginManager.DalamudApiLevel;
+    public bool IsOutdated => this.manifest.DalamudApiLevel != PluginManager.DalamudApiLevel;
 
     /// <summary>
     /// 获取一个值，表示插件是否仅供测试使用。
     /// </summary>
-    public bool IsTesting => this.manifest.IsTestingExclusive || this.manifest.Testing;
+    public bool IsTesting => this.manifest.Testing;
 
     /// <summary>
     /// 获取一个值，表示此插件是否为孤立插件（属于一个仓库）。
@@ -228,7 +223,7 @@ internal class LocalPlugin : IAsyncDisposable
     /// <summary>
     /// 获取此插件的有效版本。
     /// </summary>
-    public Version EffectiveVersion => this.manifest.EffectiveVersion;
+    public Version EffectiveVersion => this.manifest.AssemblyVersion;
 
     /// <summary>
     /// 获取此插件的有效工作插件 ID。
@@ -323,8 +318,8 @@ internal class LocalPlugin : IAsyncDisposable
                 throw new PluginPreconditionFailedException($"无法加载 {this.Name}，游戏版本新于适用版本 {this.manifest.ApplicableVersion}");
 
             // We want to allow loading dev plugins with a lower API level than the current Dalamud API level, for ease of development
-            if (!pluginManager.LoadAllApiLevels && !this.IsDev && this.manifest.EffectiveApiLevel < PluginManager.DalamudApiLevel)
-                throw new PluginPreconditionFailedException($"无法加载 {this.Name}, 不兼容的 API 等级 {this.manifest.EffectiveApiLevel}");
+            if (!pluginManager.LoadAllApiLevels && !this.IsDev && this.manifest.DalamudApiLevel < PluginManager.DalamudApiLevel)
+                throw new PluginPreconditionFailedException($"无法加载 {this.Name}, 不兼容的 API 等级 {this.manifest.DalamudApiLevel}");
 
             // 我们可能想在这里抛出异常？
             if (!this.IsWantedByAnyProfile)
@@ -337,7 +332,7 @@ internal class LocalPlugin : IAsyncDisposable
                 throw new PluginPreconditionFailedException($"由于加载策略禁止，无法加载 {this.Name}");
 
             if (this.Manifest.MinimumDalamudVersion != null && this.Manifest.MinimumDalamudVersion > Versioning.GetAssemblyVersionParsed())
-                throw new PluginPreconditionFailedException($"Unable to load {this.Name}, Dalamud version is lower than minimum required version {this.Manifest.MinimumDalamudVersion}");
+                throw new PluginPreconditionFailedException($"U无法加载 {this.Name}, Dalamud 版本过低, 要求 {this.Manifest.MinimumDalamudVersion}");
 
             this.State = PluginState.Loading;
             Log.Information($"正在加载 {this.DllFile.Name}");

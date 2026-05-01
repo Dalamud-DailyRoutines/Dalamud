@@ -104,14 +104,14 @@ internal class PluginInstallerWindow : Window, IDisposable
     private string                      deletePluginConfigWarningModalPluginName = string.Empty;
     private TaskCompletionSource<bool>? deletePluginConfigWarningModalTaskCompletionSource;
 
-    private bool             feedbackModalDrawing = true;
-    private bool             feedbackModalOnNextFrame;
-    private bool             feedbackModalOnNextFrameDontClear;
-    private string           feedbackModalBody             = string.Empty;
-    private string           feedbackModalContact          = string.Empty;
-    private bool             feedbackModalIncludeException = true;
-    private IPluginManifest? feedbackPlugin;
-    private bool             feedbackIsTesting;
+    private bool feedbackModalDrawing = true;
+    private bool feedbackModalOnNextFrame = false;
+    private bool feedbackModalOnNextFrameDontClear = false;
+    private string feedbackModalBody = string.Empty;
+    private string feedbackModalContact = string.Empty;
+    private bool feedbackModalIncludeException = false;
+    private RemotePluginManifest? feedbackPlugin = null;
+    private bool feedbackIsTesting = false;
 
     private int                       updatePluginCount;
     private List<PluginUpdateStatus>? updatedPlugins;
@@ -2405,7 +2405,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             using var color = ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
 
-            var bodyText = $"插件 API 版本 ({plugin?.APILevel ?? 0}) 与 Dalamud API 版本 ({PluginManager.DalamudApiLevel}) 不对应, 无法使用" + " ";
+            var bodyText = $"插件 API 版本 ({plugin?.Manifest.DalamudApiLevel ?? 0}) 与 Dalamud API 版本 ({PluginManager.DalamudApiLevel}) 不对应, 无法使用" + " ";
             if (flags.HasFlag(PluginHeaderFlags.UpdateAvailable))
                 bodyText += "\n存在可用更新, 可以尝试更新后再试";
             else
@@ -2923,7 +2923,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         if (plugin.IsTesting)
             flags |= PluginHeaderFlags.IsTesting;
 
-        if (this.DrawPluginCollapsingHeader(label, plugin, plugin.Manifest, flags, () => this.DrawInstalledPluginContextMenu(plugin, testingOptIn), index))
+        if (this.DrawPluginCollapsingHeader(label, plugin, plugin.Manifest, flags, () => this.DrawInstalledPluginContextMenu(plugin, remoteManifest, testingOptIn), index))
         {
             if (!this.WasPluginSeen(plugin.Manifest.InternalName))
                 configuration.SeenPluginInternalName.Add(plugin.Manifest.InternalName);
@@ -2980,7 +2980,8 @@ internal class PluginInstallerWindow : Window, IDisposable
                 var commands = commandManager.Commands
                                              .Where(cInfo =>
                                                         cInfo.Value is { ShowInHelp: true } &&
-                                                        commandManager.GetHandlerAssemblyName(cInfo.Key, cInfo.Value) == plugin.Manifest.InternalName);
+                                                        commandManager.GetHandlerAssemblyName(cInfo.Key, cInfo.Value) == plugin.Manifest.InternalName)
+                                             .ToList();
 
                 if (commands.Any())
                 {
@@ -3081,7 +3082,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         ImGui.PopStyleColor(2);
     }
 
-    private unsafe void DrawInstalledPluginContextMenu(LocalPlugin plugin, PluginTestingOptIn? optIn)
+    private unsafe void DrawInstalledPluginContextMenu(LocalPlugin plugin, RemotePluginManifest? remoteManifest, PluginTestingOptIn? optIn)
     {
         var pluginManager = Service<PluginManager>.Get();
         var configuration = Service<DalamudConfiguration>.Get();
@@ -3090,8 +3091,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             if (configuration.DoPluginTest)
             {
-                var repoManifest = this.pluginListAvailable.FirstOrDefault(x => x.InternalName == plugin.Manifest.InternalName);
-                if (repoManifest?.IsTestingExclusive == true)
+                if (remoteManifest == null || remoteManifest?.IsTestingExclusive == true)
                     ImGui.BeginDisabled();
 
                 if (ImGui.MenuItem(Locs.PluginContext_TestingOptIn, optIn != null))
@@ -3100,7 +3100,8 @@ internal class PluginInstallerWindow : Window, IDisposable
                     {
                         configuration.PluginTestingOptIns!.Remove(optIn);
 
-                        if (plugin.Manifest.TestingAssemblyVersion > repoManifest?.AssemblyVersion)
+                        // Warn about downgrade
+                        if (remoteManifest?.TestingAssemblyVersion > remoteManifest?.AssemblyVersion)
                         {
                             this.testingWarningModalOnNextFrame = true;
                         }
@@ -3114,7 +3115,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                     _ = pluginManager.ReloadAllReposAsync();
                 }
 
-                if (repoManifest?.IsTestingExclusive == true)
+                if (remoteManifest?.IsTestingExclusive == true)
                     ImGui.EndDisabled();
             }
 
@@ -3492,7 +3493,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         }
     }
 
-    private void DrawSendFeedbackButton(IPluginManifest manifest, bool isTesting, bool big)
+    private void DrawSendFeedbackButton(RemotePluginManifest manifest, bool isTesting, bool big)
     {
         var clicked = big ?
                           ImGuiComponents.IconButtonWithText(FontAwesomeIcon.Comment, Locs.FeedbackModal_Title) :

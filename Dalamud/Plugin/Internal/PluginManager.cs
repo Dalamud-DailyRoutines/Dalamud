@@ -357,7 +357,7 @@ internal class PluginManager : IInternalDisposableService
     /// </summary>
     /// <param name="manifest">Manifest to check.</param>
     /// <returns>A value indicating whether testing can be used.</returns>
-    public bool CanUseTesting(IPluginManifest manifest)
+    public bool CanUseTesting(RemotePluginManifest manifest)
     {
         if (!this.configuration.DoPluginTest)
             return false;
@@ -374,7 +374,7 @@ internal class PluginManager : IInternalDisposableService
     /// </summary>
     /// <param name="manifest">Manifest to check.</param>
     /// <returns>A value indicating whether testing should be used.</returns>
-    public bool UseTesting(IPluginManifest manifest)
+    public bool UseTesting(RemotePluginManifest manifest)
     {
         return this.CanUseTesting(manifest) && this.HasTestingOptIn(manifest);
     }
@@ -516,8 +516,9 @@ internal class PluginManager : IInternalDisposableService
                         continue;
                     }
 
-                    if (manifest.IsTestingExclusive && this.configuration.PluginTestingOptIns!.All(x => x.InternalName != manifest.InternalName))
-                        this.configuration.PluginTestingOptIns.Add(new PluginTestingOptIn(manifest.InternalName));
+                    // NOTE(goat): We don't know this anymore after the manifest migration, but it shouldn't matter anymore, everyone should be migrated
+                    // if (manifest.IsTestingExclusive && this.configuration.PluginTestingOptIns!.All(x => x.InternalName != manifest.InternalName))
+                    //    this.configuration.PluginTestingOptIns.Add(new PluginTestingOptIn(manifest.InternalName));
 
                     versionsDefs.Add(new PluginDef(dllFile, manifest, false));
                 }
@@ -537,7 +538,7 @@ internal class PluginManager : IInternalDisposableService
 
             try
             {
-                pluginDefs.Add(versionsDefs.MaxBy(x => x.Manifest!.EffectiveVersion));
+                pluginDefs.Add(versionsDefs.MaxBy(x => x.Manifest!.AssemblyVersion));
             }
             catch (Exception ex)
             {
@@ -1144,7 +1145,7 @@ internal class PluginManager : IInternalDisposableService
     /// </summary>
     /// <param name="manifest">Plugin manifest.</param>
     /// <returns>If the manifest is eligible.</returns>
-    public bool IsManifestEligible(PluginManifest manifest)
+    public bool IsManifestEligible(RemotePluginManifest manifest)
     {
         // Testing exclusive
         if (manifest.IsTestingExclusive && !this.configuration.DoPluginTest)
@@ -1164,7 +1165,7 @@ internal class PluginManager : IInternalDisposableService
                     ? manifest.TestingDalamudApiLevel.Value
                     : manifest.DalamudApiLevel;
 
-            if (effectiveDalamudApiLevel < PluginManager.DalamudApiLevel - 1)
+            if (effectiveDalamudApiLevel < DalamudApiLevel - 1)
                 return false;
         }
 
@@ -1180,20 +1181,9 @@ internal class PluginManager : IInternalDisposableService
     /// </summary>
     /// <param name="manifest">Manifest to inspect.</param>
     /// <returns>A value indicating whether the plugin/manifest has been banned.</returns>
-    public bool IsManifestBanned(PluginManifest manifest)
+    public bool IsManifestBanned(IPluginManifest manifest)
     {
-        Debug.Assert(this.bannedPlugins != null);
-
-        var config = Service<DalamudConfiguration>.Get();
-
-        var versionToCheck = manifest.AssemblyVersion;
-        if (config.DoPluginTest && manifest.TestingAssemblyVersion > manifest.AssemblyVersion)
-        {
-            versionToCheck = manifest.TestingAssemblyVersion;
-        }
-
-        return this.bannedPlugins.Any(ban => (ban.Name == manifest.InternalName || ban.Name == Hash.GetStringSha256Hash(manifest.InternalName))
-                                                                        && (ban.AssemblyVersion == null || ban.AssemblyVersion >= versionToCheck));
+        return false;
     }
 
     /// <summary>
@@ -1461,13 +1451,13 @@ internal class PluginManager : IInternalDisposableService
             if (tempManifest.InternalName != repoManifest.InternalName)
             {
                 throw new Exception(
-                    $"Distributed internal name does not match repo internal name: {tempManifest.InternalName} - {repoManifest.InternalName}");
+                    $"Distributed internal name does not match repo internal name, distributed: {tempManifest.InternalName} repo: {repoManifest.InternalName}");
             }
 
-            if (tempManifest.AssemblyVersion != repoManifest.AssemblyVersion)
+            if (tempManifest.AssemblyVersion != version)
             {
                 throw new Exception(
-                    $"Distributed plugin version does not match repo version: {tempManifest.AssemblyVersion} - {repoManifest.AssemblyVersion}");
+                    $"Distributed plugin version does not match repo version, distributed: {tempManifest.AssemblyVersion} repo: {version}");
             }
 
             if (tempManifest.WorkingPluginId != Guid.Empty)
@@ -1484,6 +1474,10 @@ internal class PluginManager : IInternalDisposableService
             tempManifest.InstalledFromUrl = repoManifest.SourceRepo.IsThirdParty
                                                 ? repoManifest.SourceRepo.PluginMasterUrl
                                                 : SpecialPluginSource.MainRepo;
+
+            // HACK: We need to do this at the moment so that D17 plugins can load their assets.
+            // Goat should get off his ass and fix the pipeline in Plogon to specify correct URLs
+            tempManifest.Dip17Channel = repoManifest.Dip17Channel;
 
             tempManifest.Save(tempManifestFile, "installation");
 
@@ -1728,9 +1722,7 @@ internal class PluginManager : IInternalDisposableService
 
             foreach (var plugin in this.installedPluginsList)
             {
-                var installedVersion = plugin.IsTesting
-                                           ? plugin.Manifest.TestingAssemblyVersion
-                                           : plugin.Manifest.AssemblyVersion;
+                var installedVersion = plugin.Manifest.AssemblyVersion;
 
                 var updates = this.AvailablePlugins
                                   .Where(remoteManifest => plugin.Manifest.InternalName == remoteManifest.InternalName)

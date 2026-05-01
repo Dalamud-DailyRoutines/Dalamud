@@ -247,6 +247,8 @@ internal class SettingsTabPlugin : SettingsTab
         {
             Config.DoPluginTest = receiveTest;
             Config.QueueSave();
+            
+            _ = Service<PluginManager>.Get().ReloadAllReposAsync();
         }
 
         ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey,
@@ -268,6 +270,8 @@ internal class SettingsTabPlugin : SettingsTab
         {
             Config.HiddenPluginInternalName.Clear();
             Config.QueueSave();
+            
+            _ = Service<PluginManager>.Get().ReloadAllReposAsync();
         }
 
         ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "清除插件安装器中所有已被隐藏的插件。");
