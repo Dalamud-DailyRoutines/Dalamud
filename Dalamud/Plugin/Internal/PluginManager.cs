@@ -253,11 +253,6 @@ internal class PluginManager : IInternalDisposableService
     public PluginConfigurations PluginConfigs { get; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether plugins of all API levels will be loaded.
-    /// </summary>
-    public bool LoadAllApiLevels { get; set; }
-
-    /// <summary>
     /// Gets or sets a value indicating whether banned plugins will be loaded.
     /// </summary>
     public bool LoadBannedPlugins { get; set; } = true;
@@ -739,8 +734,17 @@ internal class PluginManager : IInternalDisposableService
                 if (t.IsFaulted)
                 {
                     Log.Error(t.Exception, "Failed to load FrameworkTickAsync/DrawAvailableAsync plugins");
+                    return;
                 }
-            }, TaskContinuationOptions.OnlyOnFaulted);
+
+                if (t.IsCanceled)
+                {
+                    Log.Error("Loading FrameworkTickAsync/DrawAvailableAsync plugins was canceled");
+                    return;
+                }
+
+                Log.Verbose("Finished async boot load");
+            });
     }
 
     /// <summary>
@@ -1156,7 +1160,6 @@ internal class PluginManager : IInternalDisposableService
             return false;
 
         // API level - we keep the API before this in the installer to show as "outdated"
-        if (!this.LoadAllApiLevels)
         {
             var effectiveDalamudApiLevel =
                 this.CanUseTesting(manifest) &&

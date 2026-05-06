@@ -1026,12 +1026,7 @@ internal class DalamudInterface : IInternalDisposableService
 
                     ImGui.Separator();
 
-                    if (ImGui.MenuItem("无视 API 限制 (仅开发用)"u8, (byte*)null, pluginManager.LoadAllApiLevels))
-                    {
-                        pluginManager.LoadAllApiLevels ^= true;
-                    }
-
-                    if (ImGui.MenuItem("加载黑名单插件", (byte*)null, pluginManager.LoadBannedPlugins))
+                    if (ImGui.MenuItem("加载黑名单插件"u8, (byte*)null, pluginManager.LoadBannedPlugins))
                     {
                         pluginManager.LoadBannedPlugins ^= true;
                     }

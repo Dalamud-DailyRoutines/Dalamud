@@ -380,6 +380,7 @@ public class WindowHost
                             Loc.Localize("WindowSystemContextActionClickthrough", "Make clickthrough"),
                             ref isClickthrough))
                     {
+                        this.Window.IsClickthrough = isClickthrough;
                         this.presetDirty = true;
                     }
 
