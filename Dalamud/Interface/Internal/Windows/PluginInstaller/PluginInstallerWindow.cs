@@ -507,6 +507,15 @@ internal class PluginInstallerWindow : Window, IDisposable
         }
     }
 
+    private static bool ShouldRenderAsTestingExclusive(RemotePluginManifest? manifest)
+    {
+        if (manifest == null)
+            return false;
+
+        return manifest.IsTestingExclusive || (manifest.TestingDalamudApiLevel == PluginManager.DalamudApiLevel &&
+                                               manifest.TestingDalamudApiLevel != manifest.DalamudApiLevel);
+    }
+
     private void SetOpenPage(PluginInstallerOpenKind kind)
     {
         switch (kind)
@@ -800,6 +809,17 @@ internal class PluginInstallerWindow : Window, IDisposable
         ImGui.SameLine();
         if (ImGui.Button(Locs.FooterButton_Settings))
             Service<DalamudInterface>.Get().OpenSettings();
+        }
+
+        // If any dev plugin locations exist, allow a shortcut for the /xldev menu item
+        if (configuration.DevMode == true)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button(Locs.FooterButton_ScanDevPlugins))
+            {
+                _ = pluginManager.ScanDevPluginsAsync();
+            }
+        }
 
         var closeText = Locs.FooterButton_Close;
         var closeButtonSize = ImGuiHelpers.GetButtonSize(closeText);
@@ -2598,7 +2618,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             label += Locs.PluginTitleMod_TestingVersion;
         }
-        else if (manifest.IsTestingExclusive)
+        else if (ShouldRenderAsTestingExclusive(manifest))
         {
             label += Locs.PluginTitleMod_TestingExclusive;
         }
@@ -2786,7 +2806,11 @@ internal class PluginInstallerWindow : Window, IDisposable
         var label = plugin.Manifest.Name;
 
         // Testing
-        if (plugin.IsTesting)
+        if (ShouldRenderAsTestingExclusive(remoteManifest))
+        {
+            label += Locs.PluginTitleMod_TestingExclusive;
+        }
+        else if (plugin.IsTesting)
         {
             label += Locs.PluginTitleMod_TestingVersion;
         }

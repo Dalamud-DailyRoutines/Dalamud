@@ -173,7 +173,7 @@ internal class DalamudInterface : IInternalDisposableService
                 titleScreenMenu.AddEntryCore(
                     Loc.Localize("TSMDalamudDevMenu", "Developer Menu"),
                     new ForwardingSharedImmediateTexture(dalamudAssetManager.GetDalamudTextureWrap(DalamudAsset.LogoSmall)),
-                    () => this.isImGuiDrawDevMenu = true);
+                    () => this.isImGuiDrawDevMenu ^= true);
             });
 
         this.creditsDarkeningAnimation.Point1 = Vector2.Zero;
@@ -910,7 +910,7 @@ internal class DalamudInterface : IInternalDisposableService
 
                     ImGui.MenuItem(this.dalamud.StartInfo.GameVersion?.ToString() ?? "未知版本", false, false);
                     ImGui.MenuItem($"Dalamud: {Versioning.GetScmVersion()}", false, false);
-                    ImGui.MenuItem($"FFXIVClientStructs: {Versioning.GetGitHashClientStructs()}[{FFXIVClientStructs.ThisAssembly.Git.Commits}]", false, false);
+                    ImGui.MenuItem($"FFXIVClientStructs: {typeof(FFXIVClientStructs.ThisAssembly).Assembly.GetName().Version!}[{FFXIVClientStructs.ThisAssembly.Git.Commit}]", false, false);
                     ImGui.MenuItem($"运行时: {Environment.Version}", false, false);
 
                     ImGui.EndMenu();
