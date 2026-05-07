@@ -809,8 +809,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         ImGui.SameLine();
         if (ImGui.Button(Locs.FooterButton_Settings))
             Service<DalamudInterface>.Get().OpenSettings();
-        }
-
+        
         // If any dev plugin locations exist, allow a shortcut for the /xldev menu item
         if (configuration.DevMode == true)
         {
