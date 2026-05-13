@@ -159,9 +159,6 @@ internal class DalamudInterface : IInternalDisposableService
         this.WindowSystem.AddWindow(this.profilerWindow);
         this.WindowSystem.AddWindow(this.hitchSettingsWindow);
 
-        this.interfaceManager.ShowAsserts = configuration.DevMode == true &&
-                                            configuration.ImGuiAssertsEnabledAtStartup == true;
-
         this.isImGuiDrawDevMenu = this.isImGuiDrawDevMenu || configuration.DevBarOpenAtStartup;
 
         this.interfaceManager.Draw += this.OnDraw;
