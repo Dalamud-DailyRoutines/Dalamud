@@ -328,6 +328,11 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     public string ChosenStyle { get; set; } = "Dalamud Standard";
 
     /// <summary>
+    /// Gets or sets per-character style assignments.
+    /// </summary>
+    public List<CharacterStyleAssignment> CharacterStyleAssignments { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets a list of saved plugin profiles.
     /// </summary>
     public List<ProfileModel>? SavedProfiles { get; set; }
@@ -347,11 +352,6 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     /// </summary>
     public bool ProfilesHasSeenTutorial { get; set; } = false;
     
-    /// <summary>
-    /// Gets or sets a value indicating whether the user has enabled character-specific profiles.
-    /// </summary>
-    public bool ProfilesEnableCharacters { get; set; } = false;
-
     /// <summary>
     /// Gets or sets the default UI preset.
     /// </summary>
@@ -506,6 +506,11 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     /// Gets or sets a value indicating whether disabled plugins should be auto-updated.
     /// </summary>
     public bool UpdateDisabledPlugins { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether disabled plugins should be updated when updating manually.
+    /// </summary>
+    public bool UpdateDisabledPluginsOnManualUpdate { get; set; } = false;
 
     /// <summary>
     /// Gets or sets a value indicating where notifications are anchored to on the screen.

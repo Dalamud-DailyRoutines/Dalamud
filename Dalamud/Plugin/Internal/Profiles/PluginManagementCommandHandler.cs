@@ -122,8 +122,11 @@ internal class PluginManagementCommandHandler : IInternalDisposableService
     private enum PluginCommandOperation
     {
         Enable,
+        EnableEphemeral,
         Disable,
+        DisableEphemeral,
         Toggle,
+        ToggleEphemeral,
     }
 
     /// <inheritdoc/>
@@ -219,24 +222,76 @@ internal class PluginManagementCommandHandler : IInternalDisposableService
             this.chat.Print(onSuccess);
         }
 
-        if (operation == PluginCommandOperation.Toggle)
+        operation = operation switch
         {
-            operation = plugin.State == PluginState.Loaded ? PluginCommandOperation.Disable : PluginCommandOperation.Enable;
+            PluginCommandOperation.Toggle => plugin.State == PluginState.Loaded
+                                                 ? PluginCommandOperation.Disable
+                                                 : PluginCommandOperation.Enable,
+            PluginCommandOperation.ToggleEphemeral => plugin.State == PluginState.Loaded
+                                                          ? PluginCommandOperation.DisableEphemeral
+                                                          : PluginCommandOperation.EnableEphemeral,
+            _ => operation,
+        };
+
+        var profilesThatWantThisPlugin = this.profileManager.Profiles
+                                             .Where(x => x.WantsPlugin(plugin.EffectiveWorkingPluginId) != null)
+                                             .ToArray();
+
+        switch (profilesThatWantThisPlugin.Length)
+        {
+            case 0:
+                Log.Error("Plugin \"{InternalName}\" ({Guid}) is not in any collection, cannot be toggled",
+                          plugin.InternalName,
+                          plugin.EffectiveWorkingPluginId);
+                return true;
+            case > 1:
+                Log.Error("Plugin \"{InternalName}\" ({Guid}) is in multiple collections, cannot be toggled",
+                          plugin.InternalName,
+                          plugin.EffectiveWorkingPluginId);
+                return true;
         }
+
+        var applicableProfile = profilesThatWantThisPlugin.First();
 
         switch (operation)
         {
             case PluginCommandOperation.Enable:
+            case PluginCommandOperation.EnableEphemeral:
                 this.chat.Print(Loc.Localize("PluginCommandsEnabling", "Enabling plugin \"{0}\"...").Format(plugin.Name));
-                Task.Run(() => plugin.LoadAsync(PluginLoadReason.Installer))
+                Task.Run(async () =>
+                    {
+                        if (operation == PluginCommandOperation.EnableEphemeral)
+                        {
+                            applicableProfile.SetEphemeralOverride(plugin.EffectiveWorkingPluginId, true);
+                        }
+                        else
+                        {
+                            await applicableProfile.AddOrUpdateAsync(plugin.EffectiveWorkingPluginId, plugin.Manifest.InternalName, true, false);
+                        }
+
+                        await plugin.LoadAsync(PluginLoadReason.Installer);
+                    })
                     .ContinueWith(t => Continuation(t,
                                                     Loc.Localize("PluginCommandsEnableSuccess", "Plugin \"{0}\" enabled.").Format(plugin.Name),
                                                     Loc.Localize("PluginCommandsEnableFailed", "Failed to enable plugin \"{0}\". Please check the console for errors.").Format(plugin.Name)))
                     .ConfigureAwait(false);
                 break;
             case PluginCommandOperation.Disable:
+            case PluginCommandOperation.DisableEphemeral:
                 this.chat.Print(Loc.Localize("PluginCommandsDisabling", "Disabling plugin \"{0}\"...").Format(plugin.Name));
-                Task.Run(() => plugin.UnloadAsync())
+                Task.Run(async () =>
+                    {
+                        await plugin.UnloadAsync();
+
+                        if (operation == PluginCommandOperation.DisableEphemeral)
+                        {
+                            applicableProfile.SetEphemeralOverride(plugin.EffectiveWorkingPluginId, false);
+                        }
+                        else
+                        {
+                            await applicableProfile.AddOrUpdateAsync(plugin.EffectiveWorkingPluginId, plugin.Manifest.InternalName, false, false);
+                        }
+                    })
                     .ContinueWith(t => Continuation(t,
                                       Loc.Localize("PluginCommandsDisableSuccess", "Plugin \"{0}\" disabled.").Format(plugin.Name),
                                       Loc.Localize("PluginCommandsDisableFailed", "Failed to disable plugin \"{0}\". Please check the console for errors.").Format(plugin.Name)))
@@ -316,10 +371,12 @@ internal class PluginManagementCommandHandler : IInternalDisposableService
         if (plugin == null)
             return;
 
+        var ephemeral = arguments.EndsWith(" temp", StringComparison.CurrentCultureIgnoreCase);
+
         var target = new PluginTarget(plugin.EffectiveWorkingPluginId);
         this.commandQueue
             .RemoveAll(x => x.Target == target);
-        this.commandQueue.Add((target, PluginCommandOperation.Enable));
+        this.commandQueue.Add((target, ephemeral ? PluginCommandOperation.EnableEphemeral : PluginCommandOperation.Enable));
     }
 
     private void OnDisablePlugin(string command, string arguments)
@@ -328,10 +385,12 @@ internal class PluginManagementCommandHandler : IInternalDisposableService
         if (plugin == null)
             return;
 
+        var ephemeral = arguments.EndsWith(" temp", StringComparison.CurrentCultureIgnoreCase);
+
         var target = new PluginTarget(plugin.EffectiveWorkingPluginId);
         this.commandQueue
             .RemoveAll(x => x.Target == target);
-        this.commandQueue.Add((target, PluginCommandOperation.Disable));
+        this.commandQueue.Add((target, ephemeral ? PluginCommandOperation.DisableEphemeral : PluginCommandOperation.Disable));
     }
 
     private void OnTogglePlugin(string command, string arguments)
@@ -340,10 +399,12 @@ internal class PluginManagementCommandHandler : IInternalDisposableService
         if (plugin == null)
             return;
 
+        var ephemeral = arguments.EndsWith(" temp", StringComparison.CurrentCultureIgnoreCase);
+
         var target = new PluginTarget(plugin.EffectiveWorkingPluginId);
         this.commandQueue
             .RemoveAll(x => x.Target == target);
-        this.commandQueue.Add((target, PluginCommandOperation.Toggle));
+        this.commandQueue.Add((target, ephemeral ? PluginCommandOperation.ToggleEphemeral : PluginCommandOperation.Toggle));
     }
 
     private string? ValidateProfileName(string arguments)
@@ -360,7 +421,7 @@ internal class PluginManagementCommandHandler : IInternalDisposableService
 
     private LocalPlugin? ValidatePluginName(string arguments)
     {
-        var name = arguments.Replace("\"", string.Empty);
+        var name = arguments.Split().FirstOrDefault(string.Empty).Replace("\"", string.Empty);
         var targetPlugin =
             this.pluginManager.InstalledPlugins.FirstOrDefault(x => x.InternalName == name || x.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase));
 
@@ -370,10 +431,14 @@ internal class PluginManagementCommandHandler : IInternalDisposableService
             return null;
         }
 
-        if (!this.profileManager.IsInDefaultProfile(targetPlugin.EffectiveWorkingPluginId))
+        var isInSingleProfile = this.profileManager.Profiles
+                                              .Count(x => x.WantsPlugin(targetPlugin.EffectiveWorkingPluginId) != null) == 1;
+
+        if (!isInSingleProfile)
         {
-            this.chat.PrintError(Loc.Localize("PluginCommandsNotInDefaultProfile", "Plugin \"{0}\" is in a collection and can't be managed through commands. Manage the collection instead.")
+            this.chat.PrintError(Loc.Localize("PluginCommandsNotInDefaultProfile", "Plugin \"{0}\" is multiple collections and cannot be toggled individually. Manage the collections instead.")
                                     .Format(targetPlugin.Name));
+            return null;
         }
 
         return targetPlugin;

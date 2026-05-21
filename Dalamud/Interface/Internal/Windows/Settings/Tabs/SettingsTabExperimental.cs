@@ -20,6 +20,14 @@ internal sealed class SettingsTabExperimental : SettingsTab
 
     public override SettingsEntry[] Entries { get; } =
     [
+        new SettingsEntry<bool>(
+            LazyLoc.Localize("DalamudSettingEnableDeveloperMode", "开发者模式"),
+            LazyLoc.Localize("DalamudSettingEnableDeveloperModeHint", "解锁开发者专用的设置"),
+            c => c.DevMode ?? false,
+            (v, c) => c.DevMode = v);
+
+        new GapSettingsEntry(5, true),
+
         new SettingsEntry<float>(
             Loc.Localize("DalamudSettingBackgroundBlur", "窗口毛玻璃效果强度系数"),
             Loc.Localize("DalamudSettingBackgroundBlurHint", "控制插件窗口背景的毛玻璃效果强度。设置为 0 以禁用。\n本效果需要各插件主动适配。"),
