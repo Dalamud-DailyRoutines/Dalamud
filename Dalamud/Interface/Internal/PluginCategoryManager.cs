@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
-using CheapLoc;
-
 using Dalamud.Plugin.Internal.Types;
 using Dalamud.Plugin.Internal.Types.Manifest;
 
@@ -546,59 +544,59 @@ internal class PluginCategoryManager
     {
         #region UI groups
 
-        public static string Group_DevTools => Loc.Localize("InstallerDevTools", "Dev Tools");
+        public static string Group_DevTools => "开发工具";
 
-        public static string Group_Installed => Loc.Localize("InstallerInstalledPlugins", "Installed Plugins");
+        public static string Group_Installed => "已安装插件";
 
-        public static string Group_Available => Loc.Localize("InstallerAllPlugins", "All Plugins");
+        public static string Group_Available => "所有插件";
 
-        public static string Group_Changelog => Loc.Localize("InstallerChangelog", "Changelog");
+        public static string Group_Changelog => "更新日志";
 
         #endregion
 
         #region Categories
 
-        public static string Category_All => Loc.Localize("InstallerCategoryAll", "All");
+        public static string Category_All => "所有";
 
         public static string Category_IsTesting => "测试版";
 
-        public static string Category_AvailableForTesting => Loc.Localize("InstallerCategoryAvailableForTesting", "Testing Available");
+        public static string Category_AvailableForTesting => "可测试";
 
-        public static string Category_Hidden => Loc.Localize("InstallerCategoryHidden", "Hidden");
+        public static string Category_Hidden => "已隐藏";
 
-        public static string Category_DevInstalled => Loc.Localize("InstallerInstalledDevPlugins", "Installed Dev Plugins");
+        public static string Category_DevInstalled => "已安装开发版插件";
 
-        public static string Category_IconTester => "Image/Icon Tester";
+        public static string Category_IconTester => "图像/图标测试";
 
-        public static string Category_PluginProfiles => Loc.Localize("InstallerCategoryPluginProfiles", "Plugin Collections");
+        public static string Category_PluginProfiles => "插件合集";
 
-        public static string Category_UpdateablePlugins => Loc.Localize("InstallerCategoryCanBeUpdated", "Can be updated");
+        public static string Category_UpdateablePlugins => "可更新";
 
-        public static string Category_EnabledPlugins => Loc.Localize("InstallerCategoryEnabledPlugins", "Enabled");
+        public static string Category_EnabledPlugins => "已启用";
 
-        public static string Category_DisabledPlugins => Loc.Localize("InstallerCategoryDisabledPlugins", "Disabled");
+        public static string Category_DisabledPlugins => "已禁用";
 
-        public static string Category_IncompatiblePlugins => Loc.Localize("InstallerCategoryIncompatiblePlugins", "Incompatible");
+        public static string Category_IncompatiblePlugins => "不兼容";
 
-        public static string Category_Other => Loc.Localize("InstallerCategoryOther", "Other");
+        public static string Category_Other => "其他";
 
-        public static string Category_Jobs => Loc.Localize("InstallerCategoryJobs", "Jobs");
+        public static string Category_Jobs => "职业";
 
-        public static string Category_UI => Loc.Localize("InstallerCategoryUI", "UI");
+        public static string Category_UI => "界面";
 
-        public static string Category_MiniGames => Loc.Localize("InstallerCategoryMiniGames", "Mini games");
+        public static string Category_MiniGames => "小游戏";
 
-        public static string Category_Inventory => Loc.Localize("InstallerCategoryInventory", "Inventory");
+        public static string Category_Inventory => "背包";
 
-        public static string Category_Sound => Loc.Localize("InstallerCategorySound", "Sound");
+        public static string Category_Sound => "音效";
 
-        public static string Category_Social => Loc.Localize("InstallerCategorySocial", "Social");
+        public static string Category_Social => "社交";
 
-        public static string Category_Utility => Loc.Localize("InstallerCategoryUtility", "Utility");
+        public static string Category_Utility => "实用工具";
 
-        public static string Category_Plugins => Loc.Localize("InstallerCategoryPlugins", "Plugins");
+        public static string Category_Plugins => "插件";
 
-        public static string Category_Dalamud => Loc.Localize("InstallerCategoryDalamud", "Dalamud");
+        public static string Category_Dalamud => "Dalamud";
 
         #endregion
     }

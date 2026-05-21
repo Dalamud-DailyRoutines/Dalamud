@@ -21,10 +21,10 @@ internal sealed class SettingsTabExperimental : SettingsTab
     public override SettingsEntry[] Entries { get; } =
     [
         new SettingsEntry<bool>(
-            LazyLoc.Localize("DalamudSettingEnableDeveloperMode", "开发者模式"),
-            LazyLoc.Localize("DalamudSettingEnableDeveloperModeHint", "解锁开发者专用的设置"),
+            Loc.Localize("DalamudSettingEnableDeveloperMode",     "开发者模式"),
+            Loc.Localize("DalamudSettingEnableDeveloperModeHint", "解锁开发者专用的设置"),
             c => c.DevMode ?? false,
-            (v, c) => c.DevMode = v);
+            (v, c) => c.DevMode = v),
 
         new GapSettingsEntry(5, true),
 

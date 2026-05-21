@@ -48,6 +48,7 @@ internal class SettingsTabPlugin : SettingsTab
 
     private AutoUpdateBehavior         behavior;
     private bool                       updateDisabledPlugins;
+    private bool                       updateDisabledPluginsOnManualUpdate;
     private bool                       checkPeriodically;
     private bool                       chatNotification;
     private string                     pickerSearch          = string.Empty;
@@ -67,11 +68,12 @@ internal class SettingsTabPlugin : SettingsTab
         devPluginLocations        = [.. Service<DalamudConfiguration>.Get().DevPluginLoadLocations.Select(x => x.Clone())];
         devPluginLocationsChanged = false;
 
-        behavior              = Config.AutoUpdateBehavior ?? AutoUpdateBehavior.None;
-        updateDisabledPlugins = Config.UpdateDisabledPlugins;
-        chatNotification      = Config.SendUpdateNotificationToChat;
-        checkPeriodically     = Config.CheckPeriodicallyForUpdates;
-        autoUpdatePreferences = Config.PluginAutoUpdatePreferences;
+        behavior                            = Config.AutoUpdateBehavior ?? AutoUpdateBehavior.None;
+        updateDisabledPlugins               = Config.UpdateDisabledPlugins;
+        updateDisabledPluginsOnManualUpdate = Config.UpdateDisabledPluginsOnManualUpdate;
+        chatNotification                    = Config.SendUpdateNotificationToChat;
+        checkPeriodically                   = Config.CheckPeriodicallyForUpdates;
+        autoUpdatePreferences               = Config.PluginAutoUpdatePreferences;
     }
 
     public override void Save()
@@ -92,11 +94,12 @@ internal class SettingsTabPlugin : SettingsTab
             devPluginLocationsChanged = false;
         }
 
-        Config.AutoUpdateBehavior           = behavior;
-        Config.UpdateDisabledPlugins        = updateDisabledPlugins;
-        Config.SendUpdateNotificationToChat = chatNotification;
-        Config.CheckPeriodicallyForUpdates  = checkPeriodically;
-        Config.PluginAutoUpdatePreferences  = autoUpdatePreferences;
+        Config.AutoUpdateBehavior                  = behavior;
+        Config.UpdateDisabledPlugins               = updateDisabledPlugins;
+        Config.UpdateDisabledPluginsOnManualUpdate = updateDisabledPluginsOnManualUpdate;
+        Config.SendUpdateNotificationToChat        = chatNotification;
+        Config.CheckPeriodicallyForUpdates         = checkPeriodically;
+        Config.PluginAutoUpdatePreferences         = autoUpdatePreferences;
     }
 
     public override void PostDraw() => fileDialogManager.Draw();
@@ -238,6 +241,12 @@ internal class SettingsTabPlugin : SettingsTab
         ImGuiHelpers.ScaledDummy(15f);
 
         ImGui.Separator();
+        
+        ImGuiHelpers.ScaledDummy(15f);
+        
+        ImGuiHelpers.ScaledDummy(15f);
+
+        ImGui.Separator();
 
         ImGuiHelpers.ScaledDummy(15f);
 
@@ -276,21 +285,6 @@ internal class SettingsTabPlugin : SettingsTab
 
         ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "清除插件安装器中所有已被隐藏的插件。");
 
-        ImGuiHelpers.ScaledDummy(15f);
-
-        ImGui.Separator();
-
-        ImGuiHelpers.ScaledDummy(15f);
-
-        var enableCharacter = Config.ProfilesEnableCharacters;
-        if (ImGui.Checkbox("插件合集角色隔离", ref receiveTest))
-        {
-            Config.ProfilesEnableCharacters = enableCharacter;
-            Config.QueueSave();
-        }
-
-        ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "启用后，可将插件合集设置为仅对特定角色生效。\n此设置尚未经过充分测试，属于实验性功能，可能会导致某些插件出现问题。");
-        
         ImGuiHelpers.ScaledDummy(15f);
 
         ImGui.Separator();
@@ -632,7 +626,8 @@ internal class SettingsTabPlugin : SettingsTab
 
         ImGuiHelpers.ScaledDummy(8);
 
-        ImGui.Checkbox("自动更新被禁用的插件",   ref updateDisabledPlugins);
+        ImGui.Checkbox("自动更新已禁用的插件", ref updateDisabledPlugins);
+        ImGui.Checkbox("手动更新插件时, 自动更新其他已禁用的插件", ref updateDisabledPlugins);
         ImGui.Checkbox("在聊天栏显示可用更新通知", ref chatNotification);
         ImGui.Checkbox("游戏运行时定期检查更新",  ref checkPeriodically);
         ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "启动后不会自动更新插件, 仅在用户未活跃游戏时接收通知");
