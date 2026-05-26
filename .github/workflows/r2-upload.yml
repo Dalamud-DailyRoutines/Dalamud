@@ -1,0 +1,54 @@
+name: Upload Release to R2
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag（留空则使用最新 release）'
+        required: false
+        type: string
+  workflow_call:
+
+jobs:
+  upload:
+    name: Upload to R2
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Determine release tag
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName --jq '.[0].tagName')
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Using release: $TAG"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ steps.release.outputs.tag }}" \
+            --repo ${{ github.repository }} \
+            --pattern 'latest.7z' \
+            --pattern 'hashes.json'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install wrangler
+        run: npm install -g wrangler
+
+      - name: Upload to R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          wrangler r2 object put dalamud-distribute/hashes.json --file hashes.json
+          wrangler r2 object put "dalamud-distribute/${{ steps.release.outputs.tag }}/latest.7z" --file latest.7z

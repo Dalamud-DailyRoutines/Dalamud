@@ -151,3 +151,9 @@ jobs:
             --title "Release ${{ env.TAG }}" `
             --notes $releaseNotes `
             --verify-tag
+
+  upload-r2:
+    name: Upload to R2
+    needs: build
+    uses: ./.github/workflows/r2-upload.yml
+    secrets: inherit
