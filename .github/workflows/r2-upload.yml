@@ -49,9 +49,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           npx wrangler r2 object put dalamud-distribute/hashes.json \
+            --remote \
             --file ./assets/hashes.json \
             --cache-control 'public, max-age=300'
 
           npx wrangler r2 object put "dalamud-distribute/${{ steps.tag.outputs.tag }}/latest.7z" \
+            --remote \
             --file ./assets/latest.7z \
             --cache-control 'public, max-age=31536000, immutable'
