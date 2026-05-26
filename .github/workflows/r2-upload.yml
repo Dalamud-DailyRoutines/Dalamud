@@ -28,7 +28,7 @@ jobs:
           if [ -n "${{ inputs.tag }}" ]; then
             TAG="${{ inputs.tag }}"
           else
-            TAG=$(gh release view --json tagName --jq '.tagName')
+            TAG=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName --jq '.[0].tagName')
           fi
           echo "TAG 定为: $TAG"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
