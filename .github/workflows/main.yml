@@ -112,9 +112,6 @@ jobs:
       - name: Create hashlist
         run: .\CreateHashList.ps1 .\bin\Release
 
-      - name: Create release manifest
-        run: .\CreateReleaseManifest.ps1 .\bin\Release .\bin\ReleaseAssets
-
       - name: Install 7-Zip
         run: |
           if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) {
@@ -147,11 +144,7 @@ jobs:
           $assets = @(
             "bin/Release/latest.7z"
             "bin/Release/hashes.json"
-            "bin/ReleaseAssets/manifest.json"
           )
-
-          $assets += Get-ChildItem -LiteralPath "bin/ReleaseAssets" -File -Filter "dalamud-file-*.bin" |
-            ForEach-Object { $_.FullName }
 
           gh release create "${{ env.TAG }}" `
             @assets `
