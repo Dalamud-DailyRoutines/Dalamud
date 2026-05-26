@@ -67,3 +67,24 @@ jobs:
             --remote \
             --file ./assets/latest.7z \
             --cache-control 'public, max-age=31536000, immutable'
+
+      - name: Cleanup old versions (keep latest 5)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          KEYS=$(curl -s "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/dalamud-distribute/objects?limit=1000" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result.objects[].key')
+
+          TAGS=$(echo "$KEYS" | grep -oE '^[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}/' | sed 's|/||' | sort -u)
+          KEEP=$(echo "$TAGS" | tail -5)
+
+          for tag in $TAGS; do
+            if ! echo "$KEEP" | grep -qx "$tag"; then
+              echo "Deleting old version: $tag"
+              echo "$KEYS" | grep "^$tag/" | while IFS= read -r key; do
+                npx wrangler r2 object delete "dalamud-distribute/$key" --remote
+              done
+            fi
+          done
+          echo "Cleanup done, kept versions:"; echo "$KEEP"
