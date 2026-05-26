@@ -161,9 +161,3 @@ jobs:
     with:
       tag: ${{ needs.build.outputs.tag }}
     secrets: inherit
-
-  upload-r2:
-    name: Upload to R2
-    needs: build
-    uses: ./.github/workflows/r2-upload.yml
-    secrets: inherit
