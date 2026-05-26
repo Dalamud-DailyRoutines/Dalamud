@@ -70,7 +70,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           KEYS=$(curl -s "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/dalamud-distribute/objects?limit=1000" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result.objects[].key')
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result[].key')
 
           TAGS=$(echo "$KEYS" | grep -oE '^[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}/' | sed 's|/||' | sort -u)
           KEEP=$(echo "$TAGS" | tail -5)
