@@ -1,12 +1,12 @@
-name: Upload Release to R2
+name: Upload to R2
 on:
   workflow_dispatch:
+  workflow_call:
     inputs:
       tag:
-        description: 'Release tag（留空则使用最新 release）'
-        required: false
+        description: 'Release tag (leave empty to auto-detect latest)'
         type: string
-  workflow_call:
+        required: false
 
 jobs:
   upload:
@@ -15,40 +15,43 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Determine release tag
-        id: release
+        id: tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ -n "${{ inputs.tag }}" ]; then
             TAG="${{ inputs.tag }}"
           else
-            TAG=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName --jq '.[0].tagName')
+            TAG=$(gh release view --json tagName --jq '.tagName')
           fi
+          echo "TAG 定为: $TAG"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Using release: $TAG"
 
       - name: Download release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download "${{ steps.release.outputs.tag }}" \
-            --repo ${{ github.repository }} \
+          gh release download "${{ steps.tag.outputs.tag }}" \
+            --pattern 'hashes.json' \
             --pattern 'latest.7z' \
-            --pattern 'hashes.json'
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install wrangler
-        run: npm install -g wrangler
+            --dir ./assets
+          ls -la ./assets/
 
       - name: Upload to R2
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          wrangler r2 object put dalamud-distribute/hashes.json --file hashes.json
-          wrangler r2 object put "dalamud-distribute/${{ steps.release.outputs.tag }}/latest.7z" --file latest.7z
+          npx wrangler r2 object put dalamud-distribute/hashes.json \
+            --file ./assets/hashes.json \
+            --cache-control 'public, max-age=300'
+
+          npx wrangler r2 object put "dalamud-distribute/${{ steps.tag.outputs.tag }}/latest.7z" \
+            --file ./assets/latest.7z \
+            --cache-control 'public, max-age=31536000, immutable'

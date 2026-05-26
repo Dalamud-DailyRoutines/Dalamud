@@ -11,6 +11,8 @@ jobs:
     permissions:
       contents: write
     runs-on: windows-latest
+    outputs:
+      tag: ${{ steps.generate-tag.outputs.new_tag }}
     defaults:
       run:
         shell: pwsh
@@ -151,6 +153,14 @@ jobs:
             --title "Release ${{ env.TAG }}" `
             --notes $releaseNotes `
             --verify-tag
+
+  upload-r2:
+    name: Upload to R2
+    needs: build
+    uses: ./.github/workflows/r2-upload.yml
+    with:
+      tag: ${{ needs.build.outputs.tag }}
+    secrets: inherit
 
   upload-r2:
     name: Upload to R2
