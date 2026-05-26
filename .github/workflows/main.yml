@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: write
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
     outputs:
       tag: ${{ steps.generate-tag.outputs.new_tag }}
     defaults:
