@@ -51,18 +51,29 @@ jobs:
         run: |
           retry() { local n=0; until "$@"; do n=$((n+1)); [ $n -ge 3 ] && return 1; echo "Retry $n/3..."; sleep 3; done; }
 
-          # RELEASE
+          # RELEASE — immutable, purged on each deploy
           echo -n "${{ steps.tag.outputs.tag }}" > RELEASE
           retry npx wrangler r2 object put dalamud-distribute/RELEASE \
-            --remote --file RELEASE --cache-control 'public, max-age=300'
+            --remote --file RELEASE --cache-control 'public, max-age=31536000, immutable'
 
-          # hashes.json
+          # hashes.json — immutable, tag-fixed content never changes
           retry npx wrangler r2 object put "dalamud-distribute/${{ steps.tag.outputs.tag }}/hashes.json" \
-            --remote --file ./assets/hashes.json --cache-control 'public, max-age=300'
+            --remote --file ./assets/hashes.json --cache-control 'public, max-age=31536000, immutable'
 
           # latest.7z
           retry npx wrangler r2 object put "dalamud-distribute/${{ steps.tag.outputs.tag }}/latest.7z" \
             --remote --file ./assets/latest.7z --cache-control 'public, max-age=31536000, immutable'
+
+      - name: Purge CF cache for mutable URLs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data '{"files":["https://dalamud-dis.atmoomen.top/RELEASE"]}' | jq .
+          echo "Purged: /RELEASE"
 
       - name: Cleanup old versions (keep latest 5)
         env:
