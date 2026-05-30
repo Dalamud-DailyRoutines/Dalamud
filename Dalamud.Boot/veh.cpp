@@ -376,6 +376,8 @@ bool veh::add_handler(bool doFullDump, const std::string& workingDirectory, cons
         args.emplace_back(std::format(L"--log-path={}", bootLogPath));
     if (bootConsole)
         args.emplace_back(L"--console");
+    if (g_startInfo.ManagedRestart)
+        args.emplace_back(L"--managed-restart");
 
     args.emplace_back(L"--");
     if (auto r = append_injector_launch_args(args); !r) {

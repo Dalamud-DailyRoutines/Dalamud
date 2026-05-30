@@ -170,5 +170,12 @@ public record DalamudStartInfo
     /// </summary>
     public UnhandledExceptionHandlingMode UnhandledException { get; set; }
 
+    /// <summary>
+    /// 是否由外部启动器接管游戏重启
+    /// 为 true 时崩溃处理器不自行用注入器拉起新游戏, 而是把重启决策编码进自身退出码,
+    /// 交由持有崩溃处理器句柄的启动器读取后干净重启
+    /// </summary>
+    public bool ManagedRestart { get; set; }
+
     public string? LauncherDirectory { get; set; }
 }

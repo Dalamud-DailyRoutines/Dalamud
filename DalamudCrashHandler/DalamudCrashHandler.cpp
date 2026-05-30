@@ -52,6 +52,20 @@ static constexpr GUID Guid_IFileDialog_Tspack{ 0xfc057318, 0xad35, 0x4599, {0xa7
 HANDLE g_hProcess = nullptr;
 bool g_bSymbolsAvailable = false;
 
+// 托管重启模式: 由启动器通过 --managed-restart 开启
+// 开启后崩溃处理器不再自行用注入器拉起新游戏, 而是把重启决策编码进进程退出码,
+// 交由持有本进程句柄的启动器读取后干净重启
+bool g_managedRestart = false;
+
+// 托管重启退出码协议, 启动器侧 RestartMonitor 须保持一致
+// 低半字 0x12345670..0x12345674, 0 表示不重启
+constexpr DWORD ManagedExitNoRestart        = 0;
+constexpr DWORD ManagedExitRestartDefault   = 0x12345670; // 沿用启动器原始模式
+constexpr DWORD ManagedExitRestartNormal    = 0x12345671; // 正常重启
+constexpr DWORD ManagedExitRestartNo3p      = 0x12345672; // 禁用第三方插件
+constexpr DWORD ManagedExitRestartNoPlugins = 0x12345673; // 禁用全部插件
+constexpr DWORD ManagedExitRestartNoDalamud = 0x12345674; // 禁用 Dalamud
+
 // DAC state per crash to walk the managed stack
 IXCLRDataProcess* g_pClrDataProcess = nullptr;
 // ISOSDacInterface used to read JIT code header data for cross-process unwinding of JIT frames
@@ -1790,6 +1804,21 @@ enum {
     IdButtonExit = IDCANCEL,
 };
 
+// 把对话框选中的重启选项映射为托管重启退出码, 供启动器接管时使用
+DWORD managed_exit_code_for_radio(int nRadioButton)
+{
+    switch (nRadioButton) {
+        case IdRadioRestartWithout3pPlugins:
+            return ManagedExitRestartNo3p;
+        case IdRadioRestartWithoutPlugins:
+            return ManagedExitRestartNoPlugins;
+        case IdRadioRestartWithoutDalamud:
+            return ManagedExitRestartNoDalamud;
+        default:
+            return ManagedExitRestartNormal;
+    }
+}
+
 void restart_game_using_injector(int nRadioButton, const std::vector<std::wstring>& launcherArgs)
 {
     std::wstring pathStr(PATHCCH_MAX_CCH, L'\0');
@@ -1935,6 +1964,8 @@ int main() {
             bootLogPath = arg.substr(ARRAYSIZE(pwszArgPrefix) - 1);
         } else if (arg == L"--console") {
             bootConsole = true;
+        } else if (arg == L"--managed-restart") {
+            g_managedRestart = true;
         } else if (arg == L"--") {
             launcherArgs.emplace();
         } else {
@@ -2028,6 +2059,11 @@ int main() {
 
         if (exinfo.ExceptionRecord.ExceptionCode == 0x12345678) {
             logging::I("Restart requested");
+            if (g_managedRestart) {
+                logging::I("托管重启: 终止游戏并交由启动器接管, 退出码 0x{:x}", ManagedExitRestartDefault);
+                TerminateProcess(g_hProcess, 0);
+                return static_cast<int>(ManagedExitRestartDefault);
+            }
             TerminateProcess(g_hProcess, 0);
             restart_game_using_injector(IdRadioRestartNormal, *launcherArgs);
             break;
@@ -2381,6 +2417,11 @@ int main() {
                 case IdButtonRestart:
                 {
                     kill_game();
+                    if (g_managedRestart) {
+                        const auto code = managed_exit_code_for_radio(nRadioButton);
+                        logging::I("托管重启: 终止游戏并交由启动器接管, 退出码 0x{:x}", code);
+                        return static_cast<int>(code);
+                    }
                     restart_game_using_injector(nRadioButton, *launcherArgs);
                     break;
                 }

@@ -84,6 +84,7 @@ namespace Dalamud.Injector
                 args.Remove("--no-plugin");
                 args.Remove("--no-3rd-plugin");
                 args.Remove("--crash-handler-console");
+                args.Remove("--managed-restart");
 
                 var mainCommand = args[1].ToLowerInvariant();
                 if (mainCommand.Length > 0 && mainCommand.Length <= 6 && "inject"[..mainCommand.Length] == mainCommand)
@@ -509,6 +510,7 @@ namespace Dalamud.Injector
             startInfo.BootVehFull = args.Contains("--veh-full");
             startInfo.NoLoadPlugins = args.Contains("--no-plugin");
             startInfo.NoLoadThirdPartyPlugins = args.Contains("--no-3rd-plugin");
+            startInfo.ManagedRestart = args.Contains("--managed-restart");
             // startInfo.BootUnhookDlls = new List<string>() { "kernel32.dll", "ntdll.dll", "user32.dll" };
             startInfo.CrashHandlerShow = args.Contains("--crash-handler-console");
             startInfo.UnhandledException =

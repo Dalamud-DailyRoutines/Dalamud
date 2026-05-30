@@ -144,6 +144,7 @@ void from_json(const nlohmann::json& json, DalamudStartInfo& config) {
 
     config.CrashHandlerShow = json.value("CrashHandlerShow", config.CrashHandlerShow);
     config.UnhandledException = json.value("UnhandledException", config.UnhandledException);
+    config.ManagedRestart = json.value("ManagedRestart", config.ManagedRestart);
 }
 
 void DalamudStartInfo::from_envvars() {

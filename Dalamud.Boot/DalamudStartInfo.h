@@ -71,6 +71,9 @@ struct DalamudStartInfo {
     bool CrashHandlerShow = false;
     UnhandledExceptionHandlingMode UnhandledException = UnhandledExceptionHandlingMode::Default;
 
+    // 为 true 时崩溃处理器不自行用注入器拉起新游戏, 而是把重启决策编码进退出码交由启动器接管
+    bool ManagedRestart = false;
+
     friend void from_json(const nlohmann::json&, DalamudStartInfo&);
     void from_envvars();
 };
