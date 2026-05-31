@@ -856,6 +856,8 @@ internal class PluginInstallerWindow : Window, IDisposable
 
     private void DrawPluginFilterPopup()
     {
+        var configuration = Service<DalamudConfiguration>.Get();
+
         var filtersChanged = false;
         var isInstalledDevPluginsCategory = this.IsInstalledDevPluginsCategory();
         var installedFilterDisabled = this.categoryManager.CurrentGroupKind == PluginCategoryManager.GroupKind.Installed || isInstalledDevPluginsCategory;
@@ -875,12 +877,15 @@ internal class PluginInstallerWindow : Window, IDisposable
             }
         }
 
-        using (ImRaii.Disabled(thirdPartyFilterDisabled))
+        if (configuration.ThirdRepoList.Any(repo => repo.IsEnabled))
         {
-            if (ImGui.Checkbox($"{Locs.Filter_Unverified}###XlPluginInstaller_FilterThirdParty", ref includeThirdParty) && !thirdPartyFilterDisabled)
+            using (ImRaii.Disabled(thirdPartyFilterDisabled))
             {
-                this.showThirdPartyPlugins = includeThirdParty;
-                filtersChanged = true;
+                if (ImGui.Checkbox($"{Locs.Filter_Unverified}###XlPluginInstaller_FilterThirdParty", ref includeThirdParty) && !thirdPartyFilterDisabled)
+                {
+                    this.showThirdPartyPlugins = includeThirdParty;
+                    filtersChanged = true;
+                }
             }
         }
 
