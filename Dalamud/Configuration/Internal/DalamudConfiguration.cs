@@ -148,6 +148,16 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     public List<string> PinnedPluginInternalName { get; set; } = [];
 
     /// <summary>
+    /// Gets or sets a list of pinned plugin repository URLs.
+    /// </summary>
+    public List<string> PinnedRepoUrls { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets a list of bottom-pinned plugin repository URLs.
+    /// </summary>
+    public List<string> BottomPinnedRepoUrls { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets a list of seen plugins.
     /// </summary>
     public List<string> SeenPluginInternalName { get; set; } = [];

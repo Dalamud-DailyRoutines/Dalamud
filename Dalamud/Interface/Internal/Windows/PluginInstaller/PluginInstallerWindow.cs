@@ -1648,6 +1648,42 @@ internal class PluginInstallerWindow : Window, IDisposable
                 var notifications = Service<NotificationManager>.Get();
                 var config = Service<DalamudConfiguration>.Get();
 
+                // Pin / Unpin repo (top)
+                var isRepoPinned = config.PinnedRepoUrls.Contains(state.RepoUrl);
+                if (ImGui.MenuItem(isRepoPinned ? Locs.RepoContext_UnpinRepo : Locs.RepoContext_PinRepo))
+                {
+                    if (isRepoPinned)
+                    {
+                        config.PinnedRepoUrls.Remove(state.RepoUrl);
+                    }
+                    else
+                    {
+                        config.PinnedRepoUrls.Add(state.RepoUrl);
+                        config.BottomPinnedRepoUrls.Remove(state.RepoUrl); // 互斥: 置顶时取消置底
+                    }
+
+                    config.QueueSave();
+                }
+
+                // Bottom-pin / Un-bottom-pin repo
+                var isRepoBottomPinned = config.BottomPinnedRepoUrls.Contains(state.RepoUrl);
+                if (ImGui.MenuItem(isRepoBottomPinned ? Locs.RepoContext_UnbottomPinRepo : Locs.RepoContext_BottomPinRepo))
+                {
+                    if (isRepoBottomPinned)
+                    {
+                        config.BottomPinnedRepoUrls.Remove(state.RepoUrl);
+                    }
+                    else
+                    {
+                        config.BottomPinnedRepoUrls.Add(state.RepoUrl);
+                        config.PinnedRepoUrls.Remove(state.RepoUrl); // 互斥: 置底时取消置顶
+                    }
+
+                    config.QueueSave();
+                }
+
+                ImGui.Separator();
+
                 var repoUrl = state.RepoUrl;
                 var repoPlugins = this.pluginListInstalled
                     .Where(p =>
@@ -1749,8 +1785,38 @@ internal class PluginInstallerWindow : Window, IDisposable
                     return p.RemoteManifest.SourceRepo.IsThirdParty ? p.RemoteManifest.SourceRepo.PluginMasterUrl : "主库";
                 return "开发版插件";
             })
-            .OrderBy(g => g.Key)
             .ToList();
+
+        // Sort groups: pinned repos first, bottom-pinned repos last, normal repos in the middle alphabetically
+        {
+            var config = Service<DalamudConfiguration>.Get();
+            var pinnedRepos = config.PinnedRepoUrls;
+            var bottomRepos = config.BottomPinnedRepoUrls;
+
+            var pinnedOrder = new Dictionary<string, int>();
+            for (var idx = 0; idx < pinnedRepos.Count; idx++)
+                pinnedOrder[pinnedRepos[idx]] = idx;
+
+            var bottomOrder = new Dictionary<string, int>();
+            for (var idx = 0; idx < bottomRepos.Count; idx++)
+                bottomOrder[bottomRepos[idx]] = idx;
+
+            proxyGroups = proxyGroups
+                          .OrderBy(g =>
+                          {
+                              if (bottomOrder.ContainsKey(g.Key)) return 2;  // bottom-pinned (takes priority over top)
+                              if (pinnedOrder.ContainsKey(g.Key)) return 0;  // top-pinned
+                              return 1;                                       // normal
+                          })
+                          .ThenBy(g =>
+                          {
+                              if (bottomOrder.TryGetValue(g.Key, out var bo)) return bo;
+                              if (pinnedOrder.TryGetValue(g.Key, out var po)) return po;
+                              return 0;
+                          })
+                          .ThenBy(g => g.Key)
+                          .ToList();
+        }
 
         var i = 0;
         foreach (var group in proxyGroups)
@@ -2080,6 +2146,38 @@ internal class PluginInstallerWindow : Window, IDisposable
         }
 
         var groups = validPlugins.GroupBy(x => x.RepoUrl).ToList();
+
+        // Sort groups: pinned repos first, bottom-pinned repos last, normal repos in the middle alphabetically
+        {
+            var config = Service<DalamudConfiguration>.Get();
+            var pinnedRepos = config.PinnedRepoUrls;
+            var bottomRepos = config.BottomPinnedRepoUrls;
+
+            var pinnedOrder = new Dictionary<string, int>();
+            for (var idx = 0; idx < pinnedRepos.Count; idx++)
+                pinnedOrder[pinnedRepos[idx]] = idx;
+
+            var bottomOrder = new Dictionary<string, int>();
+            for (var idx = 0; idx < bottomRepos.Count; idx++)
+                bottomOrder[bottomRepos[idx]] = idx;
+
+            groups = groups
+                     .OrderBy(g =>
+                     {
+                         if (bottomOrder.ContainsKey(g.Key)) return 2;  // bottom-pinned (takes priority over top)
+                         if (pinnedOrder.ContainsKey(g.Key)) return 0;  // top-pinned
+                         return 1;                                       // normal
+                     })
+                     .ThenBy(g =>
+                     {
+                         if (bottomOrder.TryGetValue(g.Key, out var bo)) return bo;
+                         if (pinnedOrder.TryGetValue(g.Key, out var po)) return po;
+                         return 0;
+                     })
+                     .ThenBy(g => g.Key)
+                     .ToList();
+        }
+
         var i = 0;
         foreach (var group in groups)
         {
@@ -4977,6 +5075,14 @@ internal class PluginInstallerWindow : Window, IDisposable
         public static string PluginContext_PinPlugin => "置顶";
 
         public static string PluginContext_UnpinPlugin => "取消置顶";
+
+        public static string RepoContext_PinRepo => "置顶该插件库";
+
+        public static string RepoContext_UnpinRepo => "取消置顶该插件库";
+
+        public static string RepoContext_BottomPinRepo => "置底该插件库";
+
+        public static string RepoContext_UnbottomPinRepo => "取消置底该插件库";
 
         #endregion
 
