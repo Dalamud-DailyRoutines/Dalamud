@@ -2857,16 +2857,19 @@ internal class PluginInstallerWindow : Window, IDisposable
             const string tooltipIdentifier = "VerifiedCheckmarkIcon";
 
             if (plugin is LocalDevPlugin)
+            {
                 this.DrawFontawesomeIconOutlined(FontAwesomeIcon.Wrench, devIconOutlineColor, devIconColor);
                 this.IconFadeTooltip(label, tooltipIdentifier, "This is a dev plugin. You added it.");
             }
             else if (!flags.HasFlag(PluginHeaderFlags.IsThirdParty))
+            {
                 this.DrawFontawesomeIconOutlined(FontAwesomeIcon.CheckCircle, verifiedOutlineColor, verifiedIconColor);
-                this.IconFadeTooltip(label, tooltipIdentifier, Locs.VerifiedCheckmark_VerifiedTooltip);
+                this.IconFadeTooltip(label, tooltipIdentifier, "已验证");
             }
             else
+            {
                 this.DrawFontawesomeIconOutlined(FontAwesomeIcon.ExclamationCircle, unverifiedOutlineColor, unverifiedIconColor);
-                this.IconFadeTooltip(label, tooltipIdentifier, Locs.VerifiedCheckmark_UnverifiedTooltip);
+                this.IconFadeTooltip(label, tooltipIdentifier, "未验证");
             }
         }
 
