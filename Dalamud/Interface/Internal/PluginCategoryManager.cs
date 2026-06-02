@@ -32,6 +32,7 @@ internal class PluginCategoryManager
         new(CategoryKind.EnabledPlugins, "special.enabled", () => Locs.Category_EnabledPlugins),
         new(CategoryKind.DisabledPlugins, "special.disabled", () => Locs.Category_DisabledPlugins),
         new(CategoryKind.IncompatiblePlugins, "special.incompatible", () => Locs.Category_IncompatiblePlugins),
+        new(CategoryKind.FavoritePlugins, "special.favorite", () => Locs.Category_FavoritePlugins),
 
         // Tag-driven categories
         new(CategoryKind.Other, "other", () => Locs.Category_Other),
@@ -49,7 +50,7 @@ internal class PluginCategoryManager
     private GroupInfo[] groupList =
     [
         new(GroupKind.DevTools, () => Locs.Group_DevTools, CategoryKind.DevInstalled, CategoryKind.IconTester),
-        new(GroupKind.Installed, () => Locs.Group_Installed, CategoryKind.All, CategoryKind.IsTesting, CategoryKind.UpdateablePlugins, CategoryKind.EnabledPlugins, CategoryKind.DisabledPlugins, CategoryKind.IncompatiblePlugins, CategoryKind.PluginProfiles),
+        new(GroupKind.Installed, () => Locs.Group_Installed, CategoryKind.All, CategoryKind.IsTesting, CategoryKind.UpdateablePlugins, CategoryKind.EnabledPlugins, CategoryKind.DisabledPlugins, CategoryKind.IncompatiblePlugins, CategoryKind.FavoritePlugins, CategoryKind.PluginProfiles),
         new(GroupKind.Available, () => Locs.Group_Available, CategoryKind.All),
         new(GroupKind.Changelog, () => Locs.Group_Changelog, CategoryKind.All, CategoryKind.DalamudChangelogs, CategoryKind.PluginChangelogs)
 
@@ -158,6 +159,11 @@ internal class PluginCategoryManager
         /// Incompatible plugins.
         /// </summary>
         IncompatiblePlugins = 18,
+
+        /// <summary>
+        /// Favorite plugins.
+        /// </summary>
+        FavoritePlugins = 19,
 
         /// <summary>
         /// Plugins tagged as "other".
@@ -577,6 +583,8 @@ internal class PluginCategoryManager
         public static string Category_DisabledPlugins => "已禁用";
 
         public static string Category_IncompatiblePlugins => "不兼容";
+
+        public static string Category_FavoritePlugins => "收藏";
 
         public static string Category_Other => "其他";
 

@@ -145,7 +145,8 @@ internal class PluginInstallerWindow : Window, IDisposable
 
     private LoadingIndicatorKind loadingIndicatorKind = LoadingIndicatorKind.Unknown;
 
-    private string verifiedCheckmarkHoveredPlugin = string.Empty;
+    private string currentlyHoveredPlugin = string.Empty;
+    private string currentlyHoveredObject = string.Empty;
 
     private string? staleDalamudNewVersion;
 
@@ -247,6 +248,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         Enabled,
         Disabled,
         Incompatible,
+        Favorite,
     }
 
     private bool AnyOperationInProgress => this.installStatus == OperationStatus.InProgress ||
@@ -1890,10 +1892,13 @@ internal class PluginInstallerWindow : Window, IDisposable
         }
 
         var applyPluginFilters = filter != InstalledPluginListFilter.Dev;
+        var configuration = Service<DalamudConfiguration>.Get();
+        var favoriteList = configuration.FavoritePluginInternalName;
         var filteredList = pluginList
-                   .Where(plugin => !this.IsManifestFiltered(plugin.Manifest))
-                   .Where(plugin => !applyPluginFilters || !this.IsInstalledPluginFiltered(plugin, false))
-                           .ToList();
+                           // Filter out plugins that don't match the search if any
+                          .Where(plugin => !this.IsManifestFiltered(plugin.Manifest))
+                          .Where(plugin => !applyPluginFilters || !this.IsInstalledPluginFiltered(plugin, false))
+                          .ToList();
 
         if (filteredList.Count == 0)
         {
@@ -1915,6 +1920,9 @@ internal class PluginInstallerWindow : Window, IDisposable
                 continue;
 
             if (filter == InstalledPluginListFilter.Incompatible && !(plugin.IsOutdated || plugin.IsBanned || plugin.IsOrphaned || plugin.IsDecommissioned))
+                continue;
+
+            if (filter == InstalledPluginListFilter.Favorite && !favoriteList.Contains(plugin.Manifest.InternalName))
                 continue;
 
             // Find applicable update and manifest, if we have them
@@ -1952,6 +1960,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                 InstalledPluginListFilter.Enabled => Locs.TabBody_NoPluginsEnabled,
                 InstalledPluginListFilter.Disabled => Locs.TabBody_NoPluginsDisabled,
                 InstalledPluginListFilter.Incompatible => Locs.TabBody_NoPluginsIncompatible,
+                InstalledPluginListFilter.Favorite => Locs.TabBody_NoPluginsFavorite,
                 _ => throw new ArgumentException(null, nameof(filter)),
             };
 
@@ -2321,6 +2330,10 @@ internal class PluginInstallerWindow : Window, IDisposable
 
                     case PluginCategoryManager.CategoryKind.IncompatiblePlugins:
                         this.DrawInstalledPluginList(InstalledPluginListFilter.Incompatible);
+                        break;
+
+                    case PluginCategoryManager.CategoryKind.FavoritePlugins:
+                        this.DrawInstalledPluginList(InstalledPluginListFilter.Favorite);
                         break;
 
                     case PluginCategoryManager.CategoryKind.PluginProfiles:
@@ -2841,12 +2854,52 @@ internal class PluginInstallerWindow : Window, IDisposable
             var devIconOutlineColor = KnownColor.White.Vector();
             var devIconColor = KnownColor.MediumOrchid.Vector();
 
+            const string tooltipIdentifier = "VerifiedCheckmarkIcon";
+
             if (plugin is LocalDevPlugin)
                 this.DrawFontawesomeIconOutlined(FontAwesomeIcon.Wrench, devIconOutlineColor, devIconColor);
+                this.IconFadeTooltip(label, tooltipIdentifier, "This is a dev plugin. You added it.");
+            }
             else if (!flags.HasFlag(PluginHeaderFlags.IsThirdParty))
                 this.DrawFontawesomeIconOutlined(FontAwesomeIcon.CheckCircle, verifiedOutlineColor, verifiedIconColor);
+                this.IconFadeTooltip(label, tooltipIdentifier, Locs.VerifiedCheckmark_VerifiedTooltip);
+            }
             else
                 this.DrawFontawesomeIconOutlined(FontAwesomeIcon.ExclamationCircle, unverifiedOutlineColor, unverifiedIconColor);
+                this.IconFadeTooltip(label, tooltipIdentifier, Locs.VerifiedCheckmark_UnverifiedTooltip);
+            }
+        }
+
+        // Pinned indicator
+        if (plugin != null && Service<DalamudConfiguration>.Get().PinnedPluginInternalName.Contains(plugin.Manifest.InternalName))
+        {
+            ImGui.SameLine();
+            ImGui.Text(" "u8);
+            ImGui.SameLine();
+
+            var pinIconOutlineColor = KnownColor.Crimson.Vector();
+            var pinIconColor = KnownColor.White.Vector() with { W = 0.75f };
+
+            const string tooltipIdentifier = "PinnedIcon";
+
+            this.DrawFontawesomeIconOutlined(FontAwesomeIcon.Thumbtack, pinIconOutlineColor, pinIconColor);
+            this.IconFadeTooltip(label, tooltipIdentifier, Locs.PluginIconToolTip_PinnedIconTooltip);
+        }
+
+        // Favorite star indicator
+        if (plugin != null && Service<DalamudConfiguration>.Get().FavoritePluginInternalName.Contains(plugin.Manifest.InternalName))
+        {
+            ImGui.SameLine();
+            ImGui.Text(" "u8);
+            ImGui.SameLine();
+
+            var starIconOutlineColor = KnownColor.Black.Vector();
+            var starIconColor = KnownColor.Gold.Vector();
+
+            const string tooltipIdentifier = "FavoriteIcon";
+
+            this.DrawFontawesomeIconOutlined(FontAwesomeIcon.Star, starIconOutlineColor, starIconColor);
+            this.IconFadeTooltip(label, tooltipIdentifier, Locs.PluginIconToolTip_FavoriteIconTooltip);
         }
 
         // Download count
@@ -3612,6 +3665,32 @@ internal class PluginInstallerWindow : Window, IDisposable
                 }
             }
 
+            // Favorite
+            var isFavorite = configuration.FavoritePluginInternalName.Contains(plugin.Manifest.InternalName);
+            if (ImGui.MenuItem(isFavorite ? Locs.PluginContext_RemoveFavorite : Locs.PluginContext_AddFavorite))
+            {
+                if (isFavorite)
+                    configuration.FavoritePluginInternalName.Remove(plugin.Manifest.InternalName);
+                else
+                    configuration.FavoritePluginInternalName.Add(plugin.Manifest.InternalName);
+                configuration.QueueSave();
+            }
+
+            // Pinned
+            var isPinned = configuration.PinnedPluginInternalName.Contains(plugin.Manifest.InternalName);
+            if (ImGui.MenuItem(isPinned ? Locs.PluginContext_UnpinPlugin : Locs.PluginContext_PinPlugin))
+            {
+                if (isPinned)
+                    configuration.PinnedPluginInternalName.Remove(plugin.Manifest.InternalName);
+                else
+                    configuration.PinnedPluginInternalName.Add(plugin.Manifest.InternalName);
+                configuration.QueueSave();
+                // Resort plugins to update pinned order
+                this.ResortPlugins();
+            }
+
+            ImGui.Separator();
+
             if (ImGui.MenuItem(Locs.PluginContext_DeletePluginConfigReload))
             {
                 this.ShowDeletePluginConfigWarningModal(plugin.Manifest.Name, optIn != null).ContinueWith(t =>
@@ -3739,7 +3818,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         var inSingleNonDefaultProfileWhichDoesNotWantActive =
             isInSingleProfile && !profilesThatWantThisPlugin.First().CheckWantsActiveFromGameState(Service<PlayerState>.Get().ContentId);
 
-        if (plugin.State is PluginState.UnloadError or PluginState.LoadError or PluginState.DependencyResolutionFailed && !plugin.IsDev && !plugin.IsOutdated)
+        if (plugin.State is PluginState.UnloadError or PluginState.LoadError or PluginState.DependencyResolutionFailed && config.DevMode.GetValueOrDefault(false) && !plugin.IsOutdated)
         {
             ImGuiComponents.DisabledToggleButton(toggleId, false);
 
@@ -4629,6 +4708,18 @@ internal class PluginInstallerWindow : Window, IDisposable
             default:
                 throw new InvalidEnumArgumentException("Unknown plugin sort type.");
         }
+
+        this.SortPluginsByPinnedStatus();
+    }
+
+    private void SortPluginsByPinnedStatus()
+    {
+        var configuration = Service<DalamudConfiguration>.Get();
+        var pinnedList = new HashSet<string>(configuration.PinnedPluginInternalName);
+
+        this.pluginListInstalled = this.pluginListInstalled
+                                       .OrderByDescending(p => pinnedList.Contains(p.Manifest.InternalName))
+                                       .ToList();
     }
 
     private bool WasPluginSeen(string internalName) =>
@@ -4715,23 +4806,26 @@ internal class PluginInstallerWindow : Window, IDisposable
     }
 
     // Animates a tooltip when hovering over the ImGui Item before this call.
-    private void VerifiedCheckmarkFadeTooltip(string source, string tooltip)
+    private void IconFadeTooltip(string plugin, string identifier, string tooltip)
     {
         const float fadeInStartDelay = 250.0f;
 
-        var isHoveringSameItem = this.verifiedCheckmarkHoveredPlugin == source;
+        var isHoveringSameItem = this.currentlyHoveredPlugin == plugin
+                                 && this.currentlyHoveredObject == identifier;
 
         // If we just started a hover, start the timer
         if (ImGui.IsItemHovered() && !this.tooltipFadeInStopwatch.IsRunning)
         {
-            this.verifiedCheckmarkHoveredPlugin = source;
+            this.currentlyHoveredPlugin = plugin;
+            this.currentlyHoveredObject = identifier;
             this.tooltipFadeInStopwatch.Restart();
         }
 
         // If we were last hovering this plugins item and are no longer hovered over that item, reset the timer
         if (!ImGui.IsItemHovered() && isHoveringSameItem)
         {
-            this.verifiedCheckmarkHoveredPlugin = string.Empty;
+            this.currentlyHoveredPlugin = string.Empty;
+            this.currentlyHoveredObject = string.Empty;
             this.tooltipFadeInStopwatch.Stop();
             this.tooltipFadeEasing.Reset();
         }
@@ -4822,6 +4916,8 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         public static string TabBody_NoPluginsIncompatible => "没有不兼容的插件";
 
+        public static string TabBody_NoPluginsFavorite => Loc.Localize("InstallerNoPluginsFavorite", "You don't have any favorite plugins.\nYou can mark plugins as favorite in the plugin context menu.");
+
         #endregion
 
         #region Search text
@@ -4856,13 +4952,29 @@ internal class PluginInstallerWindow : Window, IDisposable
         #endregion
 
         #region Plugin context menu
-        public static string PluginContext_TestingOptIn => "接收插件测试版";
+
+        public static string PluginContext_TestingOptIn => "接收测试版";
+
         public static string PluginContext_InstallTestingVersion => "安装测试版";
-        public static string PluginContext_MarkAllSeen => "标记所有为已查看";
-        public static string PluginContext_HidePlugin => "从安装器中隐藏";
-        public static string PluginContext_UnhidePlugin => "在安装器中显示";
-        public static string PluginContext_DeletePluginConfig => "重置插件数据";
-        public static string PluginContext_DeletePluginConfigReload => "重置插件数据并重新加载";
+
+        public static string PluginContext_MarkAllSeen => "标记全部为已查看";
+
+        public static string PluginContext_HidePlugin => "隐藏";
+
+        public static string PluginContext_UnhidePlugin => "取消隐藏";
+
+        public static string PluginContext_DeletePluginConfig => "重置数据";
+
+        public static string PluginContext_DeletePluginConfigReload => "重置数据并重载插件";
+
+        public static string PluginContext_AddFavorite => "收藏";
+
+        public static string PluginContext_RemoveFavorite => "取消收藏";
+
+        public static string PluginContext_PinPlugin => "置顶";
+
+        public static string PluginContext_UnpinPlugin => "取消置顶";
+
         #endregion
 
         #region Plugin body
@@ -4939,6 +5051,14 @@ internal class PluginInstallerWindow : Window, IDisposable
         public static string PluginButtonToolTip_SingleProfileDisabled(string name) => $"包含此插件的合集\"{name}\"已被禁用\n请在合集管理器中启用该合集, 以单独切换此插件";
 
         public static string PluginButtonToolTip_SingleProfileDoesNotWantActive(string name) => $"包含此插件的合集\"{name}\"已激活, 但未设置在当前角色上激活\n请修改该合集的设置, 或将插件从该合集中移除, 以单独切换此插件";
+
+        #endregion
+
+        #region Plugin icon tooltips
+
+        public static string PluginIconToolTip_FavoriteIconTooltip => Loc.Localize("InstallerFavoriteTooltip", "This plugin is in your favorites.");
+
+        public static string PluginIconToolTip_PinnedIconTooltip => Loc.Localize("InstallerPinnedTooltip", "This plugin is pinned to the top.");
 
         #endregion
 
