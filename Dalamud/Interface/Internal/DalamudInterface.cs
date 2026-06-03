@@ -459,7 +459,7 @@ internal class DalamudInterface : IInternalDisposableService
     /// <summary>
     /// Toggles the <see cref="StyleEditorWindow"/>.
     /// </summary>
-    public void ToggleStyleEditorWindow() => this.selfTestWindow.Toggle();
+    public void ToggleStyleEditorWindow() => this.styleEditorWindow.Toggle();
 
     /// <summary>
     /// Toggles the <see cref="ProfilerWindow"/>.
