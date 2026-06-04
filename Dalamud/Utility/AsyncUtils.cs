@@ -34,7 +34,7 @@ public static class AsyncUtils
                 }
                 else if (Interlocked.Decrement(ref remainingTasks) == 0)
                 {
-                    tcs.SetException(new AggregateException(tasks.SelectMany(f => f.Exception?.InnerExceptions)));
+                    tcs.SetException(new AggregateException(tasks.Where(f => f.Exception != null).SelectMany(f => f.Exception!.InnerExceptions)));
                 }
             });
         }
