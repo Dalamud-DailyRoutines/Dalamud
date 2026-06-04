@@ -333,3 +333,4 @@ ASALocalRun/
 #imgui/**/Generated/**/*
 
 .claude
+.codegraph
