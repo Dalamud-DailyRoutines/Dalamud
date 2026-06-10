@@ -627,7 +627,7 @@ internal class SettingsTabPlugin : SettingsTab
         ImGuiHelpers.ScaledDummy(8);
 
         ImGui.Checkbox("自动更新已禁用的插件", ref updateDisabledPlugins);
-        ImGui.Checkbox("手动更新插件时, 自动更新其他已禁用的插件", ref updateDisabledPlugins);
+        ImGui.Checkbox("手动更新插件时, 自动更新其他已禁用的插件", ref updateDisabledPluginsOnManualUpdate);
         ImGui.Checkbox("在聊天栏显示可用更新通知", ref chatNotification);
         ImGui.Checkbox("游戏运行时定期检查更新",  ref checkPeriodically);
         ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "启动后不会自动更新插件, 仅在用户未活跃游戏时接收通知");

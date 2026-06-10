@@ -38,12 +38,12 @@ internal class AutoUpdateManager : IServiceType
     /// <summary>
     /// Time we should wait after login to update.
     /// </summary>
-    private static readonly TimeSpan UpdateTimeAfterLogin = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan UpdateTimeAfterLogin = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// Time we should wait between scheduled update checks.
     /// </summary>
-    private static readonly TimeSpan TimeBetweenUpdateChecks = TimeSpan.FromHours(2);
+    private static readonly TimeSpan TimeBetweenUpdateChecks = TimeSpan.FromHours(1);
 
     /// <summary>
     /// Time we should wait between scheduled update checks if the user has dismissed the notification,
@@ -171,7 +171,8 @@ internal class AutoUpdateManager : IServiceType
 
     private void OnUpdate(IFramework framework)
     {
-        if (this.loginTime == null)
+        // If not logged in and the initial update has already completed, nothing more to do.
+        if (this.loginTime == null && this.hasStartedInitialUpdateThisSession)
             return;
 
         var autoUpdateTaskInProgress = this.autoUpdateTask is not null && !this.autoUpdateTask.IsCompleted;
@@ -209,7 +210,7 @@ internal class AutoUpdateManager : IServiceType
 
         // 1. This is the initial update after login. We only run this exactly once and this is
         //    the only time we actually install updates automatically.
-        if (!this.hasStartedInitialUpdateThisSession && DateTime.Now > this.loginTime.Value.Add(UpdateTimeAfterLogin))
+        if (!this.hasStartedInitialUpdateThisSession && (this.loginTime == null || DateTime.Now > this.loginTime.Value.Add(UpdateTimeAfterLogin)))
         {
             this.hasStartedInitialUpdateThisSession = true;
 
