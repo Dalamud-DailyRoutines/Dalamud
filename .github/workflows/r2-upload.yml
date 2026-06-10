@@ -80,6 +80,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          retry() { local n=0; until "$@"; do n=$((n+1)); [ $n -ge 3 ] && return 1; echo "Retry $n/3..."; sleep 3; done; }
+
           KEYS=$(curl -s "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/dalamud-distribute/objects?limit=1000" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result[].key')
 
