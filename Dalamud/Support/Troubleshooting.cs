@@ -88,11 +88,17 @@ public static class Troubleshooting
             var encodedPayload = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(payload)));
             Log.Information($"TROUBLESHOOTING:{encodedPayload}");
 
-            File.WriteAllText(
-                Path.Join(
-                    startInfo.LogPath,
-                    "dalamud.troubleshooting.json"),
-                JsonConvert.SerializeObject(payload, Formatting.Indented));
+            var targetPath = Path.Join(startInfo.LogPath, "dalamud.troubleshooting.json");
+            var tempPath = targetPath + "." + Guid.NewGuid().ToString("N");
+            try
+            {
+                File.WriteAllText(tempPath, JsonConvert.SerializeObject(payload, Formatting.Indented));
+                File.Move(tempPath, targetPath, overwrite: true);
+            }
+            finally
+            {
+                File.Delete(tempPath);
+            }
         }
         catch (Exception ex)
         {
