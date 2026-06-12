@@ -431,7 +431,7 @@ internal class PluginManager : IInternalDisposableService
         var repos = new List<PluginRepository>();
         repos.AddRange(this.MainRepo);
         repos.AddRange(this.configuration.ThirdRepoList
-                           .Where(repo => repo.IsEnabled)
+                           .Where(repo => repo.IsEnabled && !repo.Url.IsNullOrEmpty())
                            .DistinctBy(x => x.Url)
                            .Select(repo => new PluginRepository(this.happyHttpClient, repo.Url, repo.IsEnabled)));
 
