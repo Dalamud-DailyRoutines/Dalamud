@@ -20,7 +20,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Lumina" />
         <PackageReference Include="Newtonsoft.Json" />
     </ItemGroup>
 
@@ -28,6 +27,7 @@
         <ProjectReference Include="..\Dalamud\Dalamud.csproj">
             <Private>false</Private>
         </ProjectReference>
+        <ProjectReference Include="..\lib\Lumina\src\Lumina\Lumina.csproj" />
     </ItemGroup>
 
     <Target Name="ClearReferenceCopyLocalPaths" AfterTargets="ResolveReferences">

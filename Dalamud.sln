@@ -86,6 +86,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dalamud.EnumGenerator.Sampl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dalamud.EnumGenerator.Tests", "generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator.Tests\Dalamud.EnumGenerator.Tests.csproj", "{D14008C8-9AA9-42EF-8015-A127ADE9D5E1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lumina", "lib\Lumina\src\Lumina\Lumina.csproj", "{7D8E6633-B34E-46E8-976A-E48420868BBE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -196,6 +198,10 @@ Global
 		{D14008C8-9AA9-42EF-8015-A127ADE9D5E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D14008C8-9AA9-42EF-8015-A127ADE9D5E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D14008C8-9AA9-42EF-8015-A127ADE9D5E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D8E6633-B34E-46E8-976A-E48420868BBE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D8E6633-B34E-46E8-976A-E48420868BBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D8E6633-B34E-46E8-976A-E48420868BBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D8E6633-B34E-46E8-976A-E48420868BBE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -222,6 +228,7 @@ Global
 		{C25BBEB1-CF8A-4833-8F24-426EF16D15BA} = {3AB9894A-F1AA-4DC4-8FF2-6DCDB170F56E}
 		{464909DE-F2E2-40C7-9885-45FC979963EC} = {3AB9894A-F1AA-4DC4-8FF2-6DCDB170F56E}
 		{D14008C8-9AA9-42EF-8015-A127ADE9D5E1} = {3AB9894A-F1AA-4DC4-8FF2-6DCDB170F56E}
+		{7D8E6633-B34E-46E8-976A-E48420868BBE} = {9723B3BA-11AF-4C54-8EB5-428C1B65A4C6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {79B65AC9-C940-410E-AB61-7EA7E12C7599}
