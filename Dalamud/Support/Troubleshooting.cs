@@ -93,7 +93,7 @@ public static class Troubleshooting
             try
             {
                 File.WriteAllText(tempPath, JsonConvert.SerializeObject(payload, Formatting.Indented));
-                File.Move(tempPath, targetPath, overwrite: true);
+                File.Copy(tempPath, targetPath, overwrite: true);
             }
             finally
             {

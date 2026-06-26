@@ -549,7 +549,7 @@ internal class PluginManager : IInternalDisposableService
                 var fileInfo = new FileInfo(loadLocation.Path);
                 if (!fileInfo.Exists)
                 {
-                    Log.Error("Dev plugin path {Path} does not exist", loadLocation.Path);
+                    Log.Verbose("Dev plugin path {Path} does not exist", loadLocation.Path);
                     continue;
                 }
 
@@ -768,7 +768,7 @@ internal class PluginManager : IInternalDisposableService
             var fileInfo = new FileInfo(loadLocation.Path);
             if (!fileInfo.Exists)
             {
-                Log.Error("Dev plugin path {Path} does not exist", loadLocation.Path);
+                Log.Verbose("Dev plugin path {Path} does not exist", loadLocation.Path);
                 continue;
             }
 
