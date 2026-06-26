@@ -1593,7 +1593,10 @@ internal class PluginInstallerWindow : Window, IDisposable
         var isHovered = mousePos.X >= barTopLeft.X && mousePos.X <= barTopLeft.X + hoverWidth
                         && mousePos.Y >= barTopLeft.Y && mousePos.Y <= barTopLeft.Y + groupHeight;
 
-        if (isHovered)
+        var isFocused = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootWindow);
+        var isVisible = ImGui.IsRectVisible(barTopLeft, barBottomRight);
+
+        if (isHovered && isFocused && isVisible)
         {
             var fgDl = ImGui.GetForegroundDrawList();
             var textPadding = 8f * ImGuiHelpers.GlobalScale;
