@@ -220,7 +220,7 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
     logging::I("构建时间: " __DATE__ "@" __TIME__);
 
     if ((g_startInfo.BootWaitMessageBox & DalamudStartInfo::WaitMessageboxFlags::BeforeInitialize) != DalamudStartInfo::WaitMessageboxFlags::None)
-        MessageBoxW(nullptr, L"点击确定继续 (BeforeInitialize)", L"Dalamud 启动器", MB_OK);
+        MessageBoxW(nullptr, L"点击确定以继续 (初始化前)", L"Dalamud 启动器", MB_OK);
 
     PrintCpuGpuInfo();
     CheckMsvcrtVersion();
@@ -393,7 +393,7 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
     // ============================== Dalamud ==================================== //
 
     if (static_cast<int>(g_startInfo.BootWaitMessageBox) & static_cast<int>(DalamudStartInfo::WaitMessageboxFlags::BeforeDalamudEntrypoint))
-        MessageBoxW(nullptr, L"点击确定继续 (BeforeDalamudEntrypoint)", L"Dalamud 启动器", MB_OK);
+        MessageBoxW(nullptr, L"点击确定以继续 (Dalamud 入口点前)", L"Dalamud 启动器", MB_OK);
 
     // We don't need to do this anymore, Dalamud now loads without needing the window to be there. Speed!
     // utils::wait_for_game_window();

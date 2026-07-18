@@ -104,16 +104,16 @@ void throw_hresult(HRESULT hr, const std::string& clue = {}) {
         nullptr);
     if (!pwszMsg) {
         if (clue.empty())
-            throw std::runtime_error(std::format("Error (HRESULT=0x{:08X})", static_cast<uint32_t>(hr)));
+            throw std::runtime_error(std::format("错误 (HRESULT=0x{:08X})", static_cast<uint32_t>(hr)));
         else
-            throw std::runtime_error(std::format("Error at {} (HRESULT=0x{:08X})", clue, static_cast<uint32_t>(hr)));
+            throw std::runtime_error(std::format("{} 出错 (HRESULT=0x{:08X})", clue, static_cast<uint32_t>(hr)));
     }
 
     std::unique_ptr<wchar_t, decltype(LocalFree)*> pszMsgFree(pwszMsg, LocalFree);
     if (clue.empty())
-        throw std::runtime_error(std::format("Error (HRESULT=0x{:08X}): {}", static_cast<uint32_t>(hr), ws_to_u8(pwszMsg)));
+        throw std::runtime_error(std::format("错误 (HRESULT=0x{:08X}): {}", static_cast<uint32_t>(hr), ws_to_u8(pwszMsg)));
     else
-        throw std::runtime_error(std::format("Error at {} (HRESULT=0x{:08X}): {}", clue, static_cast<uint32_t>(hr), ws_to_u8(pwszMsg)));
+        throw std::runtime_error(std::format("{} 出错 (HRESULT=0x{:08X}): {}", clue, static_cast<uint32_t>(hr), ws_to_u8(pwszMsg)));
 }
 
 [[noreturn]]
@@ -139,11 +139,11 @@ std::wstring describe_module(const std::filesystem::path& path) {
     block.resize(GetFileVersionInfoSizeW(path.c_str(), &verHandle));
     if (block.empty()) {
         if (GetLastError() == ERROR_RESOURCE_TYPE_NOT_FOUND)
-            return L"<no information available>";
-        return std::format(L"<error: GetFileVersionInfoSizeW#1 returned {}>", GetLastError());
+            return L"<无可用信息>";
+        return std::format(L"<错误: GetFileVersionInfoSizeW#1 返回 {}>", GetLastError());
     }
     if (!GetFileVersionInfoW(path.c_str(), 0, static_cast<DWORD>(block.size()), block.data()))
-        return std::format(L"<error: GetFileVersionInfoSizeW#2 returned {}>", GetLastError());
+        return std::format(L"<错误: GetFileVersionInfoSizeW#2 返回 {}>", GetLastError());
 
     UINT size = 0;
 
@@ -151,7 +151,7 @@ std::wstring describe_module(const std::filesystem::path& path) {
     if (LPVOID lpBuffer; VerQueryValueW(block.data(), L"\\", &lpBuffer, &size)) {
         const auto& v = *static_cast<const VS_FIXEDFILEINFO*>(lpBuffer);
         if (v.dwSignature != 0xfeef04bd || sizeof v > size) {
-            version = L"<invalid version information>";
+            version = L"<无效的版本信息>";
         } else {
             if (v.dwFileVersionMS == v.dwProductVersionMS && v.dwFileVersionLS == v.dwProductVersionLS) {
                 version = std::format(L"v{}.{}.{}.{}",
@@ -160,7 +160,7 @@ std::wstring describe_module(const std::filesystem::path& path) {
                     (v.dwProductVersionLS >> 16) & 0xFFFF,
                     (v.dwProductVersionLS >> 0) & 0xFFFF);
             } else {
-                version = std::format(L"file=v{}.{}.{}.{} prod=v{}.{}.{}.{}",
+                version = std::format(L"文件=v{}.{}.{}.{} 产品=v{}.{}.{}.{}",
                     (v.dwFileVersionMS >> 16) & 0xFFFF,
                     (v.dwFileVersionMS >> 0) & 0xFFFF,
                     (v.dwFileVersionLS >> 16) & 0xFFFF,
@@ -173,7 +173,7 @@ std::wstring describe_module(const std::filesystem::path& path) {
         }
     }
 
-    std::wstring description = L"<no description>";
+    std::wstring description = L"<无描述>";
     if (LPVOID lpBuffer; VerQueryValueW(block.data(), L"\\VarFileInfo\\Translation", &lpBuffer, &size)) {
         struct LANGANDCODEPAGE {
             WORD wLanguage;
@@ -1373,7 +1373,7 @@ void print_thread_call_stack(HANDLE hThread, const CONTEXT& ctx, std::wostringst
         };
 
         if (!tryStackWalk())
-            log << L"\n  Access violation while walking up the stack.";
+            log << L"\n  向上遍历调用堆栈时发生访问冲突";
     }
 }
 
@@ -1405,7 +1405,7 @@ void print_exception_info(DWORD threadId, HANDLE hThread, const EXCEPTION_POINTE
             log << std::format(L"地址: {:X}\n", reinterpret_cast<size_t>(exRecs.back().ExceptionAddress));
             if (exRecs.back().NumberParameters)
             {
-                log << L"Parameters: ";
+                log << L"参数: ";
                 for (DWORD i = 0; i < exRecs.back().NumberParameters; ++i)
                 {
                     if (i != 0)
@@ -1420,11 +1420,11 @@ void print_exception_info(DWORD threadId, HANDLE hThread, const EXCEPTION_POINTE
 
     const std::wstring crashThreadName = get_thread_name(hThread);
 
-    log << std::format(L"\nThread: 0x{:X}", threadId);
+    log << std::format(L"\n线程: 0x{:X}", threadId);
     if (!crashThreadName.empty())
         log << std::format(L" ({})\n", crashThreadName);
 
-    log << L"\n" << L"Call Stack" << L"\n{";
+    log << L"\n" << L"调用堆栈" << L"\n{";
     print_thread_call_stack(hThread, ctx, log);
     log << L"\n}\n";
 }
@@ -1436,7 +1436,7 @@ void print_all_threads_info(DWORD crashingThreadId, std::wostringstream& log)
     const HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
     if (hSnap == INVALID_HANDLE_VALUE)
     {
-        log << std::format(L"\n[All Threads] CreateToolhelp32Snapshot failed: 0x{:X}\n",
+        log << std::format(L"\n[所有线程] CreateToolhelp32Snapshot 失败: 0x{:X}\n",
             GetLastError());
         return;
     }
@@ -1462,8 +1462,8 @@ void print_all_threads_info(DWORD crashingThreadId, std::wostringstream& log)
             FALSE, te.th32ThreadID);
         if (!hThread)
         {
-            log << std::format(L"\nThread 0x{:X} Call Stack\n{{\n"
-                               L"  (OpenThread failed: error 0x{:X})\n}}\n",
+            log << std::format(L"\n线程 0x{:X} 调用堆栈\n{{\n"
+                               L"  (OpenThread 失败: 错误 0x{:X})\n}}\n",
                 te.th32ThreadID, GetLastError());
             continue;
         }
@@ -1473,8 +1473,8 @@ void print_all_threads_info(DWORD crashingThreadId, std::wostringstream& log)
         const DWORD suspendCount = SuspendThread(hThread);
         if (suspendCount == static_cast<DWORD>(-1))
         {
-            log << std::format(L"\nThread 0x{:X} Call Stack\n{{\n"
-                               L"  (SuspendThread failed: error 0x{:X})\n}}\n",
+            log << std::format(L"\n线程 0x{:X} 调用堆栈\n{{\n"
+                               L"  (SuspendThread 失败: 错误 0x{:X})\n}}\n",
                 te.th32ThreadID, GetLastError());
             continue;
         }
@@ -1487,18 +1487,18 @@ void print_all_threads_info(DWORD crashingThreadId, std::wostringstream& log)
 
         if (!gotCtx)
         {
-            log << std::format(L"\nThread 0x{:X} Call Stack\n{{\n"
-                               L"  (GetThreadContext failed: error 0x{:X})\n}}\n",
+            log << std::format(L"\n线程 0x{:X} 调用堆栈\n{{\n"
+                               L"  (GetThreadContext 失败: 错误 0x{:X})\n}}\n",
                 te.th32ThreadID, GetLastError());
             continue;
         }
 
         const std::wstring threadName = get_thread_name(hThread);
         const std::wstring threadLabel = threadName.empty()
-            ? std::format(L"Thread 0x{:X}", te.th32ThreadID)
-            : std::format(L"Thread 0x{:X} \"{}\"", te.th32ThreadID, threadName);
+            ? std::format(L"线程 0x{:X}", te.th32ThreadID)
+            : std::format(L"线程 0x{:X} \"{}\"", te.th32ThreadID, threadName);
 
-        log << std::format(L"\n{} Call Stack\n{{", threadLabel);
+        log << std::format(L"\n{} 调用堆栈\n{{", threadLabel);
         print_thread_call_stack(hThread, ctx, log);
         log << L"\n}\n";
 
@@ -1507,7 +1507,7 @@ void print_all_threads_info(DWORD crashingThreadId, std::wostringstream& log)
 
 void print_exception_info_extended(const EXCEPTION_POINTERS& ex, const CONTEXT& ctx, std::wostringstream& log)
 {
-    log << L"\nRegisters\n{";
+    log << L"\n寄存器\n{";
 
     log << std::format(L"\n  RAX:\t{}", to_address_string(ctx.Rax));
     log << std::format(L"\n  RBX:\t{}", to_address_string(ctx.Rbx));
@@ -1532,7 +1532,7 @@ void print_exception_info_extended(const EXCEPTION_POINTERS& ex, const CONTEXT& 
 
     if(0x10000 < ctx.Rsp && ctx.Rsp < 0x7FFFFFFE0000)
     {
-        log << L"\nStack\n{";
+        log << L"\n堆栈\n{";
 
         DWORD64 stackData[16];
         size_t read;
@@ -1543,7 +1543,7 @@ void print_exception_info_extended(const EXCEPTION_POINTERS& ex, const CONTEXT& 
         log << L"\n}\n";
     }
 
-    log << L"\nModules\n{";
+    log << L"\n模块\n{";
 
     for (const auto& [hModule, path] : get_remote_module_paths())
         log << std::format(L"\n  {:08X}\t{}\t{}", reinterpret_cast<DWORD64>(hModule), path.wstring(), describe_module(path));
@@ -1618,8 +1618,8 @@ void export_tspack(HWND hWndParent, const std::filesystem::path& logDir, const s
     };
     static constexpr auto MaxSizePerLog = 1 * 1024 * 1024;
     static constexpr std::array<COMDLG_FILTERSPEC, 2> OutputFileTypeFilterSpec{{
-        { L"Dalamud Troubleshooting Pack File (*.tspack)", L"*.tspack" },
-        { L"All files (*.*)", L"*" },
+        { L"Dalamud 故障排除信息包 (*.tspack)", L"*.tspack" },
+        { L"所有文件 (*.*)", L"*" },
     }};
 
     std::optional<std::wstring> filePath;
@@ -1632,7 +1632,7 @@ void export_tspack(HWND hWndParent, const std::filesystem::path& logDir, const s
         throw_if_failed(pDialog->SetClientGuid(Guid_IFileDialog_Tspack), {}, "pDialog->SetClientGuid");
         throw_if_failed(pDialog->SetFileTypes(static_cast<UINT>(OutputFileTypeFilterSpec.size()), OutputFileTypeFilterSpec.data()), {}, "pDialog->SetFileTypes");
         throw_if_failed(pDialog->SetFileTypeIndex(0), {}, "pDialog->SetFileTypeIndex");
-        throw_if_failed(pDialog->SetTitle(L"Export Dalamud Troubleshooting Pack"), {}, "pDialog->SetTitle");
+        throw_if_failed(pDialog->SetTitle(L"导出 Dalamud 故障排除信息包"), {}, "pDialog->SetTitle");
         throw_if_failed(pDialog->SetFileName(std::format(L"crash-{:04}{:02}{:02}{:02}{:02}{:02}.tspack", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond).c_str()), {}, "pDialog->SetFileName");
         throw_if_failed(pDialog->SetDefaultExtension(L"tspack"), {}, "pDialog->SetDefaultExtension");
         switch (throw_if_failed(pDialog->Show(hWndParent), { HRESULT_FROM_WIN32(ERROR_CANCELLED) }, "pDialog->Show")) {
@@ -1654,30 +1654,30 @@ void export_tspack(HWND hWndParent, const std::filesystem::path& logDir, const s
         zipa.m_pRead = [](void* pOpaque, mz_uint64 file_ofs, void* pBuf, size_t n) -> size_t {
             const auto pStream = static_cast<std::fstream*>(pOpaque);
             if (!pStream || !pStream->is_open())
-                throw std::runtime_error("Read operation failed: Stream is not open");
+                throw std::runtime_error("读取操作失败: 流未打开");
             pStream->seekg(file_ofs, std::ios::beg);
             if (pStream->fail())
-                throw std::runtime_error("Read operation failed: Error seeking in stream");
+                throw std::runtime_error("读取操作失败: 定位流失败");
             pStream->read(static_cast<char*>(pBuf), n);
             if (pStream->fail())
-                throw std::runtime_error("Read operation failed: Error reading from stream");
+                throw std::runtime_error("读取操作失败: 从流读取失败");
             return pStream->gcount();
         };
         zipa.m_pWrite = [](void* pOpaque, mz_uint64 file_ofs, const void* pBuf, size_t n) -> size_t {
             const auto pStream = static_cast<std::fstream*>(pOpaque);
             if (!pStream || !pStream->is_open())
-                throw std::runtime_error("Write operation failed: Stream is not open");
+                throw std::runtime_error("写入操作失败: 流未打开");
             pStream->seekp(file_ofs, std::ios::beg);
             if (pStream->fail())
-                throw std::runtime_error("Write operation failed: Error seeking in stream");
+                throw std::runtime_error("写入操作失败: 定位流失败");
             pStream->write(static_cast<const char*>(pBuf), n);
             if (pStream->fail())
-                throw std::runtime_error("Write operation failed: Error writing to stream");
+                throw std::runtime_error("写入操作失败: 写入流失败");
             return n;
         };
         const auto mz_throw_if_failed = [&zipa](mz_bool res, const std::string& clue) {
             if (!res)
-                throw std::runtime_error(std::format("Failed to save file at {}: mz_error={} description={}", clue, static_cast<int>(mz_zip_get_last_error(&zipa)), mz_zip_get_error_string(mz_zip_get_last_error(&zipa))));
+                throw std::runtime_error(std::format("在 {} 保存文件失败: mz_error={} 说明={}", clue, static_cast<int>(mz_zip_get_last_error(&zipa)), mz_zip_get_error_string(mz_zip_get_last_error(&zipa))));
         };
 
         mz_throw_if_failed(mz_zip_writer_init_v2(&zipa, 0, 0), "mz_zip_writer_init_v2");
@@ -1701,10 +1701,10 @@ void export_tspack(HWND hWndParent, const std::filesystem::path& logDir, const s
         for (const auto& pcszLogFileName : SourceLogFiles) {
             const auto logFilePath = logDir / pcszLogFileName;
             if (!exists(logFilePath)) {
-                logExportLog += std::format("File does not exist: {}\n", ws_to_u8(logFilePath.wstring()));
+                logExportLog += std::format("文件不存在: {}\n", ws_to_u8(logFilePath.wstring()));
                 continue;
             } else {
-                logExportLog += std::format("Including: {}\n", ws_to_u8(logFilePath.wstring()));
+                logExportLog += std::format("已包含: {}\n", ws_to_u8(logFilePath.wstring()));
             }
 
             const auto hLogFile = CreateFileW(logFilePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
@@ -1749,7 +1749,7 @@ void export_tspack(HWND hWndParent, const std::filesystem::path& logDir, const s
         mz_throw_if_failed(mz_zip_writer_end(&zipa), "mz_zip_writer_end");
 
     } catch (const std::exception& e) {
-        MessageBoxW(hWndParent, std::format(L"Failed to save file: {}", u8_to_ws(e.what())).c_str(), get_window_string(hWndParent).c_str(), MB_OK | MB_ICONERROR);
+        MessageBoxW(hWndParent, std::format(L"保存文件失败: {}", u8_to_ws(e.what())).c_str(), get_window_string(hWndParent).c_str(), MB_OK | MB_ICONERROR);
         if (filePath) {
             try {
                 std::filesystem::remove(*filePath);
@@ -1836,7 +1836,7 @@ void restart_game_using_injector(int nRadioButton, const std::vector<std::wstrin
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
     } else {
-        MessageBoxW(nullptr, std::format(L"重新启动失败: 0x{:x}", GetLastError()).c_str(), L"Dalamud Boot", MB_ICONERROR | MB_OK);
+        MessageBoxW(nullptr, std::format(L"重新启动失败: 0x{:x}", GetLastError()).c_str(), L"Dalamud 启动器", MB_ICONERROR | MB_OK);
     }
 }
 
@@ -2063,7 +2063,7 @@ int main() {
         // Initialize (or refresh) the DAC for mixed-mode stack walking.
         // The crashing thread OS ID and its context at crash time are needed to seed the data target.
         if (pProgressDialog)
-            pProgressDialog->SetLine(3, L"Initializing DAC for mixed-mode trace", FALSE, NULL);
+            pProgressDialog->SetLine(3, L"正在为混合模式调用堆栈初始化 DAC", FALSE, NULL);
 
         const DWORD crashingThreadOsId = GetThreadId(exinfo.hThreadHandle);
         if (g_pClrDataProcess)
@@ -2128,14 +2128,14 @@ int main() {
             do {
                 const auto hDumpFile = CreateFileW(dumpPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
                 if (hDumpFile == INVALID_HANDLE_VALUE) {
-                    dumpError = std::format(L"CreateFileW({}, GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr) error: 0x{:x}", dumpPath.wstring(), GetLastError());
+                    dumpError = std::format(L"CreateFileW({}, GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr) 错误: 0x{:x}", dumpPath.wstring(), GetLastError());
                     logging::E(dumpError);
                     break;
                 }
 
                 std::unique_ptr<std::remove_pointer_t<HANDLE>, decltype(&CloseHandle)> hDumpFilePtr(hDumpFile, &CloseHandle);
                 if (!MiniDumpWriteDump(g_hProcess, dwProcessId, hDumpFile, fullDump ? MiniDumpWithFullMemory : static_cast<MINIDUMP_TYPE>(MiniDumpWithDataSegs | MiniDumpWithModuleHeaders), &mdmp_info, nullptr, nullptr)) {
-                    dumpError = std::format(L"MiniDumpWriteDump(0x{:x}, {}, 0x{:x}({}), MiniDumpWithFullMemory, ..., nullptr, nullptr) error: 0x{:x}", reinterpret_cast<size_t>(g_hProcess), dwProcessId, reinterpret_cast<size_t>(hDumpFile), dumpPath.wstring(), GetLastError());
+                    dumpError = std::format(L"MiniDumpWriteDump(0x{:x}, {}, 0x{:x}({}), MiniDumpWithFullMemory, ..., nullptr, nullptr) 错误: 0x{:x}", reinterpret_cast<size_t>(g_hProcess), dwProcessId, reinterpret_cast<size_t>(hDumpFile), dumpPath.wstring(), GetLastError());
                     logging::E(dumpError);
                     break;
                 }
@@ -2174,7 +2174,7 @@ int main() {
 
         if (!stackTrace.empty())
         {
-            log << L"\nAdditional Information\n{";
+            log << L"\n附加信息\n{";
             log << L"\n" << stackTrace;
             log << L"\n}\n";
         }
@@ -2190,7 +2190,7 @@ int main() {
 
         print_exception_info_extended(exinfo.ExceptionPointers, exinfo.ContextRecord, log);
 
-        log << L"\n======= All threads follow (except crashing thread) =======\n";
+        log << L"\n======= 以下为所有其他线程 (不包括崩溃线程) =======\n";
         print_all_threads_info(crashingThreadOsId, log);
         if (const auto temp = ws_to_u8(log.str()); !temp.empty()) {
             std::ofstream(logPath, std::ios::binary).write(temp.data(), temp.size());

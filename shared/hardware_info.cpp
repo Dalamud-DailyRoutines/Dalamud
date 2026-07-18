@@ -80,7 +80,7 @@ namespace {
         for (UINT i = 0; pFactory->EnumAdapters1(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i) {
             DXGI_ADAPTER_DESC1 adapterDescription{};
             pAdapter->GetDesc1(&adapterDescription);
-            lines.push_back(std::format(L"GPU Desc: {}", adapterDescription.Description));
+            lines.push_back(std::format(L"显卡描述: {}", adapterDescription.Description));
             pAdapter->Release();
         }
 
@@ -98,15 +98,15 @@ namespace hardware_info {
         get_cpu_info(vendor, std::size(vendor), brand, std::size(brand));
 
         std::vector<std::wstring> lines;
-        lines.push_back(std::format(L"CPU Vendor: {}", vendor));
-        lines.push_back(std::format(L"CPU Brand: {}", brand));
-        lines.push_back(std::format(L"BIOS Vendor: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BIOSVendor")));
-        lines.push_back(std::format(L"BIOS Version: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BIOSVersion")));
-        lines.push_back(std::format(L"BIOS Release Date: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BIOSReleaseDate")));
-        lines.push_back(std::format(L"Base Board Manufacturer: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BaseBoardManufacturer")));
-        lines.push_back(std::format(L"Base Board Product: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BaseBoardProduct")));
-        lines.push_back(std::format(L"Central Processor Identifier: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(CentralProcessorPath), L"Identifier")));
-        lines.push_back(std::format(L"Central Processor Update Revision: {}", get_registry_value_bin(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", "Update Revision")));
+        lines.push_back(std::format(L"CPU 供应商: {}", vendor));
+        lines.push_back(std::format(L"CPU 型号: {}", brand));
+        lines.push_back(std::format(L"BIOS 供应商: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BIOSVendor")));
+        lines.push_back(std::format(L"BIOS 版本: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BIOSVersion")));
+        lines.push_back(std::format(L"BIOS 发布日期: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BIOSReleaseDate")));
+        lines.push_back(std::format(L"主板制造商: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BaseBoardManufacturer")));
+        lines.push_back(std::format(L"主板型号: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(BiosPath), L"BaseBoardProduct")));
+        lines.push_back(std::format(L"中央处理器标识符: {}", get_registry_value_str(HKEY_LOCAL_MACHINE, std::wstring(CentralProcessorPath), L"Identifier")));
+        lines.push_back(std::format(L"中央处理器更新修订版: {}", get_registry_value_bin(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", "Update Revision")));
         append_gpu_lines(lines);
         return lines;
     }
