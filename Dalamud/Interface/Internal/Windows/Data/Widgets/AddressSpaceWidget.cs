@@ -40,7 +40,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["addressspace", "vmmap"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Address Space";
+    public string DisplayName { get; init; } = "地址空间";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -58,15 +58,15 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         if (!this.scanned)
             this.Rescan();
 
-        if (ImGui.Button("Rescan"u8))
+        if (ImGui.Button("重新扫描"u8))
             this.Rescan();
 
         ImGui.SameLine();
-        if (ImGui.Button("Dump map to log"u8))
+        if (ImGui.Button("将内存映射输出到日志"u8))
             this.DumpToLog();
 
         ImGui.SameLine();
-        ImGui.TextDisabled($"{this.regions.Count} regions");
+        ImGui.TextDisabled($"{this.regions.Count} 个区域");
 
         ImGui.Separator();
 
@@ -142,12 +142,12 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
             foreach (ProcessModule module in process.Modules)
             {
                 var mid = (ulong)module.BaseAddress + ((ulong)module.ModuleMemorySize / 2);
-                this.anchors.Add(new AnchorChoice($"{module.ModuleName} (midpoint)", mid));
+                this.anchors.Add(new AnchorChoice($"{module.ModuleName} (中点)", mid));
             }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Could not enumerate modules for the address space widget");
+            Log.Warning(ex, "无法枚举地址空间工具所需的模块");
         }
 
         var mainName = Process.GetCurrentProcess().MainModule?.ModuleName;
@@ -162,7 +162,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
             }
         }
 
-        this.anchors.Add(new AnchorChoice("Custom address", 0));
+        this.anchors.Add(new AnchorChoice("自定义地址", 0));
 
         if (this.selectedAnchor >= this.anchors.Count)
             this.selectedAnchor = 0;
@@ -174,7 +174,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
             return 0;
 
         var choice = this.anchors[Math.Clamp(this.selectedAnchor, 0, this.anchors.Count - 1)];
-        if (choice.Name != "Custom address")
+        if (choice.Name != "自定义地址")
             return choice.Address;
 
         var text = this.customAddress.Trim();
@@ -244,7 +244,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
 
         var current = this.anchors[Math.Clamp(this.selectedAnchor, 0, this.anchors.Count - 1)];
 
-        using (var combo = ImRaii.Combo("Anchor"u8, current.Name))
+        using (var combo = ImRaii.Combo("锚点"u8, current.Name))
         {
             if (combo.Success)
             {
@@ -259,7 +259,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
             }
         }
 
-        if (current.Name == "Custom address" && ImGui.InputText("Address (hex)"u8, ref this.customAddress, 32))
+        if (current.Name == "自定义地址" && ImGui.InputText("地址 (十六进制)"u8, ref this.customAddress, 32))
             this.Recompute();
     }
 
@@ -267,7 +267,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
     {
         if (this.stats.WindowSize == 0)
         {
-            ImGui.TextDisabled("Pick an anchor, or enter a valid hex address."u8);
+            ImGui.TextDisabled("选择锚点, 或输入有效的十六进制地址"u8);
             return;
         }
 
@@ -276,20 +276,20 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         var stranded = s.Free > allocatable ? s.Free - allocatable : 0;
         var exhaustion = 1.0f - (allocatable / (float)s.WindowSize);
 
-        ImGui.Text($"Anchor 0x{s.Anchor:X}, window 0x{s.WindowStart:X} - 0x{s.WindowEnd:X} ({FormatBytes(s.WindowSize)})");
+        ImGui.Text($"锚点 0x{s.Anchor:X}, 窗口 0x{s.WindowStart:X} - 0x{s.WindowEnd:X} ({FormatBytes(s.WindowSize)})");
 
-        ImGui.ProgressBar(exhaustion, new Vector2(-1, 0), $"{exhaustion * 100:F2}% exhausted");
+        ImGui.ProgressBar(exhaustion, new Vector2(-1, 0), $"已耗尽 {exhaustion * 100:F2}%");
 
         using (var table = ImRaii.Table("##addressSpaceSummary"u8, 2, ImGuiTableFlags.SizingFixedFit))
         {
             if (table.Success)
             {
-                Row("Allocatable", $"{FormatBytes(allocatable)} in {s.AllocatableGranules} granules of 64KB");
-                Row("Largest run", FormatBytes(s.LargestFreeRun));
-                Row("Free (raw)", FormatBytes(s.Free));
-                Row("Free but stranded", FormatBytes(stranded));
-                Row("Reserved", FormatBytes(s.Reserved));
-                Row("Committed", FormatBytes(s.Committed));
+                Row("可分配", $"{FormatBytes(allocatable)}, 共 {s.AllocatableGranules} 个 64 KB 粒度块");
+                Row("最大连续空间", FormatBytes(s.LargestFreeRun));
+                Row("空闲 (原始)", FormatBytes(s.Free));
+                Row("零散空闲空间", FormatBytes(stranded));
+                Row("已保留", FormatBytes(s.Reserved));
+                Row("已提交", FormatBytes(s.Committed));
             }
         }
 
@@ -297,13 +297,13 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         {
             ImGui.TextColored(
                 ImGuiColors.DalamudRed,
-                "No 64KB slot is free in this window. A hook here cannot get a trampoline in range."u8);
+                "此窗口范围内没有空闲的 64 KB 槽位, 此处的 Hook 无法获得范围内的跳板"u8);
         }
         else if (s.AllocatableGranules < 16)
         {
             ImGui.TextColored(
                 ImGuiColors.DalamudOrange,
-                $"Only {s.AllocatableGranules} slots left in this window.");
+                $"此窗口范围内仅剩 {s.AllocatableGranules} 个槽位");
         }
 
         return;
@@ -323,7 +323,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         if (this.stats.WindowSize == 0)
             return;
 
-        ImGui.Text("Largest free blocks in window"u8);
+        ImGui.Text("窗口范围内最大的空闲块"u8);
 
         var blocks = this.regions
                          .Where(x => (x.State & MEM.MEM_FREE) != 0)
@@ -338,10 +338,10 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         if (!table.Success)
             return;
 
-        ImGui.TableSetupColumn("Start"u8);
-        ImGui.TableSetupColumn("End"u8);
-        ImGui.TableSetupColumn("Size"u8);
-        ImGui.TableSetupColumn("64KB slots"u8);
+        ImGui.TableSetupColumn("起始地址"u8);
+        ImGui.TableSetupColumn("结束地址"u8);
+        ImGui.TableSetupColumn("大小"u8);
+        ImGui.TableSetupColumn("64 KB 槽位"u8);
         ImGui.TableHeadersRow();
 
         foreach (var block in blocks)
@@ -363,22 +363,22 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         var s = this.stats;
         var sb = new StringBuilder();
 
-        sb.AppendLine($"Address space map ({this.regions.Count} regions)");
+        sb.AppendLine($"地址空间映射 ({this.regions.Count} 个区域)");
 
         if (s.WindowSize != 0)
         {
             var allocatable = s.AllocatableGranules * Granularity;
             sb.AppendLine(
-                $"Window around 0x{s.Anchor:X}: 0x{s.WindowStart:X}-0x{s.WindowEnd:X}, " +
-                $"allocatable {allocatable} ({s.AllocatableGranules} granules), free {s.Free}, " +
-                $"reserved {s.Reserved}, committed {s.Committed}, largest run {s.LargestFreeRun}");
+                $"0x{s.Anchor:X} 周围的窗口: 0x{s.WindowStart:X}-0x{s.WindowEnd:X}, " +
+                $"可分配 {allocatable} ({s.AllocatableGranules} 个粒度块), 空闲 {s.Free}, " +
+                $"已保留 {s.Reserved}, 已提交 {s.Committed}, 最大连续空间 {s.LargestFreeRun}");
         }
 
         foreach (var region in this.regions)
         {
-            var state = (region.State & MEM.MEM_FREE) != 0 ? "FREE" :
-                        (region.State & MEM.MEM_COMMIT) != 0 ? "COMMIT" : "RESERVE";
-            sb.AppendLine($"0x{region.Start:X16}-0x{region.End:X16} {region.Size,16} {state,-8} protect=0x{region.Protect:X}");
+            var state = (region.State & MEM.MEM_FREE) != 0 ? "空闲" :
+                        (region.State & MEM.MEM_COMMIT) != 0 ? "提交" : "保留";
+            sb.AppendLine($"0x{region.Start:X16}-0x{region.End:X16} {region.Size,16} {state,-8} 保护=0x{region.Protect:X}");
         }
 
         Log.Information("{Map}", sb.ToString());

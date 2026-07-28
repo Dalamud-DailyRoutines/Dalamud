@@ -2,8 +2,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using CheapLoc;
-
 using Dalamud.Game.Agent;
 using Dalamud.Game.Agent.AgentArgTypes;
 using Dalamud.Game.Gui;
@@ -46,8 +44,6 @@ internal sealed unsafe class LobbyProfileHandler : IInternalDisposableService
 
     /// <summary>Finalizes an instance of the <see cref="LobbyProfileHandler"/> class.</summary>
     ~LobbyProfileHandler() => this.Dispose(false);
-
-    private string LocDalamudLoadingPluginsForCharacter => Loc.Localize("LoadingPluginsForCharacter", "Loading plugins for this character...");
 
     /// <inheritdoc/>
     void IInternalDisposableService.DisposeService() => this.Dispose(true);
@@ -115,7 +111,7 @@ internal sealed unsafe class LobbyProfileHandler : IInternalDisposableService
                 .PushColorType(539)
                 .Append($"{SeIconChar.BoxedLetterD.ToIconString()} ")
                 .PopColorType()
-                .Append(this.LocDalamudLoadingPluginsForCharacter)
+                .Append("正在为此角色加载插件...")
                 .GetViewAsSpan());
 
             addonSelectYesno->YesButton->SetEnabledState(false);

@@ -32,7 +32,7 @@ internal class SafetyHookHook<T> : Hook<T> where T : Delegate
         this.detour = detour;
         this.handle = SafetyHookNative.Create(address, Marshal.GetFunctionPointerForDelegate(detour), out var error);
         if (this.handle == 0)
-            throw new InvalidOperationException($"Could not create safetyhook hook at 0x{address:X}: {error.Describe()}");
+            throw new InvalidOperationException($"无法在 0x{address:X} 创建 SafetyHook Hook: {error.Describe()}");
 
         // The trampoline lives for as long as the handle does, so it's safe to bind the delegate once here
         this.Original = Marshal.GetDelegateForFunctionPointer<T>(SafetyHookNative.GetTrampoline(this.handle));
@@ -84,7 +84,7 @@ internal class SafetyHookHook<T> : Hook<T> where T : Delegate
         this.CheckDisposed();
 
         if (SafetyHookNative.Enable(this.handle, out var error) == 0)
-            throw new InvalidOperationException($"Could not enable safetyhook hook at 0x{this.Address:X}: {error.Describe()}");
+            throw new InvalidOperationException($"无法启用位于 0x{this.Address:X} 的 SafetyHook Hook: {error.Describe()}");
 
         // SH only patches the target function now, so this is the first point at which the unhooker can tell
         // how many bytes it would have to restored
@@ -100,6 +100,6 @@ internal class SafetyHookHook<T> : Hook<T> where T : Delegate
             return;
 
         if (SafetyHookNative.Disable(this.handle, out var error) == 0)
-            throw new InvalidOperationException($"Could not disable safetyhook hook at 0x{this.Address:X}: {error.Describe()}");
+            throw new InvalidOperationException($"无法禁用位于 0x{this.Address:X} 的 SafetyHook Hook: {error.Describe()}");
     }
 }

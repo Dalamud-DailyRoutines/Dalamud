@@ -116,9 +116,9 @@ internal static partial class SafetyHookNative
         /// <returns>A human-readable description.</returns>
         public readonly string Describe() => this.Type switch
         {
-            ErrorType.BadAllocation => $"{this.Type} (allocator error {this.AllocatorError})",
+            ErrorType.BadAllocation => $"{this.Type} (分配器错误 {this.AllocatorError})",
             ErrorType.None or ErrorType.InvalidHandle or ErrorType.Exception => this.Type.ToString(),
-            _ => $"{this.Type} (at 0x{this.Ip:X})",
+            _ => $"{this.Type} (位于 0x{this.Ip:X})",
         };
     }
 }

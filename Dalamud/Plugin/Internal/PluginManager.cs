@@ -387,7 +387,7 @@ internal class PluginManager : IInternalDisposableService
         if (disposablePlugins.Length == 0)
             return;
 
-        Log.Information("==== UNLOADING ALL PLUGINS ====");
+        Log.Information("==== 正在卸载所有插件 ====");
 
         // Any unload/dispose operation called from this function log errors on their own.
         // Ignore all errors.

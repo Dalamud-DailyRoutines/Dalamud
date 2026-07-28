@@ -133,7 +133,7 @@ namespace Dalamud.Injector
             InitUnhandledException(args);
 
             var cwd = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory
-                      ?? throw new DirectoryNotFoundException("Could not determine binary location.");
+                      ?? throw new DirectoryNotFoundException("无法确定二进制文件所在目录");
 
             if (cwd.FullName != Directory.GetCurrentDirectory())
             {
@@ -675,7 +675,7 @@ namespace Dalamud.Injector
             foreach (var process in processes)
             {
                 var processBinaryPath = process.MainModule?.FileName
-                    ?? throw new CommandLineException($"Could not determine binary path for process {process.Id}.");
+                    ?? throw new CommandLineException($"无法确定进程 {process.Id} 的二进制文件路径");
 
                 Inject(process, AdjustStartInfo(dalamudStartInfo, processBinaryPath), tryFixAcl);
             }
@@ -840,7 +840,7 @@ namespace Dalamud.Injector
                     if (dalamudStartInfo.Platform == OSPlatform.Windows)
                     {
                         gamePath = FindGamePathFromLauncherConfig();
-                        Log.Information("使用·XIVLauncher·配置的游戏安装路径: {0}", gamePath);
+                        Log.Information("使用 XIVLauncher 配置的游戏安装路径: {0}", gamePath);
                     }
                     else if (dalamudStartInfo.Platform == OSPlatform.Linux)
                     {
@@ -870,7 +870,7 @@ namespace Dalamud.Injector
 
                 if (gamePath == null)
                 {
-                    Log.Error("Game path not specified and could not be determined from launcher config, please specify one using -g");
+                    Log.Error("未指定游戏路径, 且无法从启动器配置中确定路径, 请使用 -g 参数指定");
                     return -1;
                 }
 
@@ -884,7 +884,7 @@ namespace Dalamud.Injector
             if (useFakeArguments)
             {
                 var gameParent = Directory.GetParent(gamePath)?.FullName
-                    ?? throw new DirectoryNotFoundException($"Could not determine parent directory of {gamePath}.");
+                    ?? throw new DirectoryNotFoundException($"无法确定 {gamePath} 的父目录");
 
                 var gameVersion = File.ReadAllText(Path.Combine(gameParent, "ffxivgame.ver"));
                 var sqpackPath = Path.Combine(gameParent, "sqpack");
@@ -946,7 +946,7 @@ namespace Dalamud.Injector
             }
 
             var process = GameStart.LaunchGame(
-                Path.GetDirectoryName(gamePath) ?? throw new DirectoryNotFoundException($"Could not determine parent directory of {gamePath}."),
+                Path.GetDirectoryName(gamePath) ?? throw new DirectoryNotFoundException($"无法确定 {gamePath} 的父目录"),
                 gamePath,
                 gameArgumentString,
                 noFixAcl,
@@ -1072,7 +1072,7 @@ namespace Dalamud.Injector
 
             var result = JsonSerializer.CreateDefault().Deserialize<Dictionary<string, int>>(new JsonTextReader(helperProcess.StandardOutput));
             if (result == null)
-                throw new Exception("Could not get result from game process");
+                throw new Exception("无法从游戏进程获取结果");
 
             var pid = result["pid"];
             var handle = (IntPtr)result["handle"];
@@ -1086,7 +1086,7 @@ namespace Dalamud.Injector
 
         private static DalamudStartInfo AdjustStartInfo(DalamudStartInfo startInfo, string gamePath)
         {
-            var ffxivDir = Path.GetDirectoryName(gamePath) ?? throw new DirectoryNotFoundException($"Could not determine parent directory of {gamePath}.");
+            var ffxivDir = Path.GetDirectoryName(gamePath) ?? throw new DirectoryNotFoundException($"无法确定 {gamePath} 的父目录");
             var gameVerStr = File.ReadAllText(Path.Combine(ffxivDir, "ffxivgame.ver"));
             var gameVer = GameVersion.Parse(gameVerStr);
 

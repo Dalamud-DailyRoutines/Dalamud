@@ -1,5 +1,3 @@
-using CheapLoc;
-
 using Dalamud.Configuration.Internal;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
@@ -116,10 +114,10 @@ internal sealed unsafe class TitleScreenVersionInfo : IInternalDisposableService
             .PopColorType()
             .PopEdgeColorType()
             .Append($" Dalamud: {Versioning.GetScmVersion()}")
-            .Append($" - {count} {(count != 1 ? "plugins" : "plugin")} loaded");
+            .Append($" - 已加载插件: {count}");
 
         if (pm?.SafeMode is true)
-            rssb.Builder.PushColorType(17).Append(" [SAFE MODE]").PopColorType();
+            rssb.Builder.PushColorType(17).Append(" [安全模式]").PopColorType();
 
         textNode->SetText(rssb.Builder.GetViewAsSpan());
     }

@@ -309,7 +309,7 @@ internal static class Service<T> where T : IServiceType
         }
         catch (Exception e)
         {
-            ServiceManager.Log.Warning(e, "Service<{0}>: Failed to notify ServiceContainer during Unset", typeof(T).Name);
+            ServiceManager.Log.Warning(e, "Service<{0}>: Unset 期间通知 ServiceContainer 失败", typeof(T).Name);
         }
 
         switch (instanceTcs.Task.Result)

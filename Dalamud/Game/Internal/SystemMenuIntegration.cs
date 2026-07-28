@@ -1,5 +1,3 @@
-using CheapLoc;
-
 using Dalamud.Configuration.Internal;
 using Dalamud.Game.Text;
 using Dalamud.Hooking;
@@ -49,10 +47,6 @@ internal sealed unsafe class SystemMenuIntegration : IInternalDisposableService
     /// <summary>Finalizes an instance of the <see cref="SystemMenuIntegration"/> class.</summary>
     ~SystemMenuIntegration() => this.Dispose(false);
 
-    private string LocDalamudPlugins => Loc.Localize("SystemMenuPlugins", "Dalamud Plugins");
-
-    private string LocDalamudSettings => Loc.Localize("SystemMenuSettings", "Dalamud Settings");
-
     /// <inheritdoc/>
     void IInternalDisposableService.DisposeService() => this.Dispose(true);
 
@@ -85,12 +79,12 @@ internal sealed unsafe class SystemMenuIntegration : IInternalDisposableService
         {
             var dalamudInterface = Service<DalamudInterface>.Get();
 
-            args.Items.Insert(0, new CustomContextMenuItem(this.LocDalamudSettings, selectedArgs =>
+            args.Items.Insert(0, new CustomContextMenuItem("Dalamud 设置", selectedArgs =>
             {
                 dalamudInterface.ToggleSettingsWindow();
             }));
 
-            args.Items.Insert(0, new CustomContextMenuItem(this.LocDalamudPlugins, selectedArgs =>
+            args.Items.Insert(0, new CustomContextMenuItem("Dalamud 插件", selectedArgs =>
             {
                 dalamudInterface.TogglePluginInstallerWindow();
             }));
@@ -156,7 +150,7 @@ internal sealed unsafe class SystemMenuIntegration : IInternalDisposableService
             .PushColorType(color)
             .Append($"{SeIconChar.BoxedLetterD.ToIconString()} ")
             .PopColorType()
-            .Append(this.LocDalamudPlugins)
+            .Append("Dalamud 插件")
             .GetViewAsSpan());
 
         rssb.Builder.Clear();
@@ -167,7 +161,7 @@ internal sealed unsafe class SystemMenuIntegration : IInternalDisposableService
             .PushColorType(color)
             .Append($"{SeIconChar.BoxedLetterD.ToIconString()} ")
             .PopColorType()
-            .Append(this.LocDalamudSettings)
+            .Append("Dalamud 设置")
             .GetViewAsSpan());
 
         this.hookAgentHudOpenSystemMenu.Original(thisPtr, values, (uint)newMenuSize);
