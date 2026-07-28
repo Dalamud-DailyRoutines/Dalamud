@@ -49,7 +49,7 @@ namespace Dalamud.Injector
                     return ProcessLaunchTestCommand(args);
                 }
 
-                DalamudStartInfo startInfo = null;
+                DalamudStartInfo? startInfo = null;
                 if (args.Count == 1)
                 {
                     // No command defaults to inject
@@ -132,7 +132,9 @@ namespace Dalamud.Injector
             InitLogging(args.Any(x => x == "-v"), args);
             InitUnhandledException(args);
 
-            var cwd = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory;
+            var cwd = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory
+                      ?? throw new DirectoryNotFoundException("Could not determine binary location.");
+
             if (cwd.FullName != Directory.GetCurrentDirectory())
             {
                 Log.Debug($"切换工作目录为 {cwd}");
@@ -671,7 +673,12 @@ namespace Dalamud.Injector
             }
 
             foreach (var process in processes)
-                Inject(process, AdjustStartInfo(dalamudStartInfo, process.MainModule.FileName), tryFixAcl);
+            {
+                var processBinaryPath = process.MainModule?.FileName
+                    ?? throw new CommandLineException($"Could not determine binary path for process {process.Id}.");
+
+                Inject(process, AdjustStartInfo(dalamudStartInfo, processBinaryPath), tryFixAcl);
+            }
 
             Log.CloseAndFlush();
             return 0;
@@ -832,16 +839,8 @@ namespace Dalamud.Injector
                 {
                     if (dalamudStartInfo.Platform == OSPlatform.Windows)
                     {
-                        var appDataDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                        var xivlauncherDir = Path.Combine(appDataDir, "XIVLauncherCN");
-                        var launcherConfigPath = Path.Combine(xivlauncherDir, "launcherConfigV3.json");
-                        gamePath = Path.Combine(
-                            JsonSerializer.CreateDefault()
-                                .Deserialize<Dictionary<string, string>>(
-                                    new JsonTextReader(new StringReader(File.ReadAllText(launcherConfigPath))))["GamePath"],
-                            "game",
-                            "ffxiv_dx11.exe");
-                        Log.Information("使用 XIVLauncher 配置的游戏安装路径： {0}", gamePath);
+                        gamePath = FindGamePathFromLauncherConfig();
+                        Log.Information("使用·XIVLauncher·配置的游戏安装路径: {0}", gamePath);
                     }
                     else if (dalamudStartInfo.Platform == OSPlatform.Linux)
                     {
@@ -869,6 +868,12 @@ namespace Dalamud.Injector
                     return -1;
                 }
 
+                if (gamePath == null)
+                {
+                    Log.Error("Game path not specified and could not be determined from launcher config, please specify one using -g");
+                    return -1;
+                }
+
                 if (!File.Exists(gamePath))
                 {
                     Log.Error("未找到文件： {0}", gamePath);
@@ -878,8 +883,11 @@ namespace Dalamud.Injector
 
             if (useFakeArguments)
             {
-                var gameVersion = File.ReadAllText(Path.Combine(Directory.GetParent(gamePath).FullName, "ffxivgame.ver"));
-                var sqpackPath = Path.Combine(Directory.GetParent(gamePath).FullName, "sqpack");
+                var gameParent = Directory.GetParent(gamePath)?.FullName
+                    ?? throw new DirectoryNotFoundException($"Could not determine parent directory of {gamePath}.");
+
+                var gameVersion = File.ReadAllText(Path.Combine(gameParent, "ffxivgame.ver"));
+                var sqpackPath = Path.Combine(gameParent, "sqpack");
                 var maxEntitledExpansionId = 0;
                 while (File.Exists(Path.Combine(sqpackPath, $"ex{maxEntitledExpansionId + 1}", $"ex{maxEntitledExpansionId + 1}.ver")))
                     maxEntitledExpansionId++;
@@ -938,7 +946,7 @@ namespace Dalamud.Injector
             }
 
             var process = GameStart.LaunchGame(
-                Path.GetDirectoryName(gamePath),
+                Path.GetDirectoryName(gamePath) ?? throw new DirectoryNotFoundException($"Could not determine parent directory of {gamePath}."),
                 gamePath,
                 gameArgumentString,
                 noFixAcl,
@@ -992,6 +1000,29 @@ namespace Dalamud.Injector
             return 0;
         }
 
+        private static string? FindGamePathFromLauncherConfig()
+        {
+            var appDataDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var xivlauncherDir = Path.Combine(appDataDir, "XIVLauncherCN");
+            var launcherConfigPath = Path.Combine(xivlauncherDir, "launcherConfigV3.json");
+
+            if (!File.Exists(launcherConfigPath))
+                return null;
+
+            var deserializedConfig = JsonSerializer.CreateDefault()
+                                                   .Deserialize<Dictionary<string, string>>(
+                                                       new JsonTextReader(
+                                                           new StringReader(File.ReadAllText(launcherConfigPath))));
+
+            if (deserializedConfig == null)
+                return null;
+
+            return Path.Combine(
+                deserializedConfig["GamePath"],
+                "game",
+                "ffxiv_dx11.exe");
+        }
+
         private static unsafe Process GetInheritableCurrentProcessHandle()
         {
             var currentProcessHandle = new HANDLE(Process.GetCurrentProcess().Handle.ToPointer());
@@ -1014,7 +1045,7 @@ namespace Dalamud.Injector
         private static int ProcessLaunchTestCommand(List<string> args)
         {
             Console.WriteLine("测试启动命令。");
-            args[0] = Process.GetCurrentProcess().MainModule.FileName;
+            args[0] = Process.GetCurrentProcess().MainModule!.FileName;
             args[1] = "launch";
 
             var inheritableCurrentProcess = GetInheritableCurrentProcessHandle(); // so that it closes the handle when it's done
@@ -1040,6 +1071,9 @@ namespace Dalamud.Injector
             }
 
             var result = JsonSerializer.CreateDefault().Deserialize<Dictionary<string, int>>(new JsonTextReader(helperProcess.StandardOutput));
+            if (result == null)
+                throw new Exception("Could not get result from game process");
+
             var pid = result["pid"];
             var handle = (IntPtr)result["handle"];
             var resultProcess = new ExistingProcess(handle);
@@ -1052,7 +1086,7 @@ namespace Dalamud.Injector
 
         private static DalamudStartInfo AdjustStartInfo(DalamudStartInfo startInfo, string gamePath)
         {
-            var ffxivDir = Path.GetDirectoryName(gamePath);
+            var ffxivDir = Path.GetDirectoryName(gamePath) ?? throw new DirectoryNotFoundException($"Could not determine parent directory of {gamePath}.");
             var gameVerStr = File.ReadAllText(Path.Combine(ffxivDir, "ffxivgame.ver"));
             var gameVer = GameVersion.Parse(gameVerStr);
 

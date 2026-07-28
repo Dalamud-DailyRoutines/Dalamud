@@ -1,4 +1,3 @@
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -151,7 +150,7 @@ internal class DalamudCommands : IServiceType
     private void OnUnloadCommand(string command, string arguments)
     {
         Service<ChatGui>.Get().Print("Unloading...");
-        Service<Dalamud>.Get().Unload();
+        Service<Framework>.Get().UnloadDalamud();
     }
 
     private void OnKillCommand(string command, string arguments)

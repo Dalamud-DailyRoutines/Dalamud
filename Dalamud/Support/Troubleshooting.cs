@@ -83,6 +83,7 @@ public static class Troubleshooting
                 InterfaceLoaded = interfaceManager?.IsReady ?? false,
                 HasThirdRepo = configuration.ThirdRepoList is { Count: > 0 },
                 ForcedMinHook = EnvironmentConfiguration.DalamudForceMinHook,
+                UsingSafetyHook = EnvironmentConfiguration.DalamudUseSafetyHook,
             };
 
             var encodedPayload = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(payload)));
@@ -144,6 +145,8 @@ public static class Troubleshooting
         public bool InterfaceLoaded { get; set; }
 
         public bool ForcedMinHook { get; set; }
+
+        public bool UsingSafetyHook { get; set; }
 
         public List<ThirdPartyRepoSettings> ThirdRepo => [];
 
