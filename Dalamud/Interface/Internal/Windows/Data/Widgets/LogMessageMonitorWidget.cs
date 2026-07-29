@@ -32,7 +32,7 @@ internal class LogMessageMonitorWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["logmessage"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "LogMessage Monitor";
+    public string DisplayName { get; init; } = "LogMessage 监视器";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -52,7 +52,7 @@ internal class LogMessageMonitorWidget : IDataWindowWidget
     public void Draw()
     {
         var network = Service<ChatGui>.Get();
-        if (ImGui.Checkbox("Track LogMessages"u8, ref this.trackMessages))
+        if (ImGui.Checkbox("跟踪 LogMessage"u8, ref this.trackMessages))
         {
             if (this.trackMessages)
             {
@@ -65,19 +65,19 @@ internal class LogMessageMonitorWidget : IDataWindowWidget
         }
 
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2);
-        if (ImGui.DragInt("Stored Number of Messages"u8, ref this.trackedMessages, 0.1f, 1, 512))
+        if (ImGui.DragInt("保留的消息数量"u8, ref this.trackedMessages, 0.1f, 1, 512))
         {
             this.trackedMessages = Math.Clamp(this.trackedMessages, 1, 512);
         }
 
-        if (ImGui.Button("Clear Stored Messages"u8))
+        if (ImGui.Button("清空已保留的消息"u8))
         {
             this.messages.Clear();
         }
 
         this.DrawFilterInput();
 
-        ImGuiTable.DrawTable(string.Empty, this.messages.Where(m => this.filterRegex == null || this.filterRegex.IsMatch(m.Formatted.ExtractText())), this.DrawNetworkPacket, ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp, "LogMessageId", "Source", "Target", "Parameters", "Formatted");
+        ImGuiTable.DrawTable(string.Empty, this.messages.Where(m => this.filterRegex == null || this.filterRegex.IsMatch(m.Formatted.ExtractText())), this.DrawNetworkPacket, ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp, "日志消息 ID", "来源", "目标", "参数", "格式化结果");
     }
 
     private void DrawNetworkPacket(LogMessageData data)
@@ -104,7 +104,7 @@ internal class LogMessageMonitorWidget : IDataWindowWidget
         using var style = ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 2 * ImGuiHelpers.GlobalScale, invalidRegEx);
         using var color = ImRaii.PushColor(ImGuiCol.Border, 0xFF0000FF, invalidRegEx);
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        if (!ImGui.InputTextWithHint("##Filter"u8, "Regex Filter..."u8, ref this.filterString, 1024))
+        if (!ImGui.InputTextWithHint("##Filter"u8, "正则表达式筛选..."u8, ref this.filterString, 1024))
         {
             return;
         }

@@ -11,7 +11,7 @@ internal class AddonInspectorWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["ai", "addoninspector"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Addon Inspector";
+    public string DisplayName { get; init; } = "Addon 检查器";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }

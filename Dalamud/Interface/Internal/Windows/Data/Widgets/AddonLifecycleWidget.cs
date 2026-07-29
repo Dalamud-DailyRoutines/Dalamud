@@ -16,7 +16,7 @@ public class AddonLifecycleWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["AddonLifecycle"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Addon Lifecycle";
+    public string DisplayName { get; init; } = "Addon 生命周期";
 
     /// <inheritdoc/>
     [MemberNotNullWhen(true, nameof(AddonLifecycle))]
@@ -42,7 +42,7 @@ public class AddonLifecycleWidget : IDataWindowWidget
     {
         if (!this.Ready)
         {
-            ImGui.Text("AddonLifecycle Reference is null, reload module."u8);
+            ImGui.Text("AddonLifecycle 引用为空，请重新加载模块。"u8);
             return;
         }
 
@@ -56,29 +56,30 @@ public class AddonLifecycleWidget : IDataWindowWidget
 
                 if (addonListeners.Count == 0)
                 {
-                    ImGui.Text("No Addons Registered for Event"u8);
+                    ImGui.Text("此事件尚未注册 Addon"u8);
                 }
 
                 foreach (var (addonName, listeners) in addonListeners)
                 {
                     using var addonId = ImRaii.PushId(addonName);
 
-                    if (ImGui.CollapsingHeader(addonName.IsNullOrEmpty() ? "GLOBAL" : addonName))
+                    if (ImGui.CollapsingHeader(addonName.IsNullOrEmpty() ? "全局" : addonName))
                     {
                         using var addonIndent = ImRaii.PushIndent();
 
                         if (listeners.Count == 0)
                         {
-                            ImGui.Text("No Listeners Registered for Event"u8);
+                            ImGui.Text("此事件尚未注册监听器"u8);
                         }
 
                         foreach (var listener in listeners)
                         {
-                            ImGui.Text($"{listener.FunctionDelegate.Method.DeclaringType?.FullName ?? "Unknown Declaring Type"}::{listener.FunctionDelegate.Method.Name}");
+                            ImGui.Text($"{listener.FunctionDelegate.Method.DeclaringType?.FullName ?? "未知声明类型"}::{listener.FunctionDelegate.Method.Name}");
                         }
                     }
                 }
             }
         }
     }
+
 }

@@ -19,7 +19,7 @@ internal class CommandWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["command"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Command";
+    public string DisplayName { get; init; } = "命令";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -40,10 +40,10 @@ internal class CommandWidget : IDataWindowWidget
         {
             ImGui.TableSetupScrollFreeze(0, 1);
 
-            ImGui.TableSetupColumn("Command"u8);
-            ImGui.TableSetupColumn("Plugin"u8);
-            ImGui.TableSetupColumn("HelpMessage"u8, ImGuiTableColumnFlags.NoSort);
-            ImGui.TableSetupColumn("In Help?"u8, ImGuiTableColumnFlags.NoSort);
+            ImGui.TableSetupColumn("命令"u8);
+            ImGui.TableSetupColumn("插件"u8);
+            ImGui.TableSetupColumn("帮助信息"u8, ImGuiTableColumnFlags.NoSort);
+            ImGui.TableSetupColumn("显示帮助"u8, ImGuiTableColumnFlags.NoSort);
             ImGui.TableHeadersRow();
 
             var sortSpecs = ImGui.TableGetSortSpecs();
@@ -77,7 +77,7 @@ internal class CommandWidget : IDataWindowWidget
                 ImGui.TextWrapped(command.Value.HelpMessage);
 
                 ImGui.TableNextColumn();
-                ImGui.Text(command.Value.ShowInHelp ? "Yes" : "No");
+                ImGui.Text(command.Value.ShowInHelp ? "是" : "否");
             }
         }
     }

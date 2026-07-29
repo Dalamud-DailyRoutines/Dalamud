@@ -14,7 +14,7 @@ internal class SeFontTestWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["sefont", "sefonttest"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "SeFont Test";
+    public string DisplayName { get; init; } = "SeFont 测试";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }

@@ -18,7 +18,7 @@ internal class BuddyListWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["buddy", "buddylist"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Buddy List";
+    public string DisplayName { get; init; } = "伙伴列表";
 
     /// <inheritdoc/>
     public void Load()
@@ -31,22 +31,22 @@ internal class BuddyListWidget : IDataWindowWidget
     {
         var buddyList = Service<BuddyList>.Get();
 
-        ImGui.Checkbox("Resolve GameData"u8, ref this.resolveGameData);
+        ImGui.Checkbox("解析游戏数据"u8, ref this.resolveGameData);
 
         var companionBuddy = buddyList.CompanionBuddy;
         if (companionBuddy == null)
         {
-            ImGui.Text("[Companion] null"u8);
+            ImGui.Text("[搭档] 空"u8);
         }
         else
         {
-            ImGui.Text($"[Companion] {companionBuddy.Address:X} - {companionBuddy.EntityId} - {companionBuddy.DataID}");
+            ImGui.Text($"[搭档] {companionBuddy.Address:X} - {companionBuddy.EntityId} - {companionBuddy.DataID}");
             if (this.resolveGameData)
             {
                 var gameObject = companionBuddy.GameObject;
                 if (gameObject == null)
                 {
-                    ImGui.Text("GameObject was null"u8);
+                    ImGui.Text("GameObject 为空"u8);
                 }
                 else
                 {
@@ -58,17 +58,17 @@ internal class BuddyListWidget : IDataWindowWidget
         var petBuddy = buddyList.PetBuddy;
         if (petBuddy == null)
         {
-            ImGui.Text("[Pet] null"u8);
+            ImGui.Text("[召唤兽] 空"u8);
         }
         else
         {
-            ImGui.Text($"[Pet] {petBuddy.Address:X} - {petBuddy.EntityId} - {petBuddy.DataID}");
+            ImGui.Text($"[召唤兽] {petBuddy.Address:X} - {petBuddy.EntityId} - {petBuddy.DataID}");
             if (this.resolveGameData)
             {
                 var gameObject = petBuddy.GameObject;
                 if (gameObject == null)
                 {
-                    ImGui.Text("GameObject was null"u8);
+                    ImGui.Text("GameObject 为空"u8);
                 }
                 else
                 {
@@ -80,20 +80,20 @@ internal class BuddyListWidget : IDataWindowWidget
         var count = buddyList.Length;
         if (count == 0)
         {
-            ImGui.Text("[BattleBuddy] None present"u8);
+            ImGui.Text("[战斗伙伴] 当前没有成员"u8);
         }
         else
         {
             for (var i = 0; i < count; i++)
             {
                 var member = buddyList[i];
-                ImGui.Text($"[BattleBuddy] [{i}] {member?.Address ?? 0:X} - {member?.EntityId ?? 0} - {member?.DataID ?? 0}");
+                ImGui.Text($"[战斗伙伴] [{i}] {member?.Address ?? 0:X} - {member?.EntityId ?? 0} - {member?.DataID ?? 0}");
                 if (this.resolveGameData)
                 {
                     var gameObject = member?.GameObject;
                     if (gameObject == null)
                     {
-                        ImGui.Text("GameObject was null"u8);
+                        ImGui.Text("GameObject 为空"u8);
                     }
                     else
                     {

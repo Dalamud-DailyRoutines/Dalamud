@@ -16,7 +16,7 @@ internal class ConditionWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["condition"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Condition";
+    public string DisplayName { get; init; } = "状态条件";
 
     /// <inheritdoc/>
     public void Load()
@@ -30,10 +30,10 @@ internal class ConditionWidget : IDataWindowWidget
         var condition = Service<Condition>.Get();
 
 #if DEBUG
-        ImGui.Text($"ptr: {Util.DescribeAddress(condition.Address)}");
+        ImGui.Text($"指针：{Util.DescribeAddress(condition.Address)}");
 #endif
 
-        ImGui.Text("Current Conditions:"u8);
+        ImGui.Text("当前状态条件："u8);
         ImGui.Separator();
 
         var didAny = false;
@@ -47,10 +47,11 @@ internal class ConditionWidget : IDataWindowWidget
 
             didAny = true;
 
-            ImGui.Text($"ID: {i} Enum: {typedCondition}");
+            ImGui.Text($"ID：{i} 枚举：{typedCondition}");
         }
 
         if (!didAny)
-            ImGui.Text("None. Talk to a shop NPC or visit a market board to find out more!"u8);
+            ImGui.Text("当前没有状态条件。与商店 NPC 交谈或打开市场布告板即可查看变化。"u8);
     }
+
 }

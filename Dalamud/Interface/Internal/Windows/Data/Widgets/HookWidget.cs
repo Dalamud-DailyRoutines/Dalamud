@@ -54,7 +54,7 @@ internal unsafe class HookWidget : IDataWindowWidget
     }
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Hook";
+    public string DisplayName { get; init; } = "Hook 测试";
 
     /// <inheritdoc/>
     public string[]? CommandShortcuts { get; init; } = ["hook"];
@@ -76,47 +76,52 @@ internal unsafe class HookWidget : IDataWindowWidget
     {
         try
         {
-            ImGui.Checkbox("Use MinHook (only for regular hooks, AsmHook is Reloaded-only)"u8, ref this.hookUseMinHook);
+            ImGui.Checkbox("使用 MinHook（仅适用于常规 Hook，AsmHook 仅支持 Reloaded）"u8, ref this.hookUseMinHook);
 
             ImGui.Separator();
 
-            if (ImGui.Button("Create"u8))
+            if (ImGui.Button("创建"u8))
                 this.messageBoxMinHook = Hook<MessageBoxWDelegate>.FromSymbol("User32", "MessageBoxW", this.MessageBoxWDetour, this.hookUseMinHook);
 
-            if (ImGui.Button("Enable"u8))
+            if (ImGui.Button("启用"u8))
                 this.messageBoxMinHook?.Enable();
 
-            if (ImGui.Button("Disable"u8))
+            if (ImGui.Button("禁用"u8))
                 this.messageBoxMinHook?.Disable();
 
-            if (ImGui.Button("Call Original"u8))
-                this.messageBoxMinHook?.Original(IntPtr.Zero, "Hello from .Original", "Hook Test", MESSAGEBOX_STYLE.MB_OK);
+            if (ImGui.Button("调用原函数"u8))
+                this.messageBoxMinHook?.Original(IntPtr.Zero, "来自 .Original 的问候", "Hook 测试", MESSAGEBOX_STYLE.MB_OK);
 
-            if (ImGui.Button("Dispose"u8))
+            if (ImGui.Button("释放"u8))
             {
                 this.messageBoxMinHook?.Dispose();
                 this.messageBoxMinHook = null;
             }
 
-            if (ImGui.Button("Test"u8))
-                _ = global::Windows.Win32.PInvoke.MessageBox(HWND.Null, "Hi", "Hello", MESSAGEBOX_STYLE.MB_OK);
+            if (ImGui.Button("测试"u8))
+                _ = global::Windows.Win32.PInvoke.MessageBox(HWND.Null, "你好", "问候", MESSAGEBOX_STYLE.MB_OK);
 
             if (this.messageBoxMinHook != null)
-                ImGui.Text("Enabled: " + this.messageBoxMinHook?.IsEnabled);
+                ImGui.Text("已启用：" + (this.messageBoxMinHook?.IsEnabled switch
+                {
+                    true => "是",
+                    false => "否",
+                    null => "尚未创建",
+                }));
 
             ImGui.Separator();
 
             using (ImRaii.Disabled(this.hookStressTestRunning))
             {
-                ImGui.Text("Stress Test"u8);
+                ImGui.Text("压力测试"u8);
 
-                if (ImGui.InputInt("Max"u8, ref this.hookStressTestMax))
+                if (ImGui.InputInt("最大次数"u8, ref this.hookStressTestMax))
                     this.hookStressTestCount = 0;
 
-                ImGui.InputInt("Wait (ms)"u8, ref this.hookStressTestWait);
-                ImGui.InputInt("Max Degree of Parallelism"u8, ref this.hookStressTestMaxDegreeOfParallelism);
+                ImGui.InputInt("等待时间（ms）"u8, ref this.hookStressTestWait);
+                ImGui.InputInt("最大并行度"u8, ref this.hookStressTestMaxDegreeOfParallelism);
 
-                using (var combo = ImRaii.Combo("Target"u8, HookTargetToString(this.hookStressTestHookTarget)))
+                using (var combo = ImRaii.Combo("目标"u8, HookTargetToString(this.hookStressTestHookTarget)))
                 {
                     if (combo.Success)
                     {
@@ -128,7 +133,7 @@ internal unsafe class HookWidget : IDataWindowWidget
                     }
                 }
 
-                if (ImGui.Button("Stress Test"u8))
+                if (ImGui.Button("开始压力测试"u8))
                 {
                     Task.Run(() =>
                     {
@@ -151,11 +156,11 @@ internal unsafe class HookWidget : IDataWindowWidget
                     {
                         if (t.IsFaulted)
                         {
-                            Log.Error(t.Exception, "Stress test failed");
+                            Log.Error(t.Exception, "压力测试失败");
                         }
                         else
                         {
-                            Log.Information("Stress test completed");
+                            Log.Information("压力测试完成");
                         }
 
                         this.hookStressTestRunning = false;
@@ -168,12 +173,12 @@ internal unsafe class HookWidget : IDataWindowWidget
                 }
             }
 
-            ImGui.Text("Status: " + (this.hookStressTestRunning ? "Running" : "Idle"));
+            ImGui.Text("状态：" + (this.hookStressTestRunning ? "运行中" : "空闲"));
             ImGui.ProgressBar(this.hookStressTestCount / (float)this.hookStressTestMax, new System.Numerics.Vector2(0, 0), $"{this.hookStressTestCount}/{this.hookStressTestMax}");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Hook error caught");
+            Log.Error(ex, "捕获到 Hook 错误");
         }
     }
 
@@ -181,8 +186,8 @@ internal unsafe class HookWidget : IDataWindowWidget
     {
         return target switch
         {
-            StressTestHookTarget.MessageBoxW => "MessageBoxW (Hook)",
-            StressTestHookTarget.AddonFinalize => "AddonFinalize (Hook)",
+            StressTestHookTarget.MessageBoxW => "MessageBoxW（Hook）",
+            StressTestHookTarget.AddonFinalize => "AddonFinalize（Hook）",
             _ => target.ToString(),
         };
     }
@@ -191,7 +196,7 @@ internal unsafe class HookWidget : IDataWindowWidget
     {
         Log.Information("[DATAHOOK] {Hwnd} {Text} {Caption} {Type}", hwnd, text, caption, type);
 
-        var result = this.messageBoxWOriginal!(hwnd, "Cause Access Violation?", caption, MESSAGEBOX_STYLE.MB_YESNO);
+        var result = this.messageBoxWOriginal!(hwnd, "是否触发访问冲突？", caption, MESSAGEBOX_STYLE.MB_YESNO);
 
         if (result == (int)MESSAGEBOX_RESULT.IDYES)
         {

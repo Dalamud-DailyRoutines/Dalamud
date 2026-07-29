@@ -45,100 +45,100 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
     private readonly Dictionary<MacroCode, string[]> expressionNames = new()
     {
-        { MacroCode.SetResetTime, ["Hour", "WeekDay"] },
-        { MacroCode.SetTime, ["Time"] },
-        { MacroCode.If, ["Condition", "StatementTrue", "StatementFalse"] },
-        { MacroCode.Switch, ["Condition"] },
-        { MacroCode.PcName, ["EntityId"] },
-        { MacroCode.IfPcGender, ["EntityId", "CaseMale", "CaseFemale"] },
-        { MacroCode.IfPcName, ["EntityId", "CaseTrue", "CaseFalse"] },
+        { MacroCode.SetResetTime, ["小时", "星期"] },
+        { MacroCode.SetTime, ["时间"] },
+        { MacroCode.If, ["条件", "条件为真时的语句", "条件为假时的语句"] },
+        { MacroCode.Switch, ["条件"] },
+        { MacroCode.PcName, ["实体 ID"] },
+        { MacroCode.IfPcGender, ["实体 ID", "男性分支", "女性分支"] },
+        { MacroCode.IfPcName, ["实体 ID", "匹配分支", "未匹配分支"] },
         // { MacroCode.Josa, [] },
         // { MacroCode.Josaro, [] },
-        { MacroCode.IfSelf, ["EntityId", "CaseTrue", "CaseFalse"] },
+        { MacroCode.IfSelf, ["实体 ID", "自身分支", "非自身分支"] },
         // { MacroCode.NewLine, [] },
-        { MacroCode.Wait, ["Seconds"] },
-        { MacroCode.Icon, ["IconId"] },
-        { MacroCode.Color, ["Color"] },
-        { MacroCode.EdgeColor, ["Color"] },
-        { MacroCode.ShadowColor, ["Color"] },
+        { MacroCode.Wait, ["秒数"] },
+        { MacroCode.Icon, ["图标 ID"] },
+        { MacroCode.Color, ["颜色"] },
+        { MacroCode.EdgeColor, ["颜色"] },
+        { MacroCode.ShadowColor, ["颜色"] },
         // { MacroCode.SoftHyphen, [] },
         // { MacroCode.Key, [] },
         // { MacroCode.Scale, [] },
-        { MacroCode.Bold, ["Enabled"] },
-        { MacroCode.Italic, ["Enabled"] },
+        { MacroCode.Bold, ["是否启用"] },
+        { MacroCode.Italic, ["是否启用"] },
         // { MacroCode.Edge, [] },
         // { MacroCode.Shadow, [] },
         // { MacroCode.NonBreakingSpace, [] },
-        { MacroCode.Icon2, ["IconId"] },
+        { MacroCode.Icon2, ["图标 ID"] },
         // { MacroCode.Hyphen, [] },
-        { MacroCode.Num, ["Value"] },
-        { MacroCode.Hex, ["Value"] },
-        { MacroCode.Kilo, ["Value", "Separator"] },
-        { MacroCode.Byte, ["Value"] },
-        { MacroCode.Sec, ["Time"] },
-        { MacroCode.Time, ["Value"] },
-        { MacroCode.Float, ["Value", "Radix", "Separator"] },
-        { MacroCode.Link, ["Type"] },
-        { MacroCode.Sheet, ["SheetName", "RowId", "ColumnIndex", "ColumnParam"] },
-        { MacroCode.String, ["String"] },
-        { MacroCode.Caps, ["String"] },
-        { MacroCode.Head, ["String"] },
-        { MacroCode.Split, ["String", "Separator"] },
-        { MacroCode.HeadAll, ["String"] },
+        { MacroCode.Num, ["值"] },
+        { MacroCode.Hex, ["值"] },
+        { MacroCode.Kilo, ["值", "分隔符"] },
+        { MacroCode.Byte, ["值"] },
+        { MacroCode.Sec, ["时间"] },
+        { MacroCode.Time, ["值"] },
+        { MacroCode.Float, ["值", "基数", "分隔符"] },
+        { MacroCode.Link, ["类型"] },
+        { MacroCode.Sheet, ["表名", "行 ID", "列索引", "列参数"] },
+        { MacroCode.String, ["字符串"] },
+        { MacroCode.Caps, ["字符串"] },
+        { MacroCode.Head, ["字符串"] },
+        { MacroCode.Split, ["字符串", "分隔符"] },
+        { MacroCode.HeadAll, ["字符串"] },
         // { MacroCode.Fixed, [] },
-        { MacroCode.Lower, ["String"] },
-        { MacroCode.JaNoun, ["SheetName", "ArticleType", "RowId", "Amount", "Case", "UnkInt5"] },
-        { MacroCode.EnNoun, ["SheetName", "ArticleType", "RowId", "Amount", "Case", "UnkInt5"] },
-        { MacroCode.DeNoun, ["SheetName", "ArticleType", "RowId", "Amount", "Case", "UnkInt5"] },
-        { MacroCode.FrNoun, ["SheetName", "ArticleType", "RowId", "Amount", "Case", "UnkInt5"] },
-        { MacroCode.ChNoun, ["SheetName", "ArticleType", "RowId", "Amount", "Case", "UnkInt5"] },
-        { MacroCode.LowerHead, ["String"] },
-        { MacroCode.SheetSub, ["SheetName", "RowId", "SubrowId", "ColumnIndex", "SecondarySheetName", "SecondarySheetColumnIndex"] },
-        { MacroCode.ColorType, ["ColorType"] },
-        { MacroCode.EdgeColorType, ["ColorType"] },
-        { MacroCode.Ruby, ["StandardText", "RubyText"] },
-        { MacroCode.Digit, ["Value", "TargetLength"] },
-        { MacroCode.Ordinal, ["Value"] },
-        { MacroCode.Sound, ["IsJingle", "SoundId"] },
-        { MacroCode.LevelPos, ["LevelId"] },
+        { MacroCode.Lower, ["字符串"] },
+        { MacroCode.JaNoun, ["表名", "冠词类型", "行 ID", "数量", "格", "未知整数 5"] },
+        { MacroCode.EnNoun, ["表名", "冠词类型", "行 ID", "数量", "格", "未知整数 5"] },
+        { MacroCode.DeNoun, ["表名", "冠词类型", "行 ID", "数量", "格", "未知整数 5"] },
+        { MacroCode.FrNoun, ["表名", "冠词类型", "行 ID", "数量", "格", "未知整数 5"] },
+        { MacroCode.ChNoun, ["表名", "冠词类型", "行 ID", "数量", "格", "未知整数 5"] },
+        { MacroCode.LowerHead, ["字符串"] },
+        { MacroCode.SheetSub, ["表名", "行 ID", "子行 ID", "列索引", "次级表名", "次级表列索引"] },
+        { MacroCode.ColorType, ["颜色类型"] },
+        { MacroCode.EdgeColorType, ["颜色类型"] },
+        { MacroCode.Ruby, ["正文", "注音"] },
+        { MacroCode.Digit, ["值", "目标长度"] },
+        { MacroCode.Ordinal, ["值"] },
+        { MacroCode.Sound, ["是否为短音效", "音效 ID"] },
+        { MacroCode.LevelPos, ["地点 ID"] },
     };
 
     private readonly Dictionary<LinkMacroPayloadType, string[]> linkExpressionNames = new()
     {
-        { LinkMacroPayloadType.Character, ["Flags", "WorldId"] },
-        { LinkMacroPayloadType.Item, ["ItemId", "Rarity"] },
-        { LinkMacroPayloadType.MapPosition, ["TerritoryType/MapId", "RawX", "RawY"] },
-        { LinkMacroPayloadType.Quest, ["RowId"] },
-        { LinkMacroPayloadType.Achievement, ["RowId"] },
-        { LinkMacroPayloadType.HowTo, ["RowId"] },
+        { LinkMacroPayloadType.Character, ["标志", "世界 ID"] },
+        { LinkMacroPayloadType.Item, ["物品 ID", "稀有度"] },
+        { LinkMacroPayloadType.MapPosition, ["区域类型/地图 ID", "原始 X", "原始 Y"] },
+        { LinkMacroPayloadType.Quest, ["行 ID"] },
+        { LinkMacroPayloadType.Achievement, ["行 ID"] },
+        { LinkMacroPayloadType.HowTo, ["行 ID"] },
         // PartyFinderNotification
-        { LinkMacroPayloadType.Status, ["StatusId"] },
-        { LinkMacroPayloadType.PartyFinder, ["ListingId", string.Empty, "WorldId"] },
-        { LinkMacroPayloadType.AkatsukiNote, ["RowId"] },
-        { LinkMacroPayloadType.Description, ["RowId"] },
-        { LinkMacroPayloadType.WKSPioneeringTrail, ["RowId", "SubrowId"] },
-        { LinkMacroPayloadType.MKDLore, ["RowId"] },
-        { DalamudLinkType, ["CommandId", "Extra1", "Extra2", "ExtraString"] },
+        { LinkMacroPayloadType.Status, ["状态 ID"] },
+        { LinkMacroPayloadType.PartyFinder, ["招募 ID", string.Empty, "世界 ID"] },
+        { LinkMacroPayloadType.AkatsukiNote, ["行 ID"] },
+        { LinkMacroPayloadType.Description, ["行 ID"] },
+        { LinkMacroPayloadType.WKSPioneeringTrail, ["行 ID", "子行 ID"] },
+        { LinkMacroPayloadType.MKDLore, ["行 ID"] },
+        { DalamudLinkType, ["命令 ID", "附加值 1", "附加值 2", "附加字符串"] },
     };
 
     private readonly Dictionary<uint, string[]> fixedExpressionNames = new()
     {
-        { 1, ["Type0", "Type1", "WorldId"] },
-        { 2, ["Type0", "Type1", "ClassJobId", "Level"] },
-        { 3, ["Type0", "Type1", "TerritoryTypeId", "Instance & MapId", "RawX", "RawY", "RawZ", "PlaceNameIdOverride"] },
-        { 4, ["Type0", "Type1", "ItemId", "Rarity", string.Empty, string.Empty, "Item Name"] },
-        { 5, ["Type0", "Type1", "Sound Effect Id"] },
-        { 6, ["Type0", "Type1", "ObjStrId"] },
-        { 7, ["Type0", "Type1", "Text"] },
-        { 8, ["Type0", "Type1", "Seconds"] },
-        { 9, ["Type0", "Type1", string.Empty] },
-        { 10, ["Type0", "Type1", "StatusId", "HasOverride", "NameOverride", "DescriptionOverride"] },
-        { 11, ["Type0", "Type1", "ListingId", string.Empty, "WorldId", "CrossWorldFlag"] },
-        { 12, ["Type0", "Type1", "QuestId", string.Empty, string.Empty, string.Empty, "QuestName"] },
+        { 1, ["类型 0", "类型 1", "世界 ID"] },
+        { 2, ["类型 0", "类型 1", "职业 ID", "等级"] },
+        { 3, ["类型 0", "类型 1", "区域类型 ID", "副本与地图 ID", "原始 X", "原始 Y", "原始 Z", "地点名称 ID 覆盖值"] },
+        { 4, ["类型 0", "类型 1", "物品 ID", "稀有度", string.Empty, string.Empty, "物品名称"] },
+        { 5, ["类型 0", "类型 1", "音效 ID"] },
+        { 6, ["类型 0", "类型 1", "对象字符串 ID"] },
+        { 7, ["类型 0", "类型 1", "文本"] },
+        { 8, ["类型 0", "类型 1", "秒数"] },
+        { 9, ["类型 0", "类型 1", string.Empty] },
+        { 10, ["类型 0", "类型 1", "状态 ID", "是否覆盖", "名称覆盖值", "描述覆盖值"] },
+        { 11, ["类型 0", "类型 1", "招募 ID", string.Empty, "世界 ID", "跨界标志"] },
+        { 12, ["类型 0", "类型 1", "任务 ID", string.Empty, string.Empty, string.Empty, "任务名称"] },
     };
 
     private readonly List<TextEntry> entries = [
-        new TextEntry(TextEntryType.String, "Welcome to "),
+        new TextEntry(TextEntryType.String, "欢迎使用 "),
         new TextEntry(TextEntryType.Macro, "<colortype(17)>"),
         new TextEntry(TextEntryType.Macro, "<edgecolortype(19)>"),
         new TextEntry(TextEntryType.String, "Dalamud"),
@@ -168,7 +168,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = [];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "SeString Creator";
+    public string DisplayName { get; init; } = "SeString 创建器";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -209,7 +209,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
     private void DrawCreatorTab(float contentWidth)
     {
-        using var tab = ImRaii.TabItem("Creator"u8);
+        using var tab = ImRaii.TabItem("创建器"u8);
         if (!tab) return;
 
         this.DrawControls();
@@ -260,17 +260,17 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
     private unsafe void DrawGlobalParametersTab()
     {
-        using var tab = ImRaii.TabItem("Global Parameters"u8);
+        using var tab = ImRaii.TabItem("全局参数"u8);
         if (!tab) return;
 
         using var table = ImRaii.Table("GlobalParametersTable"u8, 5, TableFlags);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Id"u8, ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("Type"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("ValuePtr"u8, ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableSetupColumn("Value"u8, ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Description"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("ID"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("类型"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("值指针"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("值"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("描述"u8, ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupScrollFreeze(5, 1);
         ImGui.TableHeadersRow();
 
@@ -302,7 +302,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                     if (item.ReferencedUtf8StringValue != null)
                         WidgetUtil.DrawCopyableText(new ReadOnlySeStringSpan(item.ReferencedUtf8StringValue->Utf8String).ToString());
                     else
-                        ImGui.Text("null"u8);
+                        ImGui.Text("空"u8);
 
                     break;
 
@@ -310,107 +310,107 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                     if (item.StringValue.Value != null)
                         WidgetUtil.DrawCopyableText(item.StringValue.ToString());
                     else
-                        ImGui.Text("null"u8);
+                        ImGui.Text("空"u8);
                     break;
             }
 
             ImGui.TableNextColumn();
             ImGui.Text(i switch
             {
-                0 => "Player Name",
-                1 => "Temp Entity 1: Name",
-                2 => "Temp Entity 2: Name",
-                3 => "Player Sex",
-                4 => "Temp Entity 1: Sex",
-                5 => "Temp Entity 2: Sex",
-                6 => "Temp Entity 1: ObjStrId",
-                7 => "Temp Entity 2: ObjStrId",
-                10 => "Eorzea Time Hours",
-                11 => "Eorzea Time Minutes",
-                12 => "ColorSay",
-                13 => "ColorShout",
-                14 => "ColorTell",
-                15 => "ColorParty",
-                16 => "ColorAlliance",
-                17 => "ColorLS1",
-                18 => "ColorLS2",
-                19 => "ColorLS3",
-                20 => "ColorLS4",
-                21 => "ColorLS5",
-                22 => "ColorLS6",
-                23 => "ColorLS7",
-                24 => "ColorLS8",
-                25 => "ColorFCompany",
-                26 => "ColorPvPGroup",
-                27 => "ColorPvPGroupAnnounce",
-                28 => "ColorBeginner",
-                29 => "ColorEmoteUser",
-                30 => "ColorEmote",
-                31 => "ColorYell",
-                32 => "ColorFCAnnounce",
-                33 => "ColorBeginnerAnnounce",
-                34 => "ColorCWLS",
-                35 => "ColorAttackSuccess",
-                36 => "ColorAttackFailure",
-                37 => "ColorAction",
-                38 => "ColorItem",
-                39 => "ColorCureGive",
-                40 => "ColorBuffGive",
-                41 => "ColorDebuffGive",
-                42 => "ColorEcho",
-                43 => "ColorSysMsg",
-                51 => "Player Grand Company Rank (Maelstrom)",
-                52 => "Player Grand Company Rank (Twin Adders)",
-                53 => "Player Grand Company Rank (Immortal Flames)",
-                54 => "Companion Name",
-                55 => "Content Name",
-                56 => "ColorSysBattle",
-                57 => "ColorSysGathering",
-                58 => "ColorSysErr",
-                59 => "ColorNpcSay",
-                60 => "ColorItemNotice",
-                61 => "ColorGrowup",
-                62 => "ColorLoot",
-                63 => "ColorCraft",
-                64 => "ColorGathering",
-                65 => "Temp Entity 1: Name starts with Vowel",
-                66 => "Temp Entity 2: Name starts with Vowel",
-                67 => "Player ClassJobId",
-                68 => "Player Level",
-                69 => "Player StartTown",
-                70 => "Player Race",
-                71 => "Player Synced Level",
-                73 => "Quest#66047: Has met Alphinaud and Alisaie",
-                74 => "PlayStation Generation",
-                75 => "Is Legacy Player",
-                77 => "Client/Platform?",
-                78 => "Player BirthMonth",
-                79 => "PadMode",
-                82 => "Datacenter Region",
-                83 => "ColorCWLS2",
-                84 => "ColorCWLS3",
-                85 => "ColorCWLS4",
-                86 => "ColorCWLS5",
-                87 => "ColorCWLS6",
-                88 => "ColorCWLS7",
-                89 => "ColorCWLS8",
-                91 => "Player Grand Company",
-                92 => "TerritoryType Id",
-                93 => "Is Soft Keyboard Enabled",
-                94 => "LogSetRoleColor 1: LogColorRoleTank",
-                95 => "LogSetRoleColor 2: LogColorRoleTank",
-                96 => "LogSetRoleColor 1: LogColorRoleHealer",
-                97 => "LogSetRoleColor 2: LogColorRoleHealer",
-                98 => "LogSetRoleColor 1: LogColorRoleDPS",
-                99 => "LogSetRoleColor 2: LogColorRoleDPS",
-                100 => "LogSetRoleColor 1: LogColorOtherClass",
-                101 => "LogSetRoleColor 2: LogColorOtherClass",
-                102 => "Has Login Security Token",
-                103 => "Is subscribed to PlayStation Plus",
-                104 => "PadMouseMode",
-                106 => "Preferred World Bonus Max Level",
-                107 => "Occult Crescent Support Job Level",
-                108 => "Deep Dungeon Id",
+                0 => "玩家名称",
+                1 => "临时实体 1：名称",
+                2 => "临时实体 2：名称",
+                3 => "玩家性别",
+                4 => "临时实体 1：性别",
+                5 => "临时实体 2：性别",
+                6 => "临时实体 1：对象字符串 ID",
+                7 => "临时实体 2：对象字符串 ID",
+                10 => "艾欧泽亚时间：小时",
+                11 => "艾欧泽亚时间：分钟",
+                12 => "说话频道颜色（ColorSay）",
+                13 => "喊话频道颜色（ColorShout）",
+                14 => "悄悄话频道颜色（ColorTell）",
+                15 => "小队频道颜色（ColorParty）",
+                16 => "团队频道颜色（ColorAlliance）",
+                17 => "通讯贝 1 频道颜色（ColorLS1）",
+                18 => "通讯贝 2 频道颜色（ColorLS2）",
+                19 => "通讯贝 3 频道颜色（ColorLS3）",
+                20 => "通讯贝 4 频道颜色（ColorLS4）",
+                21 => "通讯贝 5 频道颜色（ColorLS5）",
+                22 => "通讯贝 6 频道颜色（ColorLS6）",
+                23 => "通讯贝 7 频道颜色（ColorLS7）",
+                24 => "通讯贝 8 频道颜色（ColorLS8）",
+                25 => "部队频道颜色（ColorFCompany）",
+                26 => "PvP 小队频道颜色（ColorPvPGroup）",
+                27 => "PvP 小队公告颜色（ColorPvPGroupAnnounce）",
+                28 => "新人频道颜色（ColorBeginner）",
+                29 => "玩家情感动作颜色（ColorEmoteUser）",
+                30 => "情感动作颜色（ColorEmote）",
+                31 => "呼喊频道颜色（ColorYell）",
+                32 => "部队公告颜色（ColorFCAnnounce）",
+                33 => "新人频道公告颜色（ColorBeginnerAnnounce）",
+                34 => "跨界通讯贝频道颜色（ColorCWLS）",
+                35 => "攻击成功颜色（ColorAttackSuccess）",
+                36 => "攻击失败颜色（ColorAttackFailure）",
+                37 => "技能颜色（ColorAction）",
+                38 => "物品颜色（ColorItem）",
+                39 => "治疗颜色（ColorCureGive）",
+                40 => "增益效果颜色（ColorBuffGive）",
+                41 => "减益效果颜色（ColorDebuffGive）",
+                42 => "回声颜色（ColorEcho）",
+                43 => "系统消息颜色（ColorSysMsg）",
+                51 => "玩家黑涡团军衔",
+                52 => "玩家双蛇党军衔",
+                53 => "玩家恒辉队军衔",
+                54 => "搭档名称",
+                55 => "任务内容名称",
+                56 => "系统战斗消息颜色（ColorSysBattle）",
+                57 => "系统采集消息颜色（ColorSysGathering）",
+                58 => "系统错误消息颜色（ColorSysErr）",
+                59 => "NPC 说话颜色（ColorNpcSay）",
+                60 => "物品提示颜色（ColorItemNotice）",
+                61 => "成长提示颜色（ColorGrowup）",
+                62 => "战利品颜色（ColorLoot）",
+                63 => "制作消息颜色（ColorCraft）",
+                64 => "采集消息颜色（ColorGathering）",
+                65 => "临时实体 1：名称以元音开头",
+                66 => "临时实体 2：名称以元音开头",
+                67 => "玩家职业 ID",
+                68 => "玩家等级",
+                69 => "玩家初始城市",
+                70 => "玩家种族",
+                71 => "玩家同步等级",
+                73 => "任务 #66047：已遇见阿尔菲诺和阿莉塞",
+                74 => "PlayStation 世代",
+                75 => "是否为旧版玩家",
+                77 => "客户端/平台？",
+                78 => "玩家出生月份",
+                79 => "手柄模式（PadMode）",
+                82 => "数据中心地区",
+                83 => "跨界通讯贝 2 频道颜色（ColorCWLS2）",
+                84 => "跨界通讯贝 3 频道颜色（ColorCWLS3）",
+                85 => "跨界通讯贝 4 频道颜色（ColorCWLS4）",
+                86 => "跨界通讯贝 5 频道颜色（ColorCWLS5）",
+                87 => "跨界通讯贝 6 频道颜色（ColorCWLS6）",
+                88 => "跨界通讯贝 7 频道颜色（ColorCWLS7）",
+                89 => "跨界通讯贝 8 频道颜色（ColorCWLS8）",
+                91 => "玩家所属大国防联军",
+                92 => "区域类型 ID",
+                93 => "是否启用软键盘",
+                94 => "职能颜色 1：防护职业（LogColorRoleTank）",
+                95 => "职能颜色 2：防护职业（LogColorRoleTank）",
+                96 => "职能颜色 1：治疗职业（LogColorRoleHealer）",
+                97 => "职能颜色 2：治疗职业（LogColorRoleHealer）",
+                98 => "职能颜色 1：进攻职业（LogColorRoleDPS）",
+                99 => "职能颜色 2：进攻职业（LogColorRoleDPS）",
+                100 => "职能颜色 1：其他职业（LogColorOtherClass）",
+                101 => "职能颜色 2：其他职业（LogColorOtherClass）",
+                102 => "是否拥有登录安全令牌",
+                103 => "是否订阅 PlayStation Plus",
+                104 => "手柄鼠标模式（PadMouseMode）",
+                106 => "优遇世界加成最高等级",
+                107 => "蜃景幻界辅助职业等级",
+                108 => "深层迷宫 ID",
                 _ => string.Empty,
             });
         }
@@ -418,14 +418,14 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
     private unsafe void DrawControls()
     {
-        if (ImGui.Button("Add entry"u8))
+        if (ImGui.Button("添加条目"u8))
         {
             this.entries.Add(new(TextEntryType.String, string.Empty));
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Add from Sheet"u8))
+        if (ImGui.Button("从表格添加"u8))
         {
             ImGui.OpenPopup("AddFromSheetPopup"u8);
         }
@@ -434,7 +434,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Print"u8))
+        if (ImGui.Button("输出"u8))
         {
             var output = Utf8String.CreateEmpty();
             var temp = Utf8String.CreateEmpty();
@@ -475,7 +475,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Print Evaluated"u8))
+        if (ImGui.Button("输出求值结果"u8))
         {
             using var rssb = new RentedSeStringBuilder();
 
@@ -506,7 +506,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         {
             ImGui.SameLine();
 
-            if (ImGui.Button("Copy MacroString"u8))
+            if (ImGui.Button("复制宏字符串"u8))
             {
                 using var rssb = new RentedSeStringBuilder();
 
@@ -530,7 +530,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
             ImGui.SameLine();
 
-            if (ImGui.Button("Clear entries"u8))
+            if (ImGui.Button("清空条目"u8))
             {
                 this.entries.Clear();
                 this.UpdateInputString();
@@ -546,13 +546,14 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
         ImGui.SameLine();
         ImGui.SetNextItemWidth(90 * ImGuiHelpers.GlobalScale);
-        using var dropdown = ImRaii.Combo("##Language"u8, this.language.ToString() ?? "Language...");
+        var languageName = this.language.ToString();
+        using var dropdown = ImRaii.Combo("##Language"u8, languageName);
         if (dropdown)
         {
             var values = Enum.GetValues<ClientLanguage>().OrderBy(lang => lang.ToString());
             foreach (var value in values)
             {
-                if (ImGui.Selectable(Enum.GetName(value), value == this.language))
+                if (ImGui.Selectable(value.ToString(), value == this.language))
                 {
                     this.language = value;
                     this.UpdateInputString();
@@ -590,11 +591,11 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
         if (this.validImportSheetNames == null)
         {
-            ImGui.Text("Loading sheets..."u8);
+            ImGui.Text("正在加载表格..."u8);
             return;
         }
 
-        var sheetChanged = ImGui.Combo("Sheet Name", ref this.importSelectedSheetName, this.validImportSheetNames);
+        var sheetChanged = ImGui.Combo("表名", ref this.importSelectedSheetName, this.validImportSheetNames);
 
         try
         {
@@ -602,10 +603,10 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             var minRowId = (int)sheet.FirstOrDefault().RowId;
             var maxRowId = (int)sheet.LastOrDefault().RowId;
 
-            var rowIdChanged = ImGui.InputInt("RowId"u8, ref this.importRowId, 1, 10);
+            var rowIdChanged = ImGui.InputInt("行 ID"u8, ref this.importRowId, 1, 10);
 
             ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
-            ImGui.Text($"(Range: {minRowId} - {maxRowId})");
+            ImGui.Text($"（范围：{minRowId} - {maxRowId}）");
 
             if (sheetChanged || rowIdChanged)
             {
@@ -618,17 +619,17 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
             if (!sheet.TryGetRow((uint)this.importRowId, out var row))
             {
-                ImGui.TextColored(new Vector4(1, 0, 0, 1), "Row not found"u8);
+                ImGui.TextColored(new Vector4(1, 0, 0, 1), "未找到该行"u8);
                 return;
             }
 
-            ImGui.Text("Select string to add:"u8);
+            ImGui.Text("选择要添加的字符串："u8);
 
             using var table = ImRaii.Table("StringSelectionTable"u8, 2, ImGuiTableFlags.Borders | ImGuiTableFlags.NoSavedSettings);
             if (!table) return;
 
-            ImGui.TableSetupColumn("Column"u8, ImGuiTableColumnFlags.WidthFixed, 50);
-            ImGui.TableSetupColumn("Value"u8, ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("列"u8, ImGuiTableColumnFlags.WidthFixed, 50);
+            ImGui.TableSetupColumn("值"u8, ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableHeadersRow();
 
@@ -682,9 +683,9 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         using var table = ImRaii.Table("StringMakerTable"u8, 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Type"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Text"u8, ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Actions"u8, ImGuiTableColumnFlags.WidthFixed, 80);
+        ImGui.TableSetupColumn("类型"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("文本"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("操作"u8, ImGuiTableColumnFlags.WidthFixed, 80);
         ImGui.TableSetupScrollFreeze(3, 1);
         ImGui.TableHeadersRow();
 
@@ -725,7 +726,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
             if (i > 0)
             {
-                if (this.IconButton(key + "_Up", FontAwesomeIcon.ArrowUp, "Move up"))
+                if (this.IconButton(key + "_Up", FontAwesomeIcon.ArrowUp, "上移"))
                 {
                     entryToMoveUp = i;
                 }
@@ -739,7 +740,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
             if (i < this.entries.Count - 1)
             {
-                if (this.IconButton(key + "_Down", FontAwesomeIcon.ArrowDown, "Move down"))
+                if (this.IconButton(key + "_Down", FontAwesomeIcon.ArrowDown, "下移"))
                 {
                     entryToMoveDown = i;
                 }
@@ -753,7 +754,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
             if (ImGui.IsKeyDown(ImGuiKey.LeftShift) || ImGui.IsKeyDown(ImGuiKey.RightShift))
             {
-                if (this.IconButton(key + "_Delete", FontAwesomeIcon.Trash, "Delete"))
+                if (this.IconButton(key + "_Delete", FontAwesomeIcon.Trash, "删除"))
                 {
                     entryToRemove = i;
                 }
@@ -763,7 +764,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                 this.IconButton(
                     key + "_Delete",
                     FontAwesomeIcon.Trash,
-                    "Delete with shift",
+                    "按住 Shift 删除",
                     disabled: true);
             }
         }
@@ -826,7 +827,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
     private void DrawPreview(ReadOnlySeString str)
     {
         using var nodeColor = ImRaii.PushColor(ImGuiCol.Text, 0xFF00FF00);
-        using var node = ImRaii.TreeNode("Preview"u8, ImGuiTreeNodeFlags.DefaultOpen);
+        using var node = ImRaii.TreeNode("预览"u8, ImGuiTreeNodeFlags.DefaultOpen);
         nodeColor.Pop();
         if (!node) return;
 
@@ -838,7 +839,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
     private void DrawParameters()
     {
         using var nodeColor = ImRaii.PushColor(ImGuiCol.Text, 0xFF00FF00);
-        using var node = ImRaii.TreeNode("Parameters"u8, ImGuiTreeNodeFlags.DefaultOpen);
+        using var node = ImRaii.TreeNode("参数"u8, ImGuiTreeNodeFlags.DefaultOpen);
         nodeColor.Pop();
         if (!node) return;
 
@@ -866,7 +867,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
     private void DrawPayloads(ReadOnlySeString evaluated)
     {
         using (var nodeColor = ImRaii.PushColor(ImGuiCol.Text, 0xFF00FF00))
-        using (var node = ImRaii.TreeNode("Payloads"u8, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.SpanAvailWidth))
+        using (var node = ImRaii.TreeNode("载荷"u8, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.SpanAvailWidth))
         {
             nodeColor.Pop();
             if (node) this.DrawSeString("payloads", this.input.AsSpan(), treeNodeFlags: ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.SpanAvailWidth);
@@ -876,7 +877,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             return;
 
         using (var nodeColor = ImRaii.PushColor(ImGuiCol.Text, 0xFF00FF00))
-        using (var node = ImRaii.TreeNode("Payloads (Evaluated)"u8, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.SpanAvailWidth))
+        using (var node = ImRaii.TreeNode("载荷（已求值）"u8, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.SpanAvailWidth))
         {
             nodeColor.Pop();
             if (node) this.DrawSeString("payloads-evaluated", evaluated.AsSpan(), treeNodeFlags: ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.SpanAvailWidth);
@@ -922,8 +923,8 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             using var table = ImRaii.Table($"##Payload{payloadIdx}Table", 2);
             if (!table) return;
 
-            ImGui.TableSetupColumn("Label"u8, ImGuiTableColumnFlags.WidthFixed, 120);
-            ImGui.TableSetupColumn("Tree"u8, ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("标签"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+            ImGui.TableSetupColumn("树"u8, ImGuiTableColumnFlags.WidthStretch);
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
@@ -967,7 +968,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
         ImGui.TableNextColumn();
         var expressionName = this.GetExpressionName(macroCode, subType, exprIdx, expr);
-        ImGui.Text($"[{exprIdx}] " + (string.IsNullOrEmpty(expressionName) ? $"Expr {exprIdx}" : expressionName));
+        ImGui.Text($"[{exprIdx}] " + (string.IsNullOrEmpty(expressionName) ? $"表达式 {exprIdx}" : expressionName));
 
         ImGui.TableNextColumn();
 
@@ -1043,13 +1044,13 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             if (macroCode is MacroCode.DeNoun && exprIdx == 4 && u32 is >= 0 and <= 4)
             {
                 ImGui.SameLine();
-                ImGui.Text(NounProcessorWidget.GermanCases[u32]);
+                ImGui.Text(NounProcessorWidget.GermanCaseDisplayNames[u32]);
             }
 
             if (macroCode is MacroCode.Fixed && subType != null && fixedType != null && fixedType is 100 or 200 && subType == 5 && exprIdx == 2)
             {
                 ImGui.SameLine();
-                if (ImGui.SmallButton("Play"u8))
+                if (ImGui.SmallButton("播放"u8))
                 {
                     UIGlobals.PlayChatSoundEffect(u32 + 1);
                 }
@@ -1124,7 +1125,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                 return;
             }
 
-            throw new InvalidOperationException("All native names must be defined for unary expressions.");
+            throw new InvalidOperationException("必须为所有一元表达式定义原生名称。");
         }
 
         if (expr.TryGetBinaryExpression(out exprType, out e1, out var e2))
@@ -1135,7 +1136,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                 return;
             }
 
-            throw new InvalidOperationException("All native names must be defined for binary expressions.");
+            throw new InvalidOperationException("必须为所有二元表达式定义原生名称。");
         }
 
         var sb = new StringBuilder();
@@ -1153,7 +1154,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             return names[idx];
 
         if (macroCode == MacroCode.Switch)
-            return $"Case {idx - 1}";
+            return $"分支 {idx - 1}";
 
         if (macroCode == MacroCode.Link && subType != null && this.linkExpressionNames.TryGetValue((LinkMacroPayloadType)subType, out var linkNames) && idx - 1 < linkNames.Length)
             return linkNames[idx - 1];
@@ -1162,7 +1163,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             return fixedNames[idx];
 
         if (macroCode == MacroCode.Link && idx == 4)
-            return "Copy String";
+            return "复制字符串";
 
         return string.Empty;
     }

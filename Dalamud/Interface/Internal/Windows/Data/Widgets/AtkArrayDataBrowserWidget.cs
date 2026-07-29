@@ -37,7 +37,7 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["atkarray"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Atk Array Data";
+    public string DisplayName { get; init; } = "Atk 数组数据";
 
     /// <inheritdoc/>
     public void Load()
@@ -61,9 +61,9 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
         using var table = ImRaii.Table("ArkArrayTable"u8, 3, ImGuiTableFlags.ScrollY | ImGuiTableFlags.Borders, new Vector2(300, -1));
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 30);
-        ImGui.TableSetupColumn("Type"u8, ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Size"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("索引"u8, ImGuiTableColumnFlags.WidthFixed, 30);
+        ImGui.TableSetupColumn("类型"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("大小"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupScrollFreeze(3, 1);
         ImGui.TableHeadersRow();
 
@@ -129,7 +129,7 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
 
     private void DrawArrayHeader(Type? arrayType, string type, int index, AtkArrayData* array)
     {
-        ImGui.Text($"{type} Array #{index}");
+        ImGui.Text($"{type}数组 #{index}");
 
         if (arrayType != null && Enum.IsDefined(arrayType, index))
         {
@@ -140,9 +140,9 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
         ImGui.SameLine();
         ImGui.Text("–"u8);
         ImGui.SameLine();
-        ImGui.Text("Address: "u8);
+        ImGui.Text("地址："u8);
         ImGui.SameLine(0, 0);
-        WidgetUtil.DrawCopyableText($"0x{(nint)array:X}", "Copy address");
+        WidgetUtil.DrawCopyableText($"0x{(nint)array:X}", "复制地址");
 
         if (array->SubscribedAddonsCount > 0)
         {
@@ -150,7 +150,7 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
             ImGui.Text("–"u8);
             ImGui.SameLine();
             using (ImRaii.PushColor(ImGuiCol.Text, 0xFF00FFFF))
-                ImGui.Text($"{array->SubscribedAddonsCount} Subscribed Addon" + (array->SubscribedAddonsCount > 1 ? 's' : string.Empty));
+                ImGui.Text($"{array->SubscribedAddonsCount} 个已订阅的 Addon");
 
             if (ImGui.IsItemHovered())
             {
@@ -172,7 +172,7 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
     {
         var atkArrayDataHolder = RaptureAtkModule.Instance()->AtkArrayDataHolder;
 
-        using var tab = ImRaii.TabItem("Number Arrays"u8);
+        using var tab = ImRaii.TabItem("数值数组"u8);
         if (!tab) return;
 
         this.DrawArrayList(
@@ -191,18 +191,18 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
         if (!child) return;
 
         var array = atkArrayDataHolder.NumberArrays[this.selectedNumberArray];
-        this.DrawArrayHeader(this.numberType, "Number", this.selectedNumberArray, (AtkArrayData*)array);
+        this.DrawArrayHeader(this.numberType, "数值", this.selectedNumberArray, (AtkArrayData*)array);
 
         using var table = ImRaii.Table("NumberArrayDataTable"u8, 7, ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("Entry Address"u8, ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableSetupColumn("Integer"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Short"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Byte"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Float"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Hex"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("索引"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("条目地址"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("整数"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("短整数"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("字节"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("浮点数"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("十六进制"u8, ImGuiTableColumnFlags.WidthFixed, 100);
         ImGui.TableSetupScrollFreeze(7, 1);
         ImGui.TableHeadersRow();
 
@@ -215,28 +215,28 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
             var ptr = &array->IntArray[i];
 
             ImGui.TableNextColumn(); // Address
-            WidgetUtil.DrawCopyableText($"0x{(nint)ptr:X}", "Copy entry address");
+            WidgetUtil.DrawCopyableText($"0x{(nint)ptr:X}", "复制条目地址");
 
             ImGui.TableNextColumn(); // Integer
-            WidgetUtil.DrawCopyableText((*ptr).ToString(), "Copy value");
+            WidgetUtil.DrawCopyableText((*ptr).ToString(), "复制值");
 
             ImGui.TableNextColumn(); // Short
-            WidgetUtil.DrawCopyableText((*(short*)ptr).ToString(), "Copy as short");
+            WidgetUtil.DrawCopyableText((*(short*)ptr).ToString(), "按短整数复制");
 
             ImGui.TableNextColumn(); // Byte
-            WidgetUtil.DrawCopyableText((*(byte*)ptr).ToString(), "Copy as byte");
+            WidgetUtil.DrawCopyableText((*(byte*)ptr).ToString(), "按字节复制");
 
             ImGui.TableNextColumn(); // Float
-            WidgetUtil.DrawCopyableText((*(float*)ptr).ToString(), "Copy as float");
+            WidgetUtil.DrawCopyableText((*(float*)ptr).ToString(), "按浮点数复制");
 
             ImGui.TableNextColumn(); // Hex
-            WidgetUtil.DrawCopyableText($"0x{array->IntArray[i]:X2}", "Copy Hex");
+            WidgetUtil.DrawCopyableText($"0x{array->IntArray[i]:X2}", "复制十六进制值");
         }
     }
 
     private void DrawStringArrayTab()
     {
-        using var tab = ImRaii.TabItem("String Arrays"u8);
+        using var tab = ImRaii.TabItem("字符串数组"u8);
         if (!tab) return;
 
         var atkArrayDataHolder = RaptureAtkModule.Instance()->AtkArrayDataHolder;
@@ -246,7 +246,7 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
             if (sidebarChild)
             {
                 ImGui.SetNextItemWidth(-1);
-                ImGui.InputTextWithHint("##TextSearch"u8, "Search..."u8, ref this.searchTerm, 256, ImGuiInputTextFlags.AutoSelectAll);
+                ImGui.InputTextWithHint("##TextSearch"u8, "搜索..."u8, ref this.searchTerm, 256, ImGuiInputTextFlags.AutoSelectAll);
 
                 this.DrawArrayList(
                     this.stringType,
@@ -266,20 +266,20 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
         if (!child) return;
 
         var array = atkArrayDataHolder.StringArrays[this.selectedStringArray];
-        this.DrawArrayHeader(this.stringType, "String", this.selectedStringArray, (AtkArrayData*)array);
-        ImGui.Checkbox("Hide unset entries##HideUnsetStringArrayEntriesCheckbox"u8, ref this.hideUnsetStringArrayEntries);
+        this.DrawArrayHeader(this.stringType, "字符串", this.selectedStringArray, (AtkArrayData*)array);
+        ImGui.Checkbox("隐藏未设置的条目##HideUnsetStringArrayEntriesCheckbox"u8, ref this.hideUnsetStringArrayEntries);
         ImGui.SameLine();
-        ImGui.Checkbox("Show text address##WordWrapCheckbox"u8, ref this.showTextAddress);
+        ImGui.Checkbox("显示文本地址##WordWrapCheckbox"u8, ref this.showTextAddress);
         ImGui.SameLine();
-        ImGui.Checkbox("Show macro string##RenderStringsCheckbox"u8, ref this.showMacroString);
+        ImGui.Checkbox("显示宏字符串##RenderStringsCheckbox"u8, ref this.showMacroString);
 
         using var table = ImRaii.Table("StringArrayDataTable"u8, 4, ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn(this.showTextAddress ? "Text Address"u8 : "Entry Address"u8, ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableSetupColumn("Managed"u8, ImGuiTableColumnFlags.WidthFixed, 60);
-        ImGui.TableSetupColumn("Text"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("索引"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn(this.showTextAddress ? "文本地址"u8 : "条目地址"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("托管"u8, ImGuiTableColumnFlags.WidthFixed, 60);
+        ImGui.TableSetupColumn("文本"u8, ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupScrollFreeze(4, 1);
         ImGui.TableHeadersRow();
 
@@ -310,17 +310,17 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
             if (this.showTextAddress)
             {
                 if (!isNull)
-                    WidgetUtil.DrawCopyableText($"0x{(nint)array->StringArray[i].Value:X}", "Copy text address");
+                    WidgetUtil.DrawCopyableText($"0x{(nint)array->StringArray[i].Value:X}", "复制文本地址");
             }
             else
             {
-                WidgetUtil.DrawCopyableText($"0x{(nint)(&array->StringArray[i]):X}", "Copy entry address");
+                WidgetUtil.DrawCopyableText($"0x{(nint)(&array->StringArray[i]):X}", "复制条目地址");
             }
 
             ImGui.TableNextColumn(); // Managed
             if (!isNull)
             {
-                ImGui.Text((array->StringArray[i].HasValue && array->ManagedStringArray[i].Value == array->StringArray[i]).ToString());
+                ImGui.Text(array->StringArray[i].HasValue && array->ManagedStringArray[i].Value == array->StringArray[i] ? "是" : "否");
             }
 
             ImGui.TableNextColumn(); // Text
@@ -328,7 +328,7 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
             {
                 if (this.showMacroString)
                 {
-                    WidgetUtil.DrawCopyableText(new ReadOnlySeStringSpan(array->StringArray[i].Value).ToString(), "Copy text");
+                    WidgetUtil.DrawCopyableText(new ReadOnlySeStringSpan(array->StringArray[i].Value).ToString(), "复制文本");
                 }
                 else
                 {
@@ -340,7 +340,7 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
 
     private void DrawExtendArrayTab()
     {
-        using var tab = ImRaii.TabItem("Extend Arrays"u8);
+        using var tab = ImRaii.TabItem("扩展数组"u8);
         if (!tab) return;
 
         var atkArrayDataHolder = RaptureAtkModule.Instance()->AtkArrayDataHolder;
@@ -360,15 +360,15 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
         using var child = ImRaii.Child("AtkArrayContent"u8, new Vector2(-1), true, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoSavedSettings);
 
         var array = atkArrayDataHolder.ExtendArrays[this.selectedExtendArray];
-        this.DrawArrayHeader(null, "Extend", this.selectedExtendArray, (AtkArrayData*)array);
-        ImGui.Checkbox("Hide unset entries##HideUnsetExtendArrayEntriesCheckbox"u8, ref this.hideUnsetExtendArrayEntries);
+        this.DrawArrayHeader(null, "扩展", this.selectedExtendArray, (AtkArrayData*)array);
+        ImGui.Checkbox("隐藏未设置的条目##HideUnsetExtendArrayEntriesCheckbox"u8, ref this.hideUnsetExtendArrayEntries);
 
         using var table = ImRaii.Table("ExtendArrayDataTable"u8, 3, ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("Entry Address"u8, ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableSetupColumn("Pointer"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("索引"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("条目地址"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("指针"u8, ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupScrollFreeze(3, 1);
         ImGui.TableHeadersRow();
 
@@ -385,11 +385,11 @@ internal unsafe class AtkArrayDataBrowserWidget : IDataWindowWidget
             ImGui.Text($"#{i}");
 
             ImGui.TableNextColumn(); // Address
-            WidgetUtil.DrawCopyableText($"0x{(nint)(&array->DataArray[i]):X}", "Copy entry address");
+            WidgetUtil.DrawCopyableText($"0x{(nint)(&array->DataArray[i]):X}", "复制条目地址");
 
             ImGui.TableNextColumn(); // Pointer
             if (!isNull)
-                WidgetUtil.DrawCopyableText($"0x{(nint)array->DataArray[i]:X}", "Copy address");
+                WidgetUtil.DrawCopyableText($"0x{(nint)array->DataArray[i]:X}", "复制地址");
         }
     }
 }

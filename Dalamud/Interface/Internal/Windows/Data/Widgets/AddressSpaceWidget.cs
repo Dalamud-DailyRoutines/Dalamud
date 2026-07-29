@@ -259,7 +259,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
             }
         }
 
-        if (current.Name == "自定义地址" && ImGui.InputText("地址 (十六进制)"u8, ref this.customAddress, 32))
+        if (current.Name == "自定义地址" && ImGui.InputText("地址（十六进制）"u8, ref this.customAddress, 32))
             this.Recompute();
     }
 
@@ -267,7 +267,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
     {
         if (this.stats.WindowSize == 0)
         {
-            ImGui.TextDisabled("选择锚点, 或输入有效的十六进制地址"u8);
+            ImGui.TextDisabled("选择锚点，或输入有效的十六进制地址"u8);
             return;
         }
 
@@ -276,7 +276,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         var stranded = s.Free > allocatable ? s.Free - allocatable : 0;
         var exhaustion = 1.0f - (allocatable / (float)s.WindowSize);
 
-        ImGui.Text($"锚点 0x{s.Anchor:X}, 窗口 0x{s.WindowStart:X} - 0x{s.WindowEnd:X} ({FormatBytes(s.WindowSize)})");
+        ImGui.Text($"锚点 0x{s.Anchor:X}，窗口 0x{s.WindowStart:X} - 0x{s.WindowEnd:X}（{FormatBytes(s.WindowSize)}）");
 
         ImGui.ProgressBar(exhaustion, new Vector2(-1, 0), $"已耗尽 {exhaustion * 100:F2}%");
 
@@ -297,7 +297,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         {
             ImGui.TextColored(
                 ImGuiColors.DalamudRed,
-                "此窗口范围内没有空闲的 64 KB 槽位, 此处的 Hook 无法获得范围内的跳板"u8);
+                "此窗口范围内没有空闲的 64 KB 槽位，无法为此处的 Hook 分配范围内跳板。"u8);
         }
         else if (s.AllocatableGranules < 16)
         {
@@ -369,9 +369,9 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         {
             var allocatable = s.AllocatableGranules * Granularity;
             sb.AppendLine(
-                $"0x{s.Anchor:X} 周围的窗口: 0x{s.WindowStart:X}-0x{s.WindowEnd:X}, " +
-                $"可分配 {allocatable} ({s.AllocatableGranules} 个粒度块), 空闲 {s.Free}, " +
-                $"已保留 {s.Reserved}, 已提交 {s.Committed}, 最大连续空间 {s.LargestFreeRun}");
+                $"0x{s.Anchor:X} 周围的窗口：0x{s.WindowStart:X}-0x{s.WindowEnd:X}，" +
+                $"可分配 {allocatable}（{s.AllocatableGranules} 个粒度块），空闲 {s.Free}，" +
+                $"已保留 {s.Reserved}，已提交 {s.Committed}，最大连续空间 {s.LargestFreeRun}");
         }
 
         foreach (var region in this.regions)

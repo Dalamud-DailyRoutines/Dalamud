@@ -27,7 +27,7 @@ internal class GameInventoryTestWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["gameinventorytest"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "GameInventory Test";
+    public string DisplayName { get; init; } = "GameInventory 测试";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -42,7 +42,7 @@ internal class GameInventoryTestWidget : IDataWindowWidget
         {
             ImGui.TextColoredWrapped(
                 ImGuiColors.AttentionForeground,
-                "Enable LogLevel=Information display to see the logs."u8);
+                "请启用 LogLevel=Information 显示以查看日志。"u8);
         }
 
         using var table = ImRaii.Table(this.DisplayName, 3, ImGuiTableFlags.SizingFixedFit);
@@ -50,12 +50,12 @@ internal class GameInventoryTestWidget : IDataWindowWidget
             return;
 
         ImGui.TableNextColumn();
-        ImGui.Text("Standard Logging"u8);
+        ImGui.Text("标准日志"u8);
 
         ImGui.TableNextColumn();
         using (ImRaii.Disabled(this.standardEnabled))
         {
-            if (ImGui.Button("Enable##standard-enable"u8) && !this.standardEnabled)
+            if (ImGui.Button("启用##standard-enable"u8) && !this.standardEnabled)
             {
                 this.scoped ??= new();
                 this.scoped.InventoryChanged += ScopedOnInventoryChanged;
@@ -66,7 +66,7 @@ internal class GameInventoryTestWidget : IDataWindowWidget
         ImGui.TableNextColumn();
         using (ImRaii.Disabled(!this.standardEnabled))
         {
-            if (ImGui.Button("Disable##standard-disable"u8) && this.scoped is not null && this.standardEnabled)
+            if (ImGui.Button("禁用##standard-disable"u8) && this.scoped is not null && this.standardEnabled)
             {
                 this.scoped.InventoryChanged -= ScopedOnInventoryChanged;
                 this.standardEnabled = false;
@@ -81,12 +81,12 @@ internal class GameInventoryTestWidget : IDataWindowWidget
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn();
-        ImGui.Text("Raw Logging"u8);
+        ImGui.Text("原始日志"u8);
 
         ImGui.TableNextColumn();
         using (ImRaii.Disabled(this.rawEnabled))
         {
-            if (ImGui.Button("Enable##raw-enable"u8) && !this.rawEnabled)
+            if (ImGui.Button("启用##raw-enable"u8) && !this.rawEnabled)
             {
                 this.scoped ??= new();
                 this.scoped.InventoryChangedRaw += ScopedOnInventoryChangedRaw;
@@ -97,7 +97,7 @@ internal class GameInventoryTestWidget : IDataWindowWidget
         ImGui.TableNextColumn();
         using (ImRaii.Disabled(!this.rawEnabled))
         {
-            if (ImGui.Button("Disable##raw-disable"u8) && this.scoped is not null && this.rawEnabled)
+            if (ImGui.Button("禁用##raw-disable"u8) && this.scoped is not null && this.rawEnabled)
             {
                 this.scoped.InventoryChangedRaw -= ScopedOnInventoryChangedRaw;
                 this.rawEnabled = false;
@@ -112,12 +112,12 @@ internal class GameInventoryTestWidget : IDataWindowWidget
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn();
-        ImGui.Text("All"u8);
+        ImGui.Text("全部"u8);
 
         ImGui.TableNextColumn();
         using (ImRaii.Disabled(this.standardEnabled && this.rawEnabled))
         {
-            if (ImGui.Button("Enable##all-enable"u8))
+            if (ImGui.Button("启用##all-enable"u8))
             {
                 this.scoped ??= new();
                 if (!this.standardEnabled)
@@ -131,7 +131,7 @@ internal class GameInventoryTestWidget : IDataWindowWidget
         ImGui.TableNextColumn();
         using (ImRaii.Disabled(this.scoped is null))
         {
-            if (ImGui.Button("Disable##all-disable"u8))
+            if (ImGui.Button("禁用##all-disable"u8))
             {
                 ((IInternalDisposableService)this.scoped)?.DisposeService();
                 this.scoped = null;
@@ -144,7 +144,7 @@ internal class GameInventoryTestWidget : IDataWindowWidget
     {
         var i = 0;
         foreach (var e in events)
-            Log.Information($"[{++i}/{events.Count}] Raw: {e}");
+            Log.Information($"[{++i}/{events.Count}] 原始事件：{e}");
     }
 
     private static void ScopedOnInventoryChanged(IReadOnlyCollection<InventoryEventArgs> events)

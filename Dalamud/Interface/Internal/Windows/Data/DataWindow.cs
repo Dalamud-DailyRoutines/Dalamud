@@ -77,7 +77,7 @@ internal class DataWindow : Window, IDisposable
     /// Initializes a new instance of the <see cref="DataWindow"/> class.
     /// </summary>
     public DataWindow()
-        : base("Dalamud Data", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        : base("Dalamud 数据", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         this.Size = new Vector2(400, 300);
         this.SizeCondition = ImGuiCond.FirstUseEver;
@@ -115,7 +115,7 @@ internal class DataWindow : Window, IDisposable
                 return w;
         }
 
-        throw new ArgumentException($"No widget of type {typeof(T).FullName} found.");
+        throw new ArgumentException($"未找到类型为 {typeof(T).FullName} 的 widget。");
     }
 
     /// <summary>
@@ -133,7 +133,7 @@ internal class DataWindow : Window, IDisposable
         }
         else
         {
-            Service<ChatGui>.Get().PrintError($"/xldata: Invalid data type {dataKind}");
+            Service<ChatGui>.Get().PrintError($"/xldata：无效的数据类型 {dataKind}");
         }
     }
 
@@ -196,7 +196,7 @@ internal class DataWindow : Window, IDisposable
 
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip($"{(this.selectionCollapsed ? "Expand" : "Collapse")} selection pane");
+                ImGui.SetTooltip(this.selectionCollapsed ? "展开选择面板" : "折叠选择面板");
             }
 
             ImGui.SameLine();
@@ -209,7 +209,7 @@ internal class DataWindow : Window, IDisposable
 
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Force Reload"u8);
+                ImGui.SetTooltip("强制重新加载"u8);
             }
 
             ImGui.SameLine();
@@ -231,7 +231,7 @@ internal class DataWindow : Window, IDisposable
                     }
                     else
                     {
-                        ImGui.Text("Data not ready."u8);
+                        ImGui.Text("数据尚未就绪。"u8);
                     }
 
                     this.isExcept = false;
@@ -240,7 +240,7 @@ internal class DataWindow : Window, IDisposable
                 {
                     if (!this.isExcept)
                     {
-                        Log.Error(ex, "Could not draw data");
+                        Log.Error(ex, "无法绘制数据窗口");
                     }
 
                     this.isExcept = true;

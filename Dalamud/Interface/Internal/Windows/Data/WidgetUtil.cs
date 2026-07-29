@@ -12,7 +12,7 @@ internal class WidgetUtil
     /// </summary>
     /// <param name="text">The text shown and to be copied.</param>
     /// <param name="tooltipText">The text in the tooltip.</param>
-    internal static void DrawCopyableText(string text, string tooltipText = "Copy")
+    internal static void DrawCopyableText(string text, string tooltipText = "复制")
     {
         ImGui.TextWrapped(text);
 

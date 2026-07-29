@@ -19,7 +19,7 @@ internal class AddressesWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["address"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Addresses";
+    public string DisplayName { get; init; } = "地址";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -33,8 +33,8 @@ internal class AddressesWidget : IDataWindowWidget
     /// <inheritdoc/>
     public void Draw()
     {
-        ImGui.InputText(".text sig"u8, ref this.inputSig, 400);
-        if (ImGui.Button("Resolve"u8))
+        ImGui.InputText(".text 签名"u8, ref this.inputSig, 400);
+        if (ImGui.Button("解析"u8))
         {
             try
             {
@@ -48,9 +48,9 @@ internal class AddressesWidget : IDataWindowWidget
         }
 
         ImGui.AlignTextToFramePadding();
-        ImGui.Text($"Result: {this.sigResult:X}");
+        ImGui.Text($"结果：{this.sigResult:X}");
         ImGui.SameLine();
-        if (ImGui.Button($"C##{this.sigResult:X}"))
+        if (ImGui.Button($"复制##{this.sigResult:X}"))
             ImGui.SetClipboardText($"{this.sigResult:X}");
 
         foreach (var debugScannedValue in BaseAddressResolver.DebugScannedValues)
@@ -63,7 +63,7 @@ internal class AddressesWidget : IDataWindowWidget
                 ImGui.Text($"{valueTuple.ClassName} - {Util.DescribeAddress(valueTuple.Address)}");
                 ImGui.SameLine();
 
-                if (ImGui.Button($"C##{valueTuple.Address:X}"))
+                if (ImGui.Button($"复制##{valueTuple.Address:X}"))
                     ImGui.SetClipboardText($"{valueTuple.Address:X}");
             }
         }

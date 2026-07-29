@@ -50,7 +50,7 @@ internal unsafe class NetworkMonitorWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["network", "netmon", "networkmonitor"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Network Monitor";
+    public string DisplayName { get; init; } = "网络监视器";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -69,7 +69,7 @@ internal unsafe class NetworkMonitorWidget : IDataWindowWidget
             (nint)ZoneClient.MemberFunctionPointers.SendPacket,
             this.SendPacketDetour);
 
-        if (ImGui.Checkbox("Track ZoneUp"u8, ref this.trackZoneUp))
+        if (ImGui.Checkbox("跟踪 ZoneUp"u8, ref this.trackZoneUp))
         {
             if (this.trackZoneUp)
             {
@@ -84,7 +84,7 @@ internal unsafe class NetworkMonitorWidget : IDataWindowWidget
             }
         }
 
-        if (ImGui.Checkbox("Track ZoneDown"u8, ref this.trackZoneDown))
+        if (ImGui.Checkbox("跟踪 ZoneDown"u8, ref this.trackZoneDown))
         {
             if (this.trackZoneDown)
             {
@@ -100,38 +100,38 @@ internal unsafe class NetworkMonitorWidget : IDataWindowWidget
         }
 
         ImGui.SetNextItemWidth(-1);
-        if (ImGui.DragInt("Stored Number of Packets"u8, ref this.trackedPackets, 0.1f, 1, 512))
+        if (ImGui.DragInt("保留的数据包数量"u8, ref this.trackedPackets, 0.1f, 1, 512))
         {
             this.trackedPackets = Math.Clamp(this.trackedPackets, 1, 512);
         }
 
-        if (ImGui.Button("Clear Stored Packets"u8))
+        if (ImGui.Button("清空已保留的数据包"u8))
         {
             this.packets.Clear();
             this.nextPacketIndex = 0;
         }
 
         ImGui.SameLine();
-        ImGui.Checkbox("Auto-Scroll"u8, ref this.autoScroll);
+        ImGui.Checkbox("自动滚动"u8, ref this.autoScroll);
 
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - (ImGui.GetStyle().ItemInnerSpacing.X + ImGui.GetFrameHeight()) * 2);
-        ImGui.InputTextWithHint("##Filter"u8, "Filter OpCodes..."u8, ref this.filterString, 1024, ImGuiInputTextFlags.AutoSelectAll);
+        ImGui.InputTextWithHint("##Filter"u8, "筛选操作码..."u8, ref this.filterString, 1024, ImGuiInputTextFlags.AutoSelectAll);
         ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
         ImGui.Checkbox("##FilterRecording"u8, ref this.filterRecording);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("When enabled, packets are filtered before being recorded.\nWhen disabled, all packets are recorded and filtering only affects packets displayed in the table."u8);
+            ImGui.SetTooltip("启用后，将先筛选数据包再记录。\n关闭后，将记录全部数据包，筛选条件仅影响表格中显示的数据包。"u8);
         ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
-        ImGuiComponents.HelpMarker("Enter OpCodes in a comma-separated list.\nRanges are supported. Exclude OpCodes with exclamation mark.\nExample: -400,!50-100,650,700-980,!941");
+        ImGuiComponents.HelpMarker("输入以逗号分隔的操作码列表。\n支持范围；在操作码前添加感叹号可将其排除。\n示例：-400,!50-100,650,700-980,!941");
 
         using var table = ImRaii.Table("NetworkMonitorTableV2"u8, 6, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 50);
-        ImGui.TableSetupColumn("Time"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Direction"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("OpCode"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("OpCode (Hex)"u8, ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Target EntityId"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("索引"u8, ImGuiTableColumnFlags.WidthFixed, 50);
+        ImGui.TableSetupColumn("时间"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("方向"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("操作码"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("操作码（十六进制）"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("目标实体 ID"u8, ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
@@ -164,7 +164,7 @@ internal unsafe class NetworkMonitorWidget : IDataWindowWidget
             }
 
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Filter OpCode"u8);
+                ImGui.SetTooltip("排除此操作码"u8);
 
             autoScrollDisabled |= ImGui.IsItemHovered();
 
@@ -203,7 +203,7 @@ internal unsafe class NetworkMonitorWidget : IDataWindowWidget
     private static string GetTargetName(uint targetId)
     {
         if (targetId == PlayerState.Instance()->EntityId)
-            return "Local Player";
+            return "本地玩家";
 
         var cachedName = NameCache.Instance()->GetNameByEntityId(targetId);
         if (cachedName.HasValue)
@@ -299,7 +299,7 @@ internal unsafe class NetworkMonitorWidget : IDataWindowWidget
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "Invalid filter string");
+            Serilog.Log.Error(ex, "无效的筛选字符串");
             return false;
         }
     }

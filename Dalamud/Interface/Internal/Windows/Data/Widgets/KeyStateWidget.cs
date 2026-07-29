@@ -14,7 +14,7 @@ internal class KeyStateWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["keystate"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "KeyState";
+    public string DisplayName { get; init; } = "按键状态";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }

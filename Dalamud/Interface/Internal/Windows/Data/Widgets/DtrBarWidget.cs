@@ -24,7 +24,7 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
     public string[]? CommandShortcuts { get; init; } = ["dtr", "dtrbar"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "DTR Bar";
+    public string DisplayName { get; init; } = "DTR 栏";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -44,7 +44,7 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
     {
         if (this.loadTestThread?.IsAlive is not true)
         {
-            if (ImGui.Button("Do multithreaded add/remove operation"u8))
+            if (ImGui.Button("执行多线程添加/移除操作"u8))
             {
                 var ct = this.loadTestThreadCt = new();
                 var dbar = Service<DtrBar>.Get();
@@ -135,21 +135,21 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
         }
         else
         {
-            if (ImGui.Button("Stop multithreaded add/remove operation"u8))
+            if (ImGui.Button("停止多线程添加/移除操作"u8))
                 this.ClearState();
         }
 
         ImGui.Separator();
-        this.DrawDtrTestEntry(ref this.dtrTest1, "DTR Test #1");
+        this.DrawDtrTestEntry(ref this.dtrTest1, "DTR 测试 #1");
 
         ImGui.Separator();
-        this.DrawDtrTestEntry(ref this.dtrTest2, "DTR Test #2");
+        this.DrawDtrTestEntry(ref this.dtrTest2, "DTR 测试 #2");
 
         ImGui.Separator();
-        this.DrawDtrTestEntry(ref this.dtrTest3, "DTR Test #3");
+        this.DrawDtrTestEntry(ref this.dtrTest3, "DTR 测试 #3");
 
         ImGui.Separator();
-        ImGui.Text("IDtrBar.Entries:"u8);
+        ImGui.Text("IDtrBar.Entries："u8);
         foreach (var e in Service<DtrBar>.Get().Entries)
             ImGui.Text(e.Title);
 
@@ -157,7 +157,7 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
         if (configuration.DtrOrder != null)
         {
             ImGui.Separator();
-            ImGui.Text("DtrOrder:"u8);
+            ImGui.Text("DtrOrder："u8);
             foreach (var order in configuration.DtrOrder)
                 ImGui.Text(order);
         }
@@ -180,14 +180,14 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
             ImGui.Text(title);
 
             var text = entry.Text?.TextValue ?? string.Empty;
-            if (ImGui.InputText($"Text###{entry.Title}t", ref text, 255))
+            if (ImGui.InputText($"文本###{entry.Title}t", ref text, 255))
                 entry.Text = text;
 
             var shown = entry.Shown;
-            if (ImGui.Checkbox($"Shown###{entry.Title}s", ref shown))
+            if (ImGui.Checkbox($"显示###{entry.Title}s", ref shown))
                 entry.Shown = shown;
 
-            if (ImGui.Button($"Remove###{entry.Title}r"))
+            if (ImGui.Button($"移除###{entry.Title}r"))
             {
                 entry.Remove();
                 entry = null;
@@ -195,7 +195,7 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
         }
         else
         {
-            if (ImGui.Button($"Add###{title}"))
+            if (ImGui.Button($"添加###{title}"))
             {
                 entry = dtrBar.Get(title, title);
             }

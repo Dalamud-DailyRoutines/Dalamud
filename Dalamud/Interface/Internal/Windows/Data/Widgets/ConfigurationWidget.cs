@@ -12,7 +12,7 @@ internal class ConfigurationWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["config", "configuration"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Configuration";
+    public string DisplayName { get; init; } = "配置";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }

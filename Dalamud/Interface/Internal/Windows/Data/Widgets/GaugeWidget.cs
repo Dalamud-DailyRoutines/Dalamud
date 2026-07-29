@@ -15,7 +15,7 @@ internal class GaugeWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["gauge", "jobgauge", "job"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Job Gauge";
+    public string DisplayName { get; init; } = "职业量谱";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -35,7 +35,7 @@ internal class GaugeWidget : IDataWindowWidget
         var player = objectTable.LocalPlayer;
         if (player == null)
         {
-            ImGui.Text("Player is not present"u8);
+            ImGui.Text("当前没有玩家角色"u8);
             return;
         }
 
@@ -67,7 +67,7 @@ internal class GaugeWidget : IDataWindowWidget
 
         if (gauge == null)
         {
-            ImGui.Text("No supported gauge exists for this job."u8);
+            ImGui.Text("当前职业没有受支持的职业量谱。"u8);
             return;
         }
 

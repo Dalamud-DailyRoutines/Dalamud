@@ -17,7 +17,7 @@ internal class FateTableWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["fate", "fatetable"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Fate Table";
+    public string DisplayName { get; init; } = "FATE 表";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -36,26 +36,26 @@ internal class FateTableWidget : IDataWindowWidget
 
         if (fateTable.Length == 0)
         {
-            ImGui.Text("No fates or data not ready."u8);
+            ImGui.Text("当前没有 FATE，或数据尚未就绪。"u8);
             return;
         }
 
         using var table = ImRaii.Table("FateTable"u8, 13, TableFlags);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("Address"u8, ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableSetupColumn("FateId"u8, ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("State"u8, ImGuiTableColumnFlags.WidthFixed, 80);
-        ImGui.TableSetupColumn("Level"u8, ImGuiTableColumnFlags.WidthFixed, 50);
-        ImGui.TableSetupColumn("Icon"u8, ImGuiTableColumnFlags.WidthFixed, 30);
-        ImGui.TableSetupColumn("MapIcon"u8, ImGuiTableColumnFlags.WidthFixed, 30);
-        ImGui.TableSetupColumn("Name"u8, ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Progress"u8, ImGuiTableColumnFlags.WidthFixed, 55);
-        ImGui.TableSetupColumn("Duration"u8, ImGuiTableColumnFlags.WidthFixed, 80);
-        ImGui.TableSetupColumn("Bonus"u8, ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("Position"u8, ImGuiTableColumnFlags.WidthFixed, 240);
-        ImGui.TableSetupColumn("Radius"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("索引"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("地址"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("FATE ID"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("状态"u8, ImGuiTableColumnFlags.WidthFixed, 80);
+        ImGui.TableSetupColumn("等级"u8, ImGuiTableColumnFlags.WidthFixed, 50);
+        ImGui.TableSetupColumn("图标"u8, ImGuiTableColumnFlags.WidthFixed, 30);
+        ImGui.TableSetupColumn("地图图标"u8, ImGuiTableColumnFlags.WidthFixed, 30);
+        ImGui.TableSetupColumn("名称"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("进度"u8, ImGuiTableColumnFlags.WidthFixed, 55);
+        ImGui.TableSetupColumn("持续时间"u8, ImGuiTableColumnFlags.WidthFixed, 80);
+        ImGui.TableSetupColumn("奖励"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("位置"u8, ImGuiTableColumnFlags.WidthFixed, 240);
+        ImGui.TableSetupColumn("半径"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupScrollFreeze(7, 1);
         ImGui.TableHeadersRow();
 
@@ -70,10 +70,10 @@ internal class FateTableWidget : IDataWindowWidget
             ImGui.Text($"#{i}");
 
             ImGui.TableNextColumn(); // Address
-            WidgetUtil.DrawCopyableText($"0x{fate.Address:X}", "Click to copy Address");
+            WidgetUtil.DrawCopyableText($"0x{fate.Address:X}", "单击复制地址");
 
             ImGui.TableNextColumn(); // FateId
-            WidgetUtil.DrawCopyableText(fate.FateId.ToString(), "Click to copy FateId (RowId of Fate sheet)");
+            WidgetUtil.DrawCopyableText(fate.FateId.ToString(), "单击复制 FateId（Fate 表的 RowId）");
 
             ImGui.TableNextColumn(); // State
             ImGui.Text(fate.State.ToString());
@@ -102,8 +102,8 @@ internal class FateTableWidget : IDataWindowWidget
                         ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
 
                         using var tooltip = ImRaii.Tooltip();
-                        ImGui.Text("Click to copy IconId"u8);
-                        ImGui.Text($"ID: {fate.IconId} – Size: {texture.Width}x{texture.Height}");
+                        ImGui.Text("单击复制 IconId"u8);
+                        ImGui.Text($"ID：{fate.IconId} - 尺寸：{texture.Width}x{texture.Height}");
                         ImGui.Image(texture.Handle, new(texture.Width, texture.Height));
                     }
 
@@ -127,8 +127,8 @@ internal class FateTableWidget : IDataWindowWidget
                         ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
 
                         using var tooltip = ImRaii.Tooltip();
-                        ImGui.Text("Click to copy MapIconId"u8);
-                        ImGui.Text($"ID: {fate.MapIconId} – Size: {texture.Width}x{texture.Height}");
+                        ImGui.Text("单击复制 MapIconId"u8);
+                        ImGui.Text($"ID：{fate.MapIconId} - 尺寸：{texture.Width}x{texture.Height}");
                         ImGui.Image(texture.Handle, new(texture.Width, texture.Height));
                     }
 
@@ -141,7 +141,7 @@ internal class FateTableWidget : IDataWindowWidget
 
             ImGui.TableNextColumn(); // Name
 
-            WidgetUtil.DrawCopyableText(fate.Name.ToString(), "Click to copy Name");
+            WidgetUtil.DrawCopyableText(fate.Name.ToString(), "单击复制名称");
 
             ImGui.TableNextColumn(); // Progress
             ImGui.Text($"{fate.Progress}%");
@@ -154,13 +154,13 @@ internal class FateTableWidget : IDataWindowWidget
             }
 
             ImGui.TableNextColumn(); // HasExpBonus
-            ImGui.Text(fate.HasBonus.ToString());
+            ImGui.Text(fate.HasBonus ? "是" : "否");
 
             ImGui.TableNextColumn(); // Position
-            WidgetUtil.DrawCopyableText(fate.Position.ToString(), "Click to copy Position");
+            WidgetUtil.DrawCopyableText(fate.Position.ToString(), "单击复制位置");
 
             ImGui.TableNextColumn(); // Radius
-            WidgetUtil.DrawCopyableText(fate.Radius.ToString(), "Click to copy Radius");
+            WidgetUtil.DrawCopyableText(fate.Radius.ToString(), "单击复制半径");
         }
     }
 }

@@ -48,7 +48,7 @@ internal class MarketBoardWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["marketboard"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Market Board";
+    public string DisplayName { get; init; } = "市场布告板";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -70,7 +70,7 @@ internal class MarketBoardWidget : IDataWindowWidget
     public void Draw()
     {
         var marketBoard = Service<MarketBoard>.Get();
-        if (ImGui.Checkbox("Track MarketBoard Events"u8, ref this.trackMarketBoard))
+        if (ImGui.Checkbox("跟踪市场布告板事件"u8, ref this.trackMarketBoard))
         {
             if (this.trackMarketBoard)
             {
@@ -91,12 +91,12 @@ internal class MarketBoardWidget : IDataWindowWidget
         }
 
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2);
-        if (ImGui.DragInt("Stored Number of Events"u8, ref this.trackedEvents, 0.1f, 1, 512))
+        if (ImGui.DragInt("保留的事件数量"u8, ref this.trackedEvents, 0.1f, 1, 512))
         {
             this.trackedEvents = Math.Clamp(this.trackedEvents, 1, 512);
         }
 
-        if (ImGui.Button("Clear Stored Events"u8))
+        if (ImGui.Button("清空已保留的事件"u8))
         {
             this.marketBoardHistoryQueue.Clear();
         }
@@ -105,43 +105,43 @@ internal class MarketBoardWidget : IDataWindowWidget
         if (!tabBar.Success)
             return;
 
-        using (var tabItem = ImRaii.TabItem("History"u8))
+        using (var tabItem = ImRaii.TabItem("成交历史"u8))
         {
             if (tabItem)
             {
-                ImGuiTable.DrawTable("history-table", this.marketBoardHistoryQueue, this.DrawMarketBoardHistory, TableFlags, "Item ID", "Quantity", "Is HQ?", "Sale Price", "Buyer Name", "Purchase Time");
+                ImGuiTable.DrawTable("history-table", this.marketBoardHistoryQueue, this.DrawMarketBoardHistory, TableFlags, "物品 ID", "数量", "高品质", "成交价", "买家名称", "购买时间");
             }
         }
 
-        using (var tabItem = ImRaii.TabItem("Offerings"u8))
+        using (var tabItem = ImRaii.TabItem("在售列表"u8))
         {
             if (tabItem)
             {
-                ImGuiTable.DrawTable("offerings-table", this.marketBoardCurrentOfferingsQueue, this.DrawMarketBoardCurrentOfferings, TableFlags, "Item ID", "Quantity", "Is HQ?", "Price Per Unit", "Retainer Name");
+                ImGuiTable.DrawTable("offerings-table", this.marketBoardCurrentOfferingsQueue, this.DrawMarketBoardCurrentOfferings, TableFlags, "物品 ID", "数量", "高品质", "单价", "雇员名称");
             }
         }
 
-        using (var tabItem = ImRaii.TabItem("Purchases"u8))
+        using (var tabItem = ImRaii.TabItem("购买记录"u8))
         {
             if (tabItem)
             {
-                ImGuiTable.DrawTable("purchases-table", this.marketBoardPurchasesQueue, this.DrawMarketBoardPurchases, TableFlags, "Item ID", "Quantity");
+                ImGuiTable.DrawTable("purchases-table", this.marketBoardPurchasesQueue, this.DrawMarketBoardPurchases, TableFlags, "物品 ID", "数量");
             }
         }
 
-        using (var tabItem = ImRaii.TabItem("Purchase Requests"u8))
+        using (var tabItem = ImRaii.TabItem("购买请求"u8))
         {
             if (tabItem)
             {
-                ImGuiTable.DrawTable("requests-table", this.marketBoardPurchaseRequestsQueue, this.DrawMarketBoardPurchaseRequests, TableFlags, "Item ID", "Is HQ?", "Quantity", "Price Per Unit", "Total Tax", "City ID", "Listing ID", "Retainer ID");
+                ImGuiTable.DrawTable("requests-table", this.marketBoardPurchaseRequestsQueue, this.DrawMarketBoardPurchaseRequests, TableFlags, "物品 ID", "高品质", "数量", "单价", "税金总额", "城市 ID", "商品 ID", "雇员 ID");
             }
         }
 
-        using (var tabItem = ImRaii.TabItem("Taxes"u8))
+        using (var tabItem = ImRaii.TabItem("税率"u8))
         {
             if (tabItem)
             {
-                ImGuiTable.DrawTable("taxes-table", this.marketTaxRatesQueue, this.DrawMarketTaxRates, TableFlags, "Uldah", "Limsa Lominsa", "Gridania", "Ishgard", "Kugane", "Crystarium", "Sharlayan", "Tuliyollal", "Valid Until");
+                ImGuiTable.DrawTable("taxes-table", this.marketTaxRatesQueue, this.DrawMarketTaxRates, TableFlags, "乌尔达哈", "利姆萨·罗敏萨", "格里达尼亚", "伊修加德", "黄金港", "水晶都", "旧萨雷安", "图莱尤拉", "有效期至");
             }
         }
     }
@@ -211,7 +211,7 @@ internal class MarketBoardWidget : IDataWindowWidget
         ImGui.Text(data.Listing.Quantity.ToString());
 
         ImGui.TableNextColumn();
-        ImGui.Text(data.Listing.IsHq.ToString());
+        ImGui.Text(data.Listing.IsHq ? "是" : "否");
 
         ImGui.TableNextColumn();
         ImGui.Text(data.Listing.SalePrice.ToString());
@@ -232,7 +232,7 @@ internal class MarketBoardWidget : IDataWindowWidget
         ImGui.Text(data.Listing.ItemQuantity.ToString());
 
         ImGui.TableNextColumn();
-        ImGui.Text(data.Listing.IsHq.ToString());
+        ImGui.Text(data.Listing.IsHq ? "是" : "否");
 
         ImGui.TableNextColumn();
         ImGui.Text(data.Listing.PricePerUnit.ToString());
@@ -256,7 +256,7 @@ internal class MarketBoardWidget : IDataWindowWidget
         ImGui.Text(data.CatalogId.ToString());
 
         ImGui.TableNextColumn();
-        ImGui.Text(data.IsHq.ToString());
+        ImGui.Text(data.IsHq ? "是" : "否");
 
         ImGui.TableNextColumn();
         ImGui.Text(data.ItemQuantity.ToString());

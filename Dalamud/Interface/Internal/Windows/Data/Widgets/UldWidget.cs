@@ -30,7 +30,7 @@ internal class UldWidget : IDataWindowWidget
     private const string UldBaseBath = "ui/uld/";
 
     // ULD styles can be hardcoded for now as they don't add new ones regularly. Can later try and find where to load these from in the game EXE.
-    private static readonly string[] ThemeDisplayNames = ["Dark", "Light", "Classic FF", "Clear Blue", "Clear White", "Clear Green"];
+    private static readonly string[] ThemeDisplayNames = ["深色", "浅色", "经典 FF", "透明蓝", "透明白", "透明绿"];
 
     // 48 8D 15 ?? ?? ?? ?? is the part of the signatures that contain the string location offset
     // 48 = 64 bit register prefix
@@ -64,7 +64,7 @@ internal class UldWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["uld"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "ULD";
+    public string DisplayName { get; init; } = "ULD 数据";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -102,7 +102,7 @@ internal class UldWidget : IDataWindowWidget
                 ClearTask(ref this.uldNamesTask);
                 goto default;
             default:
-                ImGui.Text("Loading..."u8);
+                ImGui.Text("加载中..."u8);
                 return;
         }
 
@@ -115,7 +115,7 @@ internal class UldWidget : IDataWindowWidget
         if (ImGuiComponents.IconButton("selectUldRight", FontAwesomeIcon.AngleRight))
             this.selectedUld = (this.selectedUld + 1) % uldNames.Length;
         ImGui.SameLine();
-        ImGui.Text("Select ULD File"u8);
+        ImGui.Text("选择 ULD 文件"u8);
         if (selectedUldPrev != this.selectedUld)
         {
             // reset selected parts when changing ULD
@@ -131,7 +131,7 @@ internal class UldWidget : IDataWindowWidget
         if (ImGuiComponents.IconButton("selectThemeRight", FontAwesomeIcon.AngleRight))
             this.selectedTheme = (this.selectedTheme + 1) % ThemeDisplayNames.Length;
         ImGui.SameLine();
-        ImGui.Text("Select Theme"u8);
+        ImGui.Text("选择主题"u8);
 
         var dataManager = Service<DataManager>.Get();
         var textureManager = Service<TextureManager>.Get();
@@ -146,32 +146,32 @@ internal class UldWidget : IDataWindowWidget
             case { Exception: { } loadException }:
                 ImGui.TextColoredWrapped(
                     ImGuiColors.ErrorForeground,
-                    $"Failed to load ULD file.\n{loadException}");
+                    $"无法加载 ULD 文件。\n{loadException}");
                 return;
             case { IsCanceled: true }:
                 this.selectedUldFileTask = null;
                 goto default;
             default:
-                ImGui.Text("Loading..."u8);
+                ImGui.Text("加载中..."u8);
                 return;
         }
 
-        if (ImGui.CollapsingHeader("Texture Entries"u8))
+        if (ImGui.CollapsingHeader("纹理条目"u8))
         {
             if (ForceNullable(uld.AssetData) is null)
             {
                 ImGui.TextColoredWrapped(
                     ImGuiColors.ErrorForeground,
-                    $"Error: {nameof(UldFile.AssetData)} is not populated.");
+                    $"错误：{nameof(UldFile.AssetData)} 尚未填充。");
             }
             else
             {
                 using var table = ImRaii.Table("##uldTextureEntries"u8, 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
                 if (table.Success)
                 {
-                    ImGui.TableSetupColumn("Id"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("000000"u8).X);
-                    ImGui.TableSetupColumn("Path"u8, ImGuiTableColumnFlags.WidthStretch);
-                    ImGui.TableSetupColumn("Actions"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("Preview___"u8).X);
+                    ImGui.TableSetupColumn("ID"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("000000"u8).X);
+                    ImGui.TableSetupColumn("路径"u8, ImGuiTableColumnFlags.WidthStretch);
+                    ImGui.TableSetupColumn("操作"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("Preview___"u8).X);
                     ImGui.TableHeadersRow();
 
                     foreach (var textureEntry in uld.AssetData)
@@ -180,40 +180,40 @@ internal class UldWidget : IDataWindowWidget
             }
         }
 
-        if (ImGui.CollapsingHeader("Timeline##TimelineCollapsingHeader"u8))
+        if (ImGui.CollapsingHeader("时间轴##TimelineCollapsingHeader"u8))
         {
             if (ForceNullable(uld.Timelines) is null)
             {
                 ImGui.TextColoredWrapped(
                     ImGuiColors.ErrorForeground,
-                    $"Error: {nameof(UldFile.Timelines)} is not populated.");
+                    $"错误：{nameof(UldFile.Timelines)} 尚未填充。");
             }
             else if (uld.Timelines.Length == 0)
             {
-                ImGui.Text("No entry exists."u8);
+                ImGui.Text("没有可用条目。"u8);
             }
             else
             {
-                ImGui.SliderInt("Timeline##TimelineSlider"u8, ref this.selectedTimeline, 0, uld.Timelines.Length - 1);
+                ImGui.SliderInt("时间轴##TimelineSlider"u8, ref this.selectedTimeline, 0, uld.Timelines.Length - 1);
                 this.DrawTimelines(uld.Timelines[this.selectedTimeline]);
             }
         }
 
-        if (ImGui.CollapsingHeader("Parts##PartsCollapsingHeader"u8))
+        if (ImGui.CollapsingHeader("部件##PartsCollapsingHeader"u8))
         {
             if (ForceNullable(uld.Parts) is null)
             {
                 ImGui.TextColoredWrapped(
                     ImGuiColors.ErrorForeground,
-                    $"Error: {nameof(UldFile.Parts)} is not populated.");
+                    $"错误：{nameof(UldFile.Parts)} 尚未填充。");
             }
             else if (uld.Parts.Length == 0)
             {
-                ImGui.Text("No entry exists."u8);
+                ImGui.Text("没有可用条目。"u8);
             }
             else
             {
-                ImGui.SliderInt("Parts##PartsSlider"u8, ref this.selectedParts, 0, uld.Parts.Length - 1);
+                ImGui.SliderInt("部件##PartsSlider"u8, ref this.selectedParts, 0, uld.Parts.Length - 1);
                 this.DrawParts(uld.Parts[this.selectedParts], uld.AssetData, textureManager);
             }
         }
@@ -286,14 +286,14 @@ internal class UldWidget : IDataWindowWidget
         if (string.IsNullOrWhiteSpace(path))
             return;
 
-        ImGui.Text("Preview"u8);
+        ImGui.Text("预览"u8);
 
         if (ImGui.IsItemHovered())
         {
             using var tooltip = ImRaii.Tooltip();
 
             var texturePath = GetStringNullTerminated(textureEntry.Path);
-            ImGui.Text($"Base path at {texturePath}:");
+            ImGui.Text($"基础路径 {texturePath}：");
             if (textureManager.Shared.GetFromGame(texturePath).TryGetWrap(out var wrap, out var e))
                 ImGui.Image(wrap.Handle, wrap.Size);
             else if (e is not null)
@@ -304,7 +304,7 @@ internal class UldWidget : IDataWindowWidget
                 var texturePathThemed = this.ToThemedPath(texturePath);
                 if (this.dataManager.FileExists(texturePathThemed))
                 {
-                    ImGui.Text($"Themed path at {texturePathThemed}:");
+                    ImGui.Text($"主题路径 {texturePathThemed}：");
                     if (textureManager.Shared.GetFromGame(texturePathThemed).TryGetWrap(out wrap, out e))
                         ImGui.Image(wrap.Handle, wrap.Size);
                     else if (e is not null)
@@ -316,9 +316,9 @@ internal class UldWidget : IDataWindowWidget
 
     private void DrawTimelines(UldRoot.Timeline timeline)
     {
-        ImGui.SliderInt("FrameData"u8, ref this.selectedFrameData, 0, timeline.FrameData.Length - 1);
+        ImGui.SliderInt("帧数据"u8, ref this.selectedFrameData, 0, timeline.FrameData.Length - 1);
         var frameData = timeline.FrameData[this.selectedFrameData];
-        ImGui.Text($"FrameInfo: {frameData.StartFrame} -> {frameData.EndFrame}");
+        ImGui.Text($"帧信息：{frameData.StartFrame} -> {frameData.EndFrame}");
 
         using var indent = ImRaii.PushIndent();
         foreach (var frameDataKeyGroup in frameData.KeyGroups)
@@ -334,137 +334,137 @@ internal class UldWidget : IDataWindowWidget
         switch (frame)
         {
             case BaseKeyframeData baseKeyframeData:
-                ImGui.Text($"Time: {baseKeyframeData.Time} | Interpolation: {baseKeyframeData.Interpolation} | Acceleration: {baseKeyframeData.Acceleration} | Deceleration: {baseKeyframeData.Deceleration}");
+                ImGui.Text($"时间：{baseKeyframeData.Time} | 插值：{baseKeyframeData.Interpolation} | 加速度：{baseKeyframeData.Acceleration} | 减速度：{baseKeyframeData.Deceleration}");
                 break;
             case Float1Keyframe float1Keyframe:
                 this.DrawTimelineKeyGroupFrame(float1Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value: {float1Keyframe.Value}");
+                ImGui.Text($" | 值：{float1Keyframe.Value}");
                 break;
             case Float2Keyframe float2Keyframe:
                 this.DrawTimelineKeyGroupFrame(float2Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {float2Keyframe.Value[0]} | Value2: {float2Keyframe.Value[1]}");
+                ImGui.Text($" | 值 1：{float2Keyframe.Value[0]} | 值 2：{float2Keyframe.Value[1]}");
                 break;
             case Float3Keyframe float3Keyframe:
                 this.DrawTimelineKeyGroupFrame(float3Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {float3Keyframe.Value[0]} | Value2: {float3Keyframe.Value[1]} | Value3: {float3Keyframe.Value[2]}");
+                ImGui.Text($" | 值 1：{float3Keyframe.Value[0]} | 值 2：{float3Keyframe.Value[1]} | 值 3：{float3Keyframe.Value[2]}");
                 break;
             case SByte1Keyframe sbyte1Keyframe:
                 this.DrawTimelineKeyGroupFrame(sbyte1Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value: {sbyte1Keyframe.Value}");
+                ImGui.Text($" | 值：{sbyte1Keyframe.Value}");
                 break;
             case SByte2Keyframe sbyte2Keyframe:
                 this.DrawTimelineKeyGroupFrame(sbyte2Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {sbyte2Keyframe.Value[0]} | Value2: {sbyte2Keyframe.Value[1]}");
+                ImGui.Text($" | 值 1：{sbyte2Keyframe.Value[0]} | 值 2：{sbyte2Keyframe.Value[1]}");
                 break;
             case SByte3Keyframe sbyte3Keyframe:
                 this.DrawTimelineKeyGroupFrame(sbyte3Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {sbyte3Keyframe.Value[0]} | Value2: {sbyte3Keyframe.Value[1]} | Value3: {sbyte3Keyframe.Value[2]}");
+                ImGui.Text($" | 值 1：{sbyte3Keyframe.Value[0]} | 值 2：{sbyte3Keyframe.Value[1]} | 值 3：{sbyte3Keyframe.Value[2]}");
                 break;
             case Byte1Keyframe byte1Keyframe:
                 this.DrawTimelineKeyGroupFrame(byte1Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value: {byte1Keyframe.Value}");
+                ImGui.Text($" | 值：{byte1Keyframe.Value}");
                 break;
             case Byte2Keyframe byte2Keyframe:
                 this.DrawTimelineKeyGroupFrame(byte2Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {byte2Keyframe.Value[0]} | Value2: {byte2Keyframe.Value[1]}");
+                ImGui.Text($" | 值 1：{byte2Keyframe.Value[0]} | 值 2：{byte2Keyframe.Value[1]}");
                 break;
             case Byte3Keyframe byte3Keyframe:
                 this.DrawTimelineKeyGroupFrame(byte3Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {byte3Keyframe.Value[0]} | Value2: {byte3Keyframe.Value[1]} | Value3: {byte3Keyframe.Value[2]}");
+                ImGui.Text($" | 值 1：{byte3Keyframe.Value[0]} | 值 2：{byte3Keyframe.Value[1]} | 值 3：{byte3Keyframe.Value[2]}");
                 break;
             case Short1Keyframe short1Keyframe:
                 this.DrawTimelineKeyGroupFrame(short1Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value: {short1Keyframe.Value}");
+                ImGui.Text($" | 值：{short1Keyframe.Value}");
                 break;
             case Short2Keyframe short2Keyframe:
                 this.DrawTimelineKeyGroupFrame(short2Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {short2Keyframe.Value[0]} | Value2: {short2Keyframe.Value[1]}");
+                ImGui.Text($" | 值 1：{short2Keyframe.Value[0]} | 值 2：{short2Keyframe.Value[1]}");
                 break;
             case Short3Keyframe short3Keyframe:
                 this.DrawTimelineKeyGroupFrame(short3Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {short3Keyframe.Value[0]} | Value2: {short3Keyframe.Value[1]} | Value3: {short3Keyframe.Value[2]}");
+                ImGui.Text($" | 值 1：{short3Keyframe.Value[0]} | 值 2：{short3Keyframe.Value[1]} | 值 3：{short3Keyframe.Value[2]}");
                 break;
             case UShort1Keyframe ushort1Keyframe:
                 this.DrawTimelineKeyGroupFrame(ushort1Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value: {ushort1Keyframe.Value}");
+                ImGui.Text($" | 值：{ushort1Keyframe.Value}");
                 break;
             case UShort2Keyframe ushort2Keyframe:
                 this.DrawTimelineKeyGroupFrame(ushort2Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {ushort2Keyframe.Value[0]} | Value2: {ushort2Keyframe.Value[1]}");
+                ImGui.Text($" | 值 1：{ushort2Keyframe.Value[0]} | 值 2：{ushort2Keyframe.Value[1]}");
                 break;
             case UShort3Keyframe ushort3Keyframe:
                 this.DrawTimelineKeyGroupFrame(ushort3Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {ushort3Keyframe.Value[0]} | Value2: {ushort3Keyframe.Value[1]} | Value3: {ushort3Keyframe.Value[2]}");
+                ImGui.Text($" | 值 1：{ushort3Keyframe.Value[0]} | 值 2：{ushort3Keyframe.Value[1]} | 值 3：{ushort3Keyframe.Value[2]}");
                 break;
             case Int1Keyframe int1Keyframe:
                 this.DrawTimelineKeyGroupFrame(int1Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value: {int1Keyframe.Value}");
+                ImGui.Text($" | 值：{int1Keyframe.Value}");
                 break;
             case Int2Keyframe int2Keyframe:
                 this.DrawTimelineKeyGroupFrame(int2Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {int2Keyframe.Value[0]} | Value2: {int2Keyframe.Value[1]}");
+                ImGui.Text($" | 值 1：{int2Keyframe.Value[0]} | 值 2：{int2Keyframe.Value[1]}");
                 break;
             case Int3Keyframe int3Keyframe:
                 this.DrawTimelineKeyGroupFrame(int3Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {int3Keyframe.Value[0]} | Value2: {int3Keyframe.Value[1]} | Value3: {int3Keyframe.Value[2]}");
+                ImGui.Text($" | 值 1：{int3Keyframe.Value[0]} | 值 2：{int3Keyframe.Value[1]} | 值 3：{int3Keyframe.Value[2]}");
                 break;
             case UInt1Keyframe uint1Keyframe:
                 this.DrawTimelineKeyGroupFrame(uint1Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value: {uint1Keyframe.Value}");
+                ImGui.Text($" | 值：{uint1Keyframe.Value}");
                 break;
             case UInt2Keyframe uint2Keyframe:
                 this.DrawTimelineKeyGroupFrame(uint2Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {uint2Keyframe.Value[0]} | Value2: {uint2Keyframe.Value[1]}");
+                ImGui.Text($" | 值 1：{uint2Keyframe.Value[0]} | 值 2：{uint2Keyframe.Value[1]}");
                 break;
             case UInt3Keyframe uint3Keyframe:
                 this.DrawTimelineKeyGroupFrame(uint3Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {uint3Keyframe.Value[0]} | Value2: {uint3Keyframe.Value[1]} | Value3: {uint3Keyframe.Value[2]}");
+                ImGui.Text($" | 值 1：{uint3Keyframe.Value[0]} | 值 2：{uint3Keyframe.Value[1]} | 值 3：{uint3Keyframe.Value[2]}");
                 break;
             case Bool1Keyframe bool1Keyframe:
                 this.DrawTimelineKeyGroupFrame(bool1Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value: {bool1Keyframe.Value}");
+                ImGui.Text($" | 值：{(bool1Keyframe.Value ? "是" : "否")}");
                 break;
             case Bool2Keyframe bool2Keyframe:
                 this.DrawTimelineKeyGroupFrame(bool2Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {bool2Keyframe.Value[0]} | Value2: {bool2Keyframe.Value[1]}");
+                ImGui.Text($" | 值 1：{(bool2Keyframe.Value[0] ? "是" : "否")} | 值 2：{(bool2Keyframe.Value[1] ? "是" : "否")}");
                 break;
             case Bool3Keyframe bool3Keyframe:
                 this.DrawTimelineKeyGroupFrame(bool3Keyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Value1: {bool3Keyframe.Value[0]} | Value2: {bool3Keyframe.Value[1]} | Value3: {bool3Keyframe.Value[2]}");
+                ImGui.Text($" | 值 1：{(bool3Keyframe.Value[0] ? "是" : "否")} | 值 2：{(bool3Keyframe.Value[1] ? "是" : "否")} | 值 3：{(bool3Keyframe.Value[2] ? "是" : "否")}");
                 break;
             case ColorKeyframe colorKeyframe:
                 this.DrawTimelineKeyGroupFrame(colorKeyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | Add: {colorKeyframe.AddRed} {colorKeyframe.AddGreen} {colorKeyframe.AddBlue} | Multiply: {colorKeyframe.MultiplyRed} {colorKeyframe.MultiplyGreen} {colorKeyframe.MultiplyBlue}");
+                ImGui.Text($" | 加色：{colorKeyframe.AddRed} {colorKeyframe.AddGreen} {colorKeyframe.AddBlue} | 乘色：{colorKeyframe.MultiplyRed} {colorKeyframe.MultiplyGreen} {colorKeyframe.MultiplyBlue}");
                 break;
             case LabelKeyframe labelKeyframe:
                 this.DrawTimelineKeyGroupFrame(labelKeyframe.Keyframe);
                 ImGui.SameLine(0, 0);
-                ImGui.Text($" | LabelCommand: {labelKeyframe.LabelCommand} | JumpId: {labelKeyframe.JumpId} | LabelId: {labelKeyframe.LabelId}");
+                ImGui.Text($" | 标签命令：{labelKeyframe.LabelCommand} | 跳转 ID：{labelKeyframe.JumpId} | 标签 ID：{labelKeyframe.LabelId}");
                 break;
         }
     }
@@ -473,7 +473,7 @@ internal class UldWidget : IDataWindowWidget
     {
         for (var index = 0; index < partsData.Parts.Length; index++)
         {
-            ImGui.Text($"Index: {index}");
+            ImGui.Text($"索引：{index}");
             var partsDataPart = partsData.Parts[index];
             ImGui.SameLine();
 
@@ -488,14 +488,14 @@ internal class UldWidget : IDataWindowWidget
 
             if (path is null)
             {
-                ImGui.Text($"Could not find texture for id {partsDataPart.TextureId}");
+                ImGui.Text($"未找到 ID 为 {partsDataPart.TextureId} 的纹理");
                 continue;
             }
 
             var texturePath = GetStringNullTerminated(path);
             if (string.IsNullOrWhiteSpace(texturePath))
             {
-                ImGui.Text("Texture path is empty."u8);
+                ImGui.Text("纹理路径为空。"u8);
                 continue;
             }
 
@@ -536,7 +536,7 @@ internal class UldWidget : IDataWindowWidget
             if (ImGui.IsItemHovered())
             {
                 using var tooltip = ImRaii.Tooltip();
-                ImGui.Text("Click to copy:"u8);
+                ImGui.Text("单击复制："u8);
                 ImGui.Text(texturePath);
             }
         }

@@ -13,7 +13,7 @@ internal class StartInfoWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["startinfo"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Start Info";
+    public string DisplayName { get; init; } = "启动信息";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }

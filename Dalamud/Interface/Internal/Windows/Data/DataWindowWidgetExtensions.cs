@@ -49,7 +49,7 @@ internal static class DataWindowWidgetExtensions
         {
             ImGui.SetClipboardText(s);
             Service<NotificationManager>.Get().AddNotification(
-                $"Copied {ImGui.TableGetColumnName()} to clipboard.",
+                $"已将 {ImGui.TableGetColumnName()} 复制到剪贴板。",
                 widget.DisplayName,
                 NotificationType.Success);
         }

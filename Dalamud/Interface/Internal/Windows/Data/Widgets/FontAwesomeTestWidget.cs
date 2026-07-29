@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -20,7 +20,7 @@ namespace Dalamud.Interface.Internal.Windows.Data.Widgets;
 /// </summary>
 internal class FontAwesomeTestWidget : IDataWindowWidget
 {
-    private static readonly string[] First = ["(Show All)", "(Undefined)"];
+    private static readonly string[] First = ["（显示全部）", "（未定义）"];
 
     private List<FontAwesomeIcon>? icons;
     private List<string>? iconNames;
@@ -34,7 +34,7 @@ internal class FontAwesomeTestWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["fa", "fatest", "fontawesome"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Font Awesome Test";
+    public string DisplayName { get; init; } = "Font Awesome 测试";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -85,12 +85,12 @@ internal class FontAwesomeTestWidget : IDataWindowWidget
 
         ImGui.SameLine(170f);
         ImGui.SetNextItemWidth(180f);
-        if (ImGui.InputTextWithHint($"###FontAwesomeInputSearch", "search icons"u8, ref this.iconSearchInput, 50))
+        if (ImGui.InputTextWithHint($"###FontAwesomeInputSearch", "搜索图标"u8, ref this.iconSearchInput, 50))
         {
             this.iconSearchChanged = true;
         }
 
-        ImGui.Checkbox("Use fixed width font"u8, ref this.useFixedWidth);
+        ImGui.Checkbox("使用等宽字体"u8, ref this.useFixedWidth);
 
         ImGuiHelpers.ScaledDummy(10f);
         for (var i = 0; i < this.icons?.Count; i++)

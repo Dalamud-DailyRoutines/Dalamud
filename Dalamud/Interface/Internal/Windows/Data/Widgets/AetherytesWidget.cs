@@ -18,7 +18,7 @@ internal class AetherytesWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["aetherytes"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Aetherytes";
+    public string DisplayName { get; init; } = "以太之光";
 
     /// <inheritdoc/>
     public void Load()
@@ -34,17 +34,17 @@ internal class AetherytesWidget : IDataWindowWidget
             return;
 
         ImGui.TableSetupScrollFreeze(0, 1);
-        ImGui.TableSetupColumn("Idx"u8, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Name"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("索引"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("名称"u8, ImGuiTableColumnFlags.WidthFixed);
         ImGui.TableSetupColumn("ID"u8, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Zone"u8, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Ward"u8, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Plot"u8, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Sub"u8, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Gil"u8, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Fav"u8, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Shared"u8, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Apartment"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("区域"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("小区"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("房屋"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("子索引"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("金币"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("优惠"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("共享房屋"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("公寓"u8, ImGuiTableColumnFlags.WidthFixed);
         ImGui.TableHeadersRow();
 
         var tpList = Service<AetheryteList>.Get();
@@ -80,13 +80,13 @@ internal class AetherytesWidget : IDataWindowWidget
             ImGui.Text($"{info.GilCost}");
 
             ImGui.TableNextColumn(); // Favourite
-            ImGui.Text($"{info.IsFavourite}");
+            ImGui.Text(info.IsFavourite ? "是" : "否");
 
             ImGui.TableNextColumn(); // Shared
-            ImGui.Text($"{info.IsSharedHouse}");
+            ImGui.Text(info.IsSharedHouse ? "是" : "否");
 
             ImGui.TableNextColumn(); // Apartment
-            ImGui.Text($"{info.IsApartment}");
+            ImGui.Text(info.IsApartment ? "是" : "否");
         }
     }
 }

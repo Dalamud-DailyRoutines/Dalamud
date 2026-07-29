@@ -27,7 +27,7 @@ internal class ObjectTableWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["ot", "objecttable"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Object Table";
+    public string DisplayName { get; init; } = "对象表";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -41,7 +41,7 @@ internal class ObjectTableWidget : IDataWindowWidget
     /// <inheritdoc/>
     public void Draw()
     {
-        ImGui.Checkbox("Resolve GameData"u8, ref this.resolveGameData);
+        ImGui.Checkbox("解析游戏数据"u8, ref this.resolveGameData);
 
         var chatGui = Service<ChatGui>.Get();
         var clientState = Service<ClientState>.Get();
@@ -53,28 +53,28 @@ internal class ObjectTableWidget : IDataWindowWidget
 
         if (objectTable.LocalPlayer == null)
         {
-            ImGui.Text("LocalPlayer null."u8);
+            ImGui.Text("本地玩家为空。"u8);
             return;
         }
 
         if (clientState.IsPvPExcludingDen)
         {
-            ImGui.Text("Cannot access object table while in PvP."u8);
+            ImGui.Text("PvP 期间无法访问对象表。"u8);
             return;
         }
 
-        stateString += $"ObjectTableLen: {objectTable.Length}\n";
-        stateString += $"LocalPlayerName: {playerState.CharacterName}\n";
-        stateString += $"CurrentWorldName: {(this.resolveGameData ? playerState.CurrentWorld.ValueNullable?.Name : playerState.CurrentWorld.RowId.ToString())}\n";
-        stateString += $"HomeWorldName: {(this.resolveGameData ? playerState.HomeWorld.ValueNullable?.Name : playerState.HomeWorld.RowId.ToString())}\n";
-        stateString += $"LocalCID: {playerState.ContentId:X}\n";
-        stateString += $"LastLinkedItem: {chatGui.LastLinkedItemId}\n";
-        stateString += $"TerritoryType: {clientState.TerritoryType}\n\n";
+        stateString += $"对象表长度：{objectTable.Length}\n";
+        stateString += $"本地玩家名称：{playerState.CharacterName}\n";
+        stateString += $"当前世界名称：{(this.resolveGameData ? playerState.CurrentWorld.ValueNullable?.Name : playerState.CurrentWorld.RowId.ToString())}\n";
+        stateString += $"所属世界名称：{(this.resolveGameData ? playerState.HomeWorld.ValueNullable?.Name : playerState.HomeWorld.RowId.ToString())}\n";
+        stateString += $"本地 CID：{playerState.ContentId:X}\n";
+        stateString += $"上次链接的物品：{chatGui.LastLinkedItemId}\n";
+        stateString += $"区域类型：{clientState.TerritoryType}\n\n";
 
         ImGui.Text(stateString);
 
-        ImGui.Checkbox("Draw characters on screen"u8, ref this.drawCharacters);
-        ImGui.SliderFloat("Draw Distance"u8, ref this.maxCharaDrawDistance, 2f, 40f);
+        ImGui.Checkbox("在屏幕上标出角色"u8, ref this.drawCharacters);
+        ImGui.SliderFloat("绘制距离"u8, ref this.maxCharaDrawDistance, 2f, 40f);
 
         for (var i = 0; i < objectTable.Length; i++)
         {
@@ -111,7 +111,7 @@ internal class ObjectTableWidget : IDataWindowWidget
                 ImGui.SetNextWindowPos(new Vector2(screenCoords.X, screenCoords.Y));
                 ImGui.SetNextWindowBgAlpha(Math.Max(1f - (obj.CurrentDistance / this.maxCharaDrawDistance), 0.2f));
 
-                if (ImGui.Begin($"Actor{i}##ActorWindow{i}", CharacterWindowFlags))
+                if (ImGui.Begin($"角色 {i}##ActorWindow{i}", CharacterWindowFlags))
                     ImGui.Text(objectText);
                 ImGui.End();
             }

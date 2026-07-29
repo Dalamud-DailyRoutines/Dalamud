@@ -33,7 +33,7 @@ internal class DataShareWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["datashare"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Data Share & Call Gate";
+    public string DisplayName { get; init; } = "数据共享与调用门";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -52,13 +52,13 @@ internal class DataShareWidget : IDataWindowWidget
             return;
 
         var d = true;
-        using (var tabItem = ImRaii.TabItem("Data Share##tabbar-datashare"u8, ref d, NoCloseButton | (this.nextTab == 0 ? ImGuiTabItemFlags.SetSelected : 0)))
+        using (var tabItem = ImRaii.TabItem("数据共享##tabbar-datashare"u8, ref d, NoCloseButton | (this.nextTab == 0 ? ImGuiTabItemFlags.SetSelected : 0)))
         {
             if (tabItem.Success)
                 this.DrawDataShare();
         }
 
-        using (var tabItem = ImRaii.TabItem("Call Gate##tabbar-callgate"u8, ref d, NoCloseButton | (this.nextTab == 1 ? ImGuiTabItemFlags.SetSelected : 0)))
+        using (var tabItem = ImRaii.TabItem("调用门##tabbar-callgate"u8, ref d, NoCloseButton | (this.nextTab == 1 ? ImGuiTabItemFlags.SetSelected : 0)))
         {
             if (tabItem.Success)
                 this.DrawCallGate();
@@ -79,7 +79,7 @@ internal class DataShareWidget : IDataWindowWidget
             if (!tabitem.Success)
                 continue;
 
-            if (ImGui.Button("Refresh"u8))
+            if (ImGui.Button("刷新"u8))
                 data = null;
 
             if (data is null)
@@ -110,10 +110,10 @@ internal class DataShareWidget : IDataWindowWidget
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Copy"u8))
+            if (ImGui.Button("复制"u8))
                 ImGui.SetClipboardText(data);
 
-            ImGui.InputTextMultiline("text"u8, data, ImGui.GetContentRegionAvail(), ImGuiInputTextFlags.ReadOnly);
+            ImGui.InputTextMultiline("文本"u8, data, ImGui.GetContentRegionAvail(), ImGuiInputTextFlags.ReadOnly);
         }
 
         this.nextTab = -1;
@@ -225,7 +225,7 @@ internal class DataShareWidget : IDataWindowWidget
         {
             ImGui.SetClipboardText(tooltip?.Invoke() ?? s);
             Service<NotificationManager>.Get().AddNotification(
-                $"Copied {ImGui.TableGetColumnName()} to clipboard.",
+                $"已将 {ImGui.TableGetColumnName()} 复制到剪贴板。",
                 this.DisplayName,
                 NotificationType.Success);
         }
@@ -234,18 +234,18 @@ internal class DataShareWidget : IDataWindowWidget
     private void DrawCallGate()
     {
         var callGate = Service<CallGate>.Get();
-        if (ImGui.Button("Purge empty call gates"u8))
+        if (ImGui.Button("清除空调用门"u8))
             callGate.PurgeEmptyGates();
 
         using var table = ImRaii.Table("##callgate-table"u8, 5);
         if (!table.Success)
             return;
 
-        ImGui.TableSetupColumn("Name"u8, ImGuiTableColumnFlags.DefaultSort);
-        ImGui.TableSetupColumn("Action"u8);
-        ImGui.TableSetupColumn("Func"u8);
+        ImGui.TableSetupColumn("名称"u8, ImGuiTableColumnFlags.DefaultSort);
+        ImGui.TableSetupColumn("操作"u8);
+        ImGui.TableSetupColumn("函数"u8);
         ImGui.TableSetupColumn("#"u8, ImGuiTableColumnFlags.WidthFixed, 30 * ImGuiHelpers.GlobalScale);
-        ImGui.TableSetupColumn("Subscriber"u8);
+        ImGui.TableSetupColumn("订阅者"u8);
         ImGui.TableHeadersRow();
 
         var gates2 = callGate.Gates;
@@ -282,11 +282,11 @@ internal class DataShareWidget : IDataWindowWidget
         if (!table.Success)
             return;
 
-        ImGui.TableSetupColumn("Shared Tag"u8);
-        ImGui.TableSetupColumn("Show"u8);
-        ImGui.TableSetupColumn("Creator"u8);
+        ImGui.TableSetupColumn("共享标签"u8);
+        ImGui.TableSetupColumn("查看"u8);
+        ImGui.TableSetupColumn("创建者"u8);
         ImGui.TableSetupColumn("#"u8, ImGuiTableColumnFlags.WidthFixed, 30 * ImGuiHelpers.GlobalScale);
-        ImGui.TableSetupColumn("Consumers"u8);
+        ImGui.TableSetupColumn("使用者"u8);
         ImGui.TableHeadersRow();
 
         foreach (var share in Service<DataShare>.Get().GetAllShares())
@@ -295,7 +295,7 @@ internal class DataShareWidget : IDataWindowWidget
             this.DrawTextCell(share.Tag, null, true);
 
             ImGui.TableNextColumn();
-            if (ImGui.Button($"Show##datasharetable-show-{share.Tag}"))
+            if (ImGui.Button($"查看##datasharetable-show-{share.Tag}"))
             {
                 var index = 0;
                 for (; index < this.dataView.Count; index++)

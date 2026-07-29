@@ -23,7 +23,7 @@ internal class ToastWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["toast"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Toast";
+    public string DisplayName { get; init; } = "浮窗通知";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -39,18 +39,18 @@ internal class ToastWidget : IDataWindowWidget
     {
         var toastGui = Service<ToastGui>.Get();
 
-        ImGui.InputText("Toast text"u8, ref this.inputTextToast, 200);
+        ImGui.InputText("通知文本"u8, ref this.inputTextToast, 200);
 
-        ImGui.Combo("Toast Position", ref this.toastPosition, ["Bottom", "Top",], 2);
-        ImGui.Combo("Toast Speed", ref this.toastSpeed, ["Slow", "Fast",], 2);
-        ImGui.Combo("Quest Toast Position", ref this.questToastPosition, ["Centre", "Right", "Left"], 3);
-        ImGui.Checkbox("Quest Checkmark"u8, ref this.questToastCheckmark);
-        ImGui.Checkbox("Quest Play Sound"u8, ref this.questToastSound);
-        ImGui.InputInt("Quest Icon ID"u8, ref this.questToastIconId);
+        ImGui.Combo("通知位置", ref this.toastPosition, ["底部", "顶部",], 2);
+        ImGui.Combo("通知速度", ref this.toastSpeed, ["慢", "快",], 2);
+        ImGui.Combo("任务通知位置", ref this.questToastPosition, ["中间", "右侧", "左侧"], 3);
+        ImGui.Checkbox("任务完成标记"u8, ref this.questToastCheckmark);
+        ImGui.Checkbox("播放任务提示音"u8, ref this.questToastSound);
+        ImGui.InputInt("任务图标 ID"u8, ref this.questToastIconId);
 
         ImGuiHelpers.ScaledDummy(new Vector2(10, 10));
 
-        if (ImGui.Button("Show toast"u8))
+        if (ImGui.Button("显示通知"u8))
         {
             toastGui.ShowNormal(this.inputTextToast, new ToastOptions
             {
@@ -59,7 +59,7 @@ internal class ToastWidget : IDataWindowWidget
             });
         }
 
-        if (ImGui.Button("Show Quest toast"u8))
+        if (ImGui.Button("显示任务通知"u8))
         {
             toastGui.ShowQuest(this.inputTextToast, new QuestToastOptions
             {
@@ -70,7 +70,7 @@ internal class ToastWidget : IDataWindowWidget
             });
         }
 
-        if (ImGui.Button("Show Error toast"u8))
+        if (ImGui.Button("显示错误通知"u8))
         {
             toastGui.ShowError(this.inputTextToast);
         }

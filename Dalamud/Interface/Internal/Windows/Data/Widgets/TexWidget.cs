@@ -101,7 +101,7 @@ internal class TexWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["tex", "texture"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Tex";
+    public string DisplayName { get; init; } = "Tex 纹理";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -144,11 +144,11 @@ internal class TexWidget : IDataWindowWidget
         this.textureManager = Service<TextureManager>.Get();
         var conf = Service<DalamudConfiguration>.Get();
 
-        if (ImGui.Button("GC"u8))
+        if (ImGui.Button("垃圾回收"u8))
             GC.Collect();
 
         var useTexturePluginTracking = conf.UseTexturePluginTracking;
-        if (ImGui.Checkbox("Enable Texture Tracking"u8, ref useTexturePluginTracking))
+        if (ImGui.Checkbox("启用纹理跟踪"u8, ref useTexturePluginTracking))
         {
             conf.UseTexturePluginTracking = useTexturePluginTracking;
             conf.QueueSave();
@@ -159,32 +159,32 @@ internal class TexWidget : IDataWindowWidget
             using var pushedId = ImRaii.PushId("blames"u8);
             var allBlames = this.textureManager.BlameTracker;
             var sizeSum = allBlames.Sum(static x => Math.Max(0, x.RawSpecs.EstimatedBytes));
-            if (ImGui.CollapsingHeader($"All Loaded Textures: {allBlames.Count:n0} ({Util.FormatBytes(sizeSum)})###header"))
+            if (ImGui.CollapsingHeader($"所有已加载纹理：{allBlames.Count:n0}（{Util.FormatBytes(sizeSum)}）###header"))
                 this.DrawBlame(allBlames);
         }
 
         using (ImRaii.PushId("loadedGameTextures"u8))
         {
-            if (ImGui.CollapsingHeader($"Loaded Game Textures: {this.textureManager.Shared.ForDebugGamePathTextures.Count:n0}###header"))
+            if (ImGui.CollapsingHeader($"已加载的游戏纹理：{this.textureManager.Shared.ForDebugGamePathTextures.Count:n0}###header"))
                 this.DrawLoadedTextures(this.textureManager.Shared.ForDebugGamePathTextures);
         }
 
         using (ImRaii.PushId("loadedFileTextures"u8))
         {
-            if (ImGui.CollapsingHeader($"Loaded File Textures: {this.textureManager.Shared.ForDebugFileSystemTextures.Count:n0}###header"))
+            if (ImGui.CollapsingHeader($"已加载的文件纹理：{this.textureManager.Shared.ForDebugFileSystemTextures.Count:n0}###header"))
                 this.DrawLoadedTextures(this.textureManager.Shared.ForDebugFileSystemTextures);
         }
 
         using (ImRaii.PushId("loadedManifestResourceTextures"u8))
         {
-            if (ImGui.CollapsingHeader($"Loaded Manifest Resource Textures: {this.textureManager.Shared.ForDebugManifestResourceTextures.Count:n0}###header"))
+            if (ImGui.CollapsingHeader($"已加载的清单资源纹理：{this.textureManager.Shared.ForDebugManifestResourceTextures.Count:n0}###header"))
                 this.DrawLoadedTextures(this.textureManager.Shared.ForDebugManifestResourceTextures);
         }
 
         using (this.textureManager.Shared.ForDebugInvalidatedTexturesLockScope)
         {
             using var pushedId = ImRaii.PushId("invalidatedTextures"u8);
-            if (ImGui.CollapsingHeader($"Invalidated: {this.textureManager.Shared.ForDebugInvalidatedTextures.Count:n0}###header"))
+            if (ImGui.CollapsingHeader($"已失效：{this.textureManager.Shared.ForDebugInvalidatedTextures.Count:n0}###header"))
                 this.DrawLoadedTextures(this.textureManager.Shared.ForDebugInvalidatedTextures);
         }
 
@@ -193,9 +193,9 @@ internal class TexWidget : IDataWindowWidget
 
         if (!this.textureManager.HasClipboardImage())
         {
-            ImGuiComponents.DisabledButton("Paste from Clipboard");
+            ImGuiComponents.DisabledButton("从剪贴板粘贴");
         }
-        else if (ImGui.Button("Paste from Clipboard"u8))
+        else if (ImGui.Button("从剪贴板粘贴"u8))
         {
             this.addedTextures.Add(new(Api10: this.textureManager.CreateFromClipboardAsync()));
         }
@@ -248,7 +248,7 @@ internal class TexWidget : IDataWindowWidget
             this.DrawUvInput();
         }
 
-        if (ImGui.CollapsingHeader($"CropCopy##{nameof(this.DrawExistingTextureModificationArgs)}"))
+        if (ImGui.CollapsingHeader($"裁剪副本##{nameof(this.DrawExistingTextureModificationArgs)}"))
         {
             using var pushedId = ImRaii.PushId(nameof(this.DrawExistingTextureModificationArgs));
             this.DrawExistingTextureModificationArgs();
@@ -261,7 +261,7 @@ internal class TexWidget : IDataWindowWidget
         {
             using var pushedId = ImRaii.PushId(t.Id);
 
-            if (ImGui.CollapsingHeader($"Tex #{t.Id} {t}###header", ImGuiTreeNodeFlags.DefaultOpen))
+            if (ImGui.CollapsingHeader($"纹理 #{t.Id} {t}###header", ImGuiTreeNodeFlags.DefaultOpen))
             {
                 if (ImGui.Button("X"u8))
                 {
@@ -273,20 +273,20 @@ internal class TexWidget : IDataWindowWidget
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button("Save"u8))
+                if (ImGui.Button("保存"u8))
                 {
                     _ = Service<DevTextureSaveMenu>.Get().ShowTextureSaveMenuAsync(
                         this.DisplayName,
-                        $"Texture {t.Id}",
+                        $"纹理 {t.Id}",
                         t.CreateNewTextureWrapReference(this.textureManager));
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button("Copy Reference"u8))
+                if (ImGui.Button("复制引用"u8))
                     runLater = () => this.addedTextures.Add(t.CreateFromSharedLowLevelResource(this.textureManager));
 
                 ImGui.SameLine();
-                if (ImGui.Button("CropCopy"u8))
+                if (ImGui.Button("裁剪副本"u8))
                 {
                     runLater = () =>
                     {
@@ -322,11 +322,11 @@ internal class TexWidget : IDataWindowWidget
                         pres->Release();
                         pres->Release();
 
-                        ImGui.Text($"RC: Resource({rcres})/View({rcsrv})");
+                        ImGui.Text($"引用计数：资源（{rcres}）/视图（{rcsrv}）");
                         ImGui.Text($"{source.Width} x {source.Height} | {source}");
 
                         ImGui.SameLine();
-                        if (ImGui.Button("Test ConvertToKernelTexture"))
+                        if (ImGui.Button("测试 ConvertToKernelTexture"))
                         {
                             try
                             {
@@ -337,23 +337,23 @@ internal class TexWidget : IDataWindowWidget
                                     kt->DecRef();
                                 }).Start();
                                 Service<NotificationManager>.Get().AddNotification(
-                                    "Test success",
-                                    "TexWidget",
+                                    "测试成功",
+                                    "Tex 纹理",
                                     NotificationType.Success);
                             }
                             catch (Exception e)
                             {
-                                Log.Error(e, "Failed to convert texture to kernel texture");
+                                Log.Error(e, "无法将纹理转换为内核纹理");
                                 Service<NotificationManager>.Get().AddNotification(
-                                    $"Failed to convert texture to kernel texture: {e.Message}",
-                                    "TexWidget",
+                                    $"无法将纹理转换为内核纹理：{e.Message}",
+                                    "Tex 纹理",
                                     NotificationType.Error);
                             }
                         }
                     }
                     else
                     {
-                        ImGui.Text("RC: -");
+                        ImGui.Text("引用计数：-");
                         ImGui.Text(string.Empty);
                     }
                 }
@@ -370,7 +370,7 @@ internal class TexWidget : IDataWindowWidget
                     }
                     else
                     {
-                        ImGui.Text(t.DescribeError() ?? "Loading");
+                        ImGui.Text(t.DescribeError() ?? "加载中");
                     }
                 }
                 catch (Exception e)
@@ -391,10 +391,10 @@ internal class TexWidget : IDataWindowWidget
     {
         var im = Service<InterfaceManager>.Get();
 
-        var shouldSortAgain = ImGui.Button("Sort again"u8);
+        var shouldSortAgain = ImGui.Button("重新排序"u8);
 
         ImGui.SameLine();
-        if (ImGui.Button("Reset Columns"u8))
+        if (ImGui.Button("重置列"u8))
             this.allLoadedTexturesTableName = "##table" + Environment.TickCount64;
 
         using var table = ImRaii.Table(this.allLoadedTexturesTableName, (int)DrawBlameTableColumnUserId.ColumnCount, TableFlags);
@@ -410,44 +410,44 @@ internal class TexWidget : IDataWindowWidget
 
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableSetupColumn(
-            "Address"u8,
+            "地址"u8,
             ImGuiTableColumnFlags.WidthFixed,
             ImGui.CalcTextSize("0x7F0000000000"u8).X,
             (uint)DrawBlameTableColumnUserId.NativeAddress);
         ImGui.TableSetupColumn(
-            "Actions"u8,
+            "操作"u8,
             ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoSort,
             iconWidths +
             (ImGui.GetStyle().FramePadding.X * 2 * numIcons) +
             (ImGui.GetStyle().ItemSpacing.X * 1 * numIcons),
             (uint)DrawBlameTableColumnUserId.Actions);
         ImGui.TableSetupColumn(
-            "Name"u8,
+            "名称"u8,
             ImGuiTableColumnFlags.WidthStretch,
             0f,
             (uint)DrawBlameTableColumnUserId.Name);
         ImGui.TableSetupColumn(
-            "Width"u8,
+            "宽度"u8,
             ImGuiTableColumnFlags.WidthFixed,
             ImGui.CalcTextSize("000000"u8).X,
             (uint)DrawBlameTableColumnUserId.Width);
         ImGui.TableSetupColumn(
-            "Height"u8,
+            "高度"u8,
             ImGuiTableColumnFlags.WidthFixed,
             ImGui.CalcTextSize("000000"u8).X,
             (uint)DrawBlameTableColumnUserId.Height);
         ImGui.TableSetupColumn(
-            "Format"u8,
+            "格式"u8,
             ImGuiTableColumnFlags.WidthFixed,
             ImGui.CalcTextSize("R32G32B32A32_TYPELESS"u8).X,
             (uint)DrawBlameTableColumnUserId.Format);
         ImGui.TableSetupColumn(
-            "Size"u8,
+            "大小"u8,
             ImGuiTableColumnFlags.WidthFixed,
             ImGui.CalcTextSize("123.45 MB"u8).X,
             (uint)DrawBlameTableColumnUserId.Size);
         ImGui.TableSetupColumn(
-            "Plugins"u8,
+            "插件"u8,
             ImGuiTableColumnFlags.WidthFixed,
             ImGui.CalcTextSize("Aaaaaaaaaa Aaaaaaaaaa Aaaaaaaaaa"u8).X,
             (uint)DrawBlameTableColumnUserId.Plugins);
@@ -568,11 +568,11 @@ internal class TexWidget : IDataWindowWidget
 
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableSetupColumn("ID"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("000000"u8).X);
-        ImGui.TableSetupColumn("Source"u8, ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("RefCount"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("RefCount__"u8).X);
-        ImGui.TableSetupColumn("SelfRef"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("00.000___"u8).X);
+        ImGui.TableSetupColumn("来源"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("引用计数"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("RefCount__"u8).X);
+        ImGui.TableSetupColumn("自身引用"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("00.000___"u8).X);
         ImGui.TableSetupColumn(
-            "Actions"u8,
+            "操作"u8,
             ImGuiTableColumnFlags.WidthFixed,
             iconWidths +
             (ImGui.GetStyle().FramePadding.X * 2 * numIcons) +
@@ -648,7 +648,7 @@ internal class TexWidget : IDataWindowWidget
                         this.textureManager.InvalidatePaths([texture.SourcePathForDebug]);
 
                     if (ImGui.IsItemHovered())
-                        ImGui.SetTooltip($"Call {nameof(ITextureSubstitutionProvider.InvalidatePaths)}.");
+                        ImGui.SetTooltip($"调用 {nameof(ITextureSubstitutionProvider.InvalidatePaths)}。");
 
                     ImGui.SameLine();
                     using (ImRaii.Disabled(remain <= 0))
@@ -657,7 +657,7 @@ internal class TexWidget : IDataWindowWidget
                             texture.ReleaseSelfReference(true);
 
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                            ImGui.SetTooltip("Release self-reference immediately."u8);
+                            ImGui.SetTooltip("立即释放自身引用。"u8);
                     }
                 }
 
@@ -673,12 +673,12 @@ internal class TexWidget : IDataWindowWidget
 
     private void DrawGetFromGameIcon()
     {
-        ImGui.InputText("Icon ID"u8, ref this.iconId, 32);
-        ImGui.Checkbox("HQ Item"u8, ref this.hq);
-        ImGui.Checkbox("Hi-Res"u8, ref this.hiRes);
+        ImGui.InputText("图标 ID"u8, ref this.iconId, 32);
+        ImGui.Checkbox("高品质物品"u8, ref this.hq);
+        ImGui.Checkbox("高分辨率"u8, ref this.hiRes);
 
         ImGui.SameLine();
-        if (ImGui.Button("Load Icon (Async)"u8))
+        if (ImGui.Button("加载图标（异步）"u8))
         {
             this.addedTextures.Add(
                 new(
@@ -689,7 +689,7 @@ internal class TexWidget : IDataWindowWidget
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Load Icon (Immediate)"u8))
+        if (ImGui.Button("加载图标（立即）"u8))
             this.addedTextures.Add(new(Api10ImmGameIcon: new(uint.Parse(this.iconId), this.hq, this.hiRes)));
 
         ImGuiHelpers.ScaledDummy(10);
@@ -697,14 +697,14 @@ internal class TexWidget : IDataWindowWidget
 
     private void DrawGetFromGame()
     {
-        ImGui.InputText("Tex Path"u8, ref this.inputTexPath, 255);
+        ImGui.InputText("Tex 路径"u8, ref this.inputTexPath, 255);
 
         ImGui.SameLine();
-        if (ImGui.Button("Load Tex (Async)"u8))
+        if (ImGui.Button("加载 Tex（异步）"u8))
             this.addedTextures.Add(new(Api10: this.textureManager.Shared.GetFromGame(this.inputTexPath).RentAsync()));
 
         ImGui.SameLine();
-        if (ImGui.Button("Load Tex (Immediate)"u8))
+        if (ImGui.Button("加载 Tex（立即）"u8))
             this.addedTextures.Add(new(Api10ImmGamePath: this.inputTexPath));
 
         ImGuiHelpers.ScaledDummy(10);
@@ -712,14 +712,14 @@ internal class TexWidget : IDataWindowWidget
 
     private void DrawGetFromFile()
     {
-        ImGui.InputText("File Path"u8, ref this.inputFilePath, 255);
+        ImGui.InputText("文件路径"u8, ref this.inputFilePath, 255);
 
         ImGui.SameLine();
-        if (ImGui.Button("Load File (Async)"u8))
+        if (ImGui.Button("加载文件（异步）"u8))
             this.addedTextures.Add(new(Api10: this.textureManager.Shared.GetFromFile(this.inputFilePath).RentAsync()));
 
         ImGui.SameLine();
-        if (ImGui.Button("Load File (Immediate)"u8))
+        if (ImGui.Button("加载文件（立即）"u8))
             this.addedTextures.Add(new(Api10ImmFile: this.inputFilePath));
 
         ImGuiHelpers.ScaledDummy(10);
@@ -745,7 +745,7 @@ internal class TexWidget : IDataWindowWidget
         }
 
         if (ImGui.Combo(
-                "Assembly",
+                "程序集",
                 ref this.inputManifestResourceAssemblyIndex,
                 this.inputManifestResourceAssemblyCandidateNames))
         {
@@ -762,7 +762,7 @@ internal class TexWidget : IDataWindowWidget
         this.inputManifestResourceNameCandidates ??= assembly?.GetManifestResourceNames() ?? Array.Empty<string>();
 
         ImGui.Combo(
-            "Name",
+            "名称",
             ref this.inputManifestResourceNameIndex,
             this.inputManifestResourceNameCandidates);
 
@@ -772,7 +772,7 @@ internal class TexWidget : IDataWindowWidget
                 ? this.inputManifestResourceNameCandidates[this.inputManifestResourceNameIndex]
                 : null;
 
-        if (ImGui.Button("Refresh Assemblies"u8))
+        if (ImGui.Button("刷新程序集"u8))
         {
             this.inputManifestResourceAssemblyIndex = 0;
             this.inputManifestResourceAssemblyCandidates = null;
@@ -784,11 +784,11 @@ internal class TexWidget : IDataWindowWidget
         if (assembly is not null && name is not null)
         {
             ImGui.SameLine();
-            if (ImGui.Button("Load File (Async)"u8))
+            if (ImGui.Button("加载文件（异步）"u8))
                 this.addedTextures.Add(new(Api10: this.textureManager.Shared.GetFromManifestResource(assembly, name).RentAsync()));
 
             ImGui.SameLine();
-            if (ImGui.Button("Load File (Immediate)"u8))
+            if (ImGui.Button("加载文件（立即）"u8))
                 this.addedTextures.Add(new(Api10ImmManifestResource: (assembly, name)));
         }
 
@@ -798,7 +798,7 @@ internal class TexWidget : IDataWindowWidget
     private void DrawCreateFromImGuiViewportAsync()
     {
         var viewports = ImGui.GetPlatformIO().Viewports;
-        using (var combo = ImRaii.Combo(nameof(this.viewportTextureArgs.ViewportId), $"{this.viewportIndexInt}. {viewports[this.viewportIndexInt].ID:X08}"))
+        using (var combo = ImRaii.Combo("视口 ID##ViewportId", $"{this.viewportIndexInt}. {viewports[this.viewportIndexInt].ID:X08}"))
         {
             if (combo.Success)
             {
@@ -815,15 +815,15 @@ internal class TexWidget : IDataWindowWidget
         }
 
         var b = this.viewportTextureArgs.KeepTransparency;
-        if (ImGui.Checkbox(nameof(this.viewportTextureArgs.KeepTransparency), ref b))
+        if (ImGui.Checkbox("保留透明度##KeepTransparency", ref b))
             this.viewportTextureArgs.KeepTransparency = b;
 
         b = this.viewportTextureArgs.AutoUpdate;
-        if (ImGui.Checkbox(nameof(this.viewportTextureArgs.AutoUpdate), ref b))
+        if (ImGui.Checkbox("自动更新##AutoUpdate", ref b))
             this.viewportTextureArgs.AutoUpdate = b;
 
         b = this.viewportTextureArgs.TakeBeforeImGuiRender;
-        if (ImGui.Checkbox(nameof(this.viewportTextureArgs.TakeBeforeImGuiRender), ref b))
+        if (ImGui.Checkbox("在 ImGui 渲染前捕获##TakeBeforeImGuiRender", ref b))
             this.viewportTextureArgs.TakeBeforeImGuiRender = b;
 
         var vec2 = this.viewportTextureArgs.Uv0;
@@ -834,7 +834,7 @@ internal class TexWidget : IDataWindowWidget
         if (ImGui.InputFloat2(nameof(this.viewportTextureArgs.Uv1), ref vec2))
             this.viewportTextureArgs.Uv1 = vec2;
 
-        if (ImGui.Button("Create"u8) && this.viewportIndexInt >= 0 && this.viewportIndexInt < viewports.Size)
+        if (ImGui.Button("创建"u8) && this.viewportIndexInt >= 0 && this.viewportIndexInt < viewports.Size)
         {
             this.addedTextures.Add(
                 new()
@@ -851,7 +851,7 @@ internal class TexWidget : IDataWindowWidget
         // note: do not take the snapshot of the data span here, because Combo may create a new window
         ref var windows = ref ImGui.GetCurrentContext().Windows;
         var selectedWindowIndex = -1;
-        var selectedWindowName = "(select one)"u8;
+        var selectedWindowName = "（请选择）"u8;
         for (var i = 0; i < windows.Size; i++)
         {
             if (windows[i].ID == this.drawListTextureWindowId)
@@ -861,7 +861,7 @@ internal class TexWidget : IDataWindowWidget
             }
         }
 
-        using (var combo = ImRaii.Combo("Window"u8, selectedWindowName))
+        using (var combo = ImRaii.Combo("窗口"u8, selectedWindowName))
         {
             for (var i = combo.Success ? 0 : windows.Size; i < windows.Size; ++i)
             {
@@ -875,9 +875,9 @@ internal class TexWidget : IDataWindowWidget
             }
         }
 
-        ImGui.InputFloat2("Scale"u8, ref this.drawListTextureWrapScale);
+        ImGui.InputFloat2("缩放"u8, ref this.drawListTextureWrapScale);
 
-        if (ImGui.Button("Create"u8) && selectedWindowIndex >= 0 && selectedWindowIndex < windows.Size)
+        if (ImGui.Button("创建"u8) && selectedWindowIndex >= 0 && selectedWindowIndex < windows.Size)
         {
             var dd = this.textureManager.CreateDrawListTexture();
             dd.ResizeAndDrawWindow(windows[selectedWindowIndex], this.drawListTextureWrapScale);
@@ -892,14 +892,14 @@ internal class TexWidget : IDataWindowWidget
         static ReadOnlySpan<byte> GetWindowName(ImGuiWindow* window)
         {
             if (window is null || window->Name is null)
-                return "(null)"u8;
+                return "（空）"u8;
             return MemoryMarshal.CreateReadOnlySpanFromNullTerminated(window->Name);
         }
     }
 
     private void DrawCreateDrawListTextureWithBufferBackedImDrawData()
     {
-        if (ImGui.Button("Reset"u8))
+        if (ImGui.Button("重置"u8))
         {
             this.drawListBufferBackedTexture?.Dispose();
             this.drawListBufferBackedTexture = null;
@@ -931,8 +931,8 @@ internal class TexWidget : IDataWindowWidget
     {
         ImGui.InputFloat2("UV0", ref this.inputTexUv0);
         ImGui.InputFloat2("UV1", ref this.inputTexUv1);
-        ImGui.InputFloat4("Tint", ref this.inputTintCol);
-        ImGui.InputFloat2("Scale", ref this.inputTexScale);
+        ImGui.InputFloat4("色调", ref this.inputTintCol);
+        ImGui.InputFloat2("缩放", ref this.inputTexScale);
 
         ImGuiHelpers.ScaledDummy(10);
     }
@@ -940,7 +940,7 @@ internal class TexWidget : IDataWindowWidget
     private void DrawExistingTextureModificationArgs()
     {
         var b = this.textureModificationArgs.MakeOpaque;
-        if (ImGui.Checkbox(nameof(this.textureModificationArgs.MakeOpaque), ref b))
+        if (ImGui.Checkbox("转为不透明##MakeOpaque", ref b))
             this.textureModificationArgs.MakeOpaque = b;
 
         if (this.supportedRenderTargetFormats is null)
@@ -954,12 +954,12 @@ internal class TexWidget : IDataWindowWidget
         }
 
         this.supportedRenderTargetFormatNames ??= this.supportedRenderTargetFormats.Select(Enum.GetName).ToArray();
-        ImGui.Combo(nameof(this.textureModificationArgs.DxgiFormat), ref this.renderTargetChoiceInt, this.supportedRenderTargetFormatNames);
+        ImGui.Combo("DXGI 格式##DxgiFormat", ref this.renderTargetChoiceInt, this.supportedRenderTargetFormatNames);
 
         Span<int> wh = stackalloc int[2];
         wh[0] = this.textureModificationArgs.NewWidth;
         wh[1] = this.textureModificationArgs.NewHeight;
-        if (ImGui.InputInt($"{nameof(this.textureModificationArgs.NewWidth)}/{nameof(this.textureModificationArgs.NewHeight)}", wh))
+        if (ImGui.InputInt("新宽度/新高度##NewWidthNewHeight", wh))
         {
             this.textureModificationArgs.NewWidth = wh[0];
             this.textureModificationArgs.NewHeight = wh[1];
@@ -997,23 +997,23 @@ internal class TexWidget : IDataWindowWidget
         public string? DescribeError()
         {
             if (this.SharedResource is not null)
-                return "Unknown error";
+                return "未知错误";
             if (this.Api10 is not null)
             {
                 return !this.Api10.IsCompleted
                            ? null
-                           : this.Api10.Exception?.ToString() ?? (this.Api10.IsCanceled ? "Canceled" : "Unknown error");
+                           : this.Api10.Exception?.ToString() ?? (this.Api10.IsCanceled ? "已取消" : "未知错误");
             }
 
             if (this.Api10ImmGameIcon is not null)
-                return "Must not happen";
+                return "发生了意外状态";
             if (this.Api10ImmGamePath is not null)
-                return "Must not happen";
+                return "发生了意外状态";
             if (this.Api10ImmFile is not null)
-                return "Must not happen";
+                return "发生了意外状态";
             if (this.Api10ImmManifestResource is not null)
-                return "Must not happen";
-            return "Not implemented";
+                return "发生了意外状态";
+            return "尚未实现";
         }
 
         public IDalamudTextureWrap? GetTexture(ITextureProvider tp)
@@ -1056,20 +1056,20 @@ internal class TexWidget : IDataWindowWidget
         public override string ToString()
         {
             if (this.SharedResource is not null)
-                return $"{nameof(this.SharedResource)}: {this.SharedResource}";
+                return $"共享资源：{this.SharedResource}";
             if (this.Api10 is { IsCompletedSuccessfully: true })
-                return $"{nameof(this.Api10)}: {this.Api10.Result}";
+                return $"异步纹理：{this.Api10.Result}";
             if (this.Api10 is not null)
-                return $"{nameof(this.Api10)}: {this.Api10}";
+                return $"异步纹理：{this.Api10}";
             if (this.Api10ImmGameIcon is not null)
-                return $"{nameof(this.Api10ImmGameIcon)}: {this.Api10ImmGameIcon}";
+                return $"立即加载的游戏图标：{this.Api10ImmGameIcon}";
             if (this.Api10ImmGamePath is not null)
-                return $"{nameof(this.Api10ImmGamePath)}: {this.Api10ImmGamePath}";
+                return $"立即加载的游戏路径：{this.Api10ImmGamePath}";
             if (this.Api10ImmFile is not null)
-                return $"{nameof(this.Api10ImmFile)}: {this.Api10ImmFile}";
+                return $"立即加载的文件：{this.Api10ImmFile}";
             if (this.Api10ImmManifestResource is not null)
-                return $"{nameof(this.Api10ImmManifestResource)}: {this.Api10ImmManifestResource}";
-            return "Not implemented";
+                return $"立即加载的清单资源：{this.Api10ImmManifestResource}";
+            return "尚未实现";
         }
     }
 }

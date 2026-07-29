@@ -26,7 +26,7 @@ internal class ImGuiWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["imgui"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "ImGui";
+    public string DisplayName { get; init; } = "ImGui 测试";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -46,70 +46,70 @@ internal class ImGuiWidget : IDataWindowWidget
         var interfaceManager = Service<InterfaceManager>.Get();
         var nm = Service<NotificationManager>.Get();
 
-        ImGui.Text("Monitor count: " + ImGui.GetPlatformIO().Monitors.Size);
-        ImGui.Text("OverrideGameCursor: " + interfaceManager.OverrideGameCursor);
+        ImGui.Text("显示器数量：" + ImGui.GetPlatformIO().Monitors.Size);
+        ImGui.Text("覆盖游戏光标（OverrideGameCursor）：" + interfaceManager.OverrideGameCursor);
 
-        ImGui.Button("THIS IS A BUTTON###hoverTestButton"u8);
+        ImGui.Button("这是一个按钮###hoverTestButton"u8);
         interfaceManager.OverrideGameCursor = !ImGui.IsItemHovered();
 
         ImGui.Separator();
 
-        ImGui.Text($"WindowSystem.TimeSinceLastAnyFocus: {WindowSystem.TimeSinceLastAnyFocus.TotalMilliseconds:0}ms");
+        ImGui.Text($"窗口系统上次获得焦点距今：{WindowSystem.TimeSinceLastAnyFocus.TotalMilliseconds:0} ms");
 
         ImGui.Separator();
 
         ImGui.Checkbox("##manualContent"u8, ref this.notificationTemplate.ManualContent);
         ImGui.SameLine();
-        ImGui.InputText("Content##content"u8, ref this.notificationTemplate.Content, 255);
+        ImGui.InputText("内容##content"u8, ref this.notificationTemplate.Content, 255);
 
         ImGui.Checkbox("##manualTitle"u8, ref this.notificationTemplate.ManualTitle);
         ImGui.SameLine();
-        ImGui.InputText("Title##title"u8, ref this.notificationTemplate.Title, 255);
+        ImGui.InputText("标题##title"u8, ref this.notificationTemplate.Title, 255);
 
         ImGui.Checkbox("##manualMinimizedText"u8, ref this.notificationTemplate.ManualMinimizedText);
         ImGui.SameLine();
-        ImGui.InputText("MinimizedText##minimizedText"u8, ref this.notificationTemplate.MinimizedText, 255);
+        ImGui.InputText("最小化文本##minimizedText"u8, ref this.notificationTemplate.MinimizedText, 255);
 
         ImGui.Checkbox("##manualType"u8, ref this.notificationTemplate.ManualType);
         ImGui.SameLine();
-        ImGui.Combo("Type##type", ref this.notificationTemplate.TypeInt, NotificationTemplate.TypeTitles);
+        ImGui.Combo("类型##type", ref this.notificationTemplate.TypeInt, NotificationTemplate.TypeTitles);
 
-        ImGui.Combo("Icon##iconCombo", ref this.notificationTemplate.IconInt, NotificationTemplate.IconTitles);
+        ImGui.Combo("图标##iconCombo", ref this.notificationTemplate.IconInt, NotificationTemplate.IconTitles);
         switch (this.notificationTemplate.IconInt)
         {
             case 1 or 2:
-                ImGui.InputText("Icon Text##iconText"u8, ref this.notificationTemplate.IconText, 255);
+                ImGui.InputText("图标文本##iconText"u8, ref this.notificationTemplate.IconText, 255);
                 break;
             case 5 or 6:
-                ImGui.Combo("Asset##iconAssetCombo", ref this.notificationTemplate.IconAssetInt, NotificationTemplate.AssetSources);
+                ImGui.Combo("资源##iconAssetCombo", ref this.notificationTemplate.IconAssetInt, NotificationTemplate.AssetSources);
                 break;
             case 3 or 7:
-                ImGui.InputText("Game Path##iconText"u8, ref this.notificationTemplate.IconText, 255);
+                ImGui.InputText("游戏路径##iconText"u8, ref this.notificationTemplate.IconText, 255);
                 break;
             case 4 or 8:
-                ImGui.InputText("File Path##iconText"u8, ref this.notificationTemplate.IconText, 255);
+                ImGui.InputText("文件路径##iconText"u8, ref this.notificationTemplate.IconText, 255);
                 break;
         }
 
-        ImGui.Combo("Initial Duration", ref this.notificationTemplate.InitialDurationInt, NotificationTemplate.InitialDurationTitles);
+        ImGui.Combo("初始持续时间", ref this.notificationTemplate.InitialDurationInt, NotificationTemplate.InitialDurationTitles);
 
-        ImGui.Combo("Extension Duration", ref this.notificationTemplate.HoverExtendDurationInt, NotificationTemplate.HoverExtendDurationTitles);
+        ImGui.Combo("延长时间", ref this.notificationTemplate.HoverExtendDurationInt, NotificationTemplate.HoverExtendDurationTitles);
 
-        ImGui.Combo("Progress", ref this.notificationTemplate.ProgressMode, NotificationTemplate.ProgressModeTitles);
+        ImGui.Combo("进度", ref this.notificationTemplate.ProgressMode, NotificationTemplate.ProgressModeTitles);
 
-        ImGui.Checkbox("Respect UI Hidden"u8, ref this.notificationTemplate.RespectUiHidden);
+        ImGui.Checkbox("遵循游戏界面隐藏状态"u8, ref this.notificationTemplate.RespectUiHidden);
 
-        ImGui.Checkbox("Minimized"u8, ref this.notificationTemplate.Minimized);
+        ImGui.Checkbox("最小化"u8, ref this.notificationTemplate.Minimized);
 
-        ImGui.Checkbox("Show Indeterminate If No Expiry"u8, ref this.notificationTemplate.ShowIndeterminateIfNoExpiry);
+        ImGui.Checkbox("没有到期时间时显示不确定进度"u8, ref this.notificationTemplate.ShowIndeterminateIfNoExpiry);
 
-        ImGui.Checkbox("User Dismissable"u8, ref this.notificationTemplate.UserDismissable);
+        ImGui.Checkbox("允许手动关闭"u8, ref this.notificationTemplate.UserDismissable);
 
-        ImGui.Checkbox("Action Bar (always on if not user dismissable for the example)"u8, ref this.notificationTemplate.ActionBar);
+        ImGui.Checkbox("操作栏（本示例中，禁止手动关闭时始终显示）"u8, ref this.notificationTemplate.ActionBar);
 
-        if (ImGui.Button("Add notification"u8))
+        if (ImGui.Button("添加通知"u8))
         {
-            var text = "Bla bla bla bla bla bla bla bla bla bla bla.\nBla bla bla bla bla bla bla bla bla bla bla bla bla bla.";
+            var text = "这是一段用于测试通知布局的示例文本。\n第二行用于检查多行内容的显示效果。";
 
             NewRandom(out var title, out var type, out var progress);
             if (this.notificationTemplate.ManualTitle)
@@ -235,7 +235,7 @@ internal class ImGuiWidget : IDataWindowWidget
             if (this.notificationTemplate.ActionBar || !this.notificationTemplate.UserDismissable)
             {
                 var nclick = 0;
-                var testString = "input";
+                var testString = "输入内容";
 
                 n.Click += _ => nclick++;
                 n.DrawActions += an =>
@@ -244,7 +244,7 @@ internal class ImGuiWidget : IDataWindowWidget
                     ImGui.Text($"{nclick}");
 
                     ImGui.SameLine();
-                    if (ImGui.Button("Update"u8))
+                    if (ImGui.Button("更新"u8))
                     {
                         NewRandom(out title, out type, out progress);
                         an.Notification.Title = title;
@@ -253,7 +253,7 @@ internal class ImGuiWidget : IDataWindowWidget
                     }
 
                     ImGui.SameLine();
-                    if (ImGui.Button("Dismiss"u8))
+                    if (ImGui.Button("关闭"u8))
                         an.Notification.DismissNow();
 
                     ImGui.SameLine();
@@ -264,7 +264,7 @@ internal class ImGuiWidget : IDataWindowWidget
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Replace images using setter"u8))
+        if (ImGui.Button("通过属性设置器替换图像"u8))
         {
             foreach (var n in this.notifications)
             {
@@ -281,12 +281,12 @@ internal class ImGuiWidget : IDataWindowWidget
 
         title = rand.Next(0, 7) switch
         {
-            0 => "This is a toast",
-            1 => "Truly, a toast",
-            2 => "I am testing this toast",
-            3 => "I hope this looks right",
-            4 => "Good stuff",
-            5 => "Nice",
+            0 => "这是一条通知",
+            1 => "确实是一条通知",
+            2 => "正在测试这条通知",
+            3 => "希望显示效果符合预期",
+            4 => "效果不错",
+            5 => "很好",
             _ => null,
         };
 
@@ -310,15 +310,15 @@ internal class ImGuiWidget : IDataWindowWidget
     {
         public static readonly string[] IconTitles =
         [
-            "None (use Type)",
+            "无（使用通知类型）",
             "SeIconChar",
             "FontAwesomeIcon",
-            "GamePath",
-            "FilePath",
-            "TextureWrap from DalamudAssets",
-            "TextureWrap from DalamudAssets(Async)",
-            "TextureWrap from GamePath",
-            "TextureWrap from FilePath",
+            "游戏路径",
+            "文件路径",
+            "来自 DalamudAssets 的 TextureWrap",
+            "来自 DalamudAssets 的 TextureWrap（异步）",
+            "来自游戏路径的 TextureWrap",
+            "来自文件路径的 TextureWrap",
         ];
 
         public static readonly string[] AssetSources =
@@ -329,36 +329,36 @@ internal class ImGuiWidget : IDataWindowWidget
 
         public static readonly string[] ProgressModeTitles =
         [
-            "Default",
-            "Random",
-            "Increasing",
-            "Increasing & Auto Dismiss",
-            "Indeterminate",
+            "默认",
+            "随机",
+            "递增",
+            "递增并自动关闭",
+            "不确定",
         ];
 
         public static readonly string[] TypeTitles =
         [
-            nameof(NotificationType.None),
-            nameof(NotificationType.Success),
-            nameof(NotificationType.Warning),
-            nameof(NotificationType.Error),
-            nameof(NotificationType.Info),
+            "无",
+            "成功",
+            "警告",
+            "错误",
+            "信息",
         ];
 
         public static readonly string[] InitialDurationTitles =
         [
-            "Infinite",
-            "1 seconds",
-            "3 seconds (default)",
-            "10 seconds",
+            "无限",
+            "1 秒",
+            "3 秒（默认）",
+            "10 秒",
         ];
 
         public static readonly string[] HoverExtendDurationTitles =
         [
-            "Disable",
-            "1 seconds",
-            "3 seconds (default)",
-            "10 seconds",
+            "禁用",
+            "1 秒",
+            "3 秒（默认）",
+            "10 秒",
         ];
 
         public static readonly TimeSpan[] Durations =
@@ -431,8 +431,8 @@ internal class ImGuiWidget : IDataWindowWidget
         {
             this.inner.Dispose();
             Service<NotificationManager>.Get().AddNotification(
-                "Texture disposed",
-                "ImGui Widget",
+                "纹理已释放",
+                "ImGui 测试",
                 NotificationType.Info);
         }
     }

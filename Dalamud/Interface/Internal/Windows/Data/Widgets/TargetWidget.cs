@@ -17,7 +17,7 @@ internal class TargetWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["target"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Target";
+    public string DisplayName { get; init; } = "目标";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -31,16 +31,16 @@ internal class TargetWidget : IDataWindowWidget
     /// <inheritdoc/>
     public void Draw()
     {
-        ImGui.Checkbox("Resolve GameData"u8, ref this.resolveGameData);
+        ImGui.Checkbox("解析游戏数据"u8, ref this.resolveGameData);
 
         var objectTable = Service<ObjectTable>.Get();
         var targetMgr = Service<TargetManager>.Get();
 
         if (targetMgr.Target != null)
         {
-            Util.PrintGameObject(targetMgr.Target, "CurrentTarget", this.resolveGameData);
+            Util.PrintGameObject(targetMgr.Target, "当前目标", this.resolveGameData);
 
-            ImGui.Text("Target"u8);
+            ImGui.Text("目标"u8);
             Util.ShowGameObjectStruct(targetMgr.Target);
 
             var tot = targetMgr.Target.TargetObject;
@@ -49,7 +49,7 @@ internal class TargetWidget : IDataWindowWidget
                 ImGuiHelpers.ScaledDummy(10);
 
                 ImGui.Separator();
-                ImGui.Text("ToT"u8);
+                ImGui.Text("目标的目标"u8);
                 Util.ShowGameObjectStruct(tot);
             }
 
@@ -57,42 +57,42 @@ internal class TargetWidget : IDataWindowWidget
         }
 
         if (targetMgr.FocusTarget != null)
-            Util.PrintGameObject(targetMgr.FocusTarget, "FocusTarget", this.resolveGameData);
+            Util.PrintGameObject(targetMgr.FocusTarget, "焦点目标", this.resolveGameData);
 
         if (targetMgr.MouseOverTarget != null)
-            Util.PrintGameObject(targetMgr.MouseOverTarget, "MouseOverTarget", this.resolveGameData);
+            Util.PrintGameObject(targetMgr.MouseOverTarget, "鼠标悬停目标", this.resolveGameData);
 
         if (targetMgr.PreviousTarget != null)
-            Util.PrintGameObject(targetMgr.PreviousTarget, "PreviousTarget", this.resolveGameData);
+            Util.PrintGameObject(targetMgr.PreviousTarget, "上一个目标", this.resolveGameData);
 
         if (targetMgr.SoftTarget != null)
-            Util.PrintGameObject(targetMgr.SoftTarget, "SoftTarget", this.resolveGameData);
+            Util.PrintGameObject(targetMgr.SoftTarget, "软目标", this.resolveGameData);
 
         if (targetMgr.GPoseTarget != null)
-            Util.PrintGameObject(targetMgr.GPoseTarget, "GPoseTarget", this.resolveGameData);
+            Util.PrintGameObject(targetMgr.GPoseTarget, "集体动作目标", this.resolveGameData);
 
         if (targetMgr.MouseOverNameplateTarget != null)
-            Util.PrintGameObject(targetMgr.MouseOverNameplateTarget, "MouseOverNameplateTarget", this.resolveGameData);
+            Util.PrintGameObject(targetMgr.MouseOverNameplateTarget, "鼠标悬停名牌目标", this.resolveGameData);
 
-        if (ImGui.Button("Clear CT"u8))
+        if (ImGui.Button("清除当前目标"u8))
             targetMgr.Target = null;
 
-        if (ImGui.Button("Clear FT"u8))
+        if (ImGui.Button("清除焦点目标"u8))
             targetMgr.FocusTarget = null;
 
         var localPlayer = objectTable.LocalPlayer;
 
         if (localPlayer != null)
         {
-            if (ImGui.Button("Set CT"u8))
+            if (ImGui.Button("设为当前目标"u8))
                 targetMgr.Target = localPlayer;
 
-            if (ImGui.Button("Set FT"u8))
+            if (ImGui.Button("设为焦点目标"u8))
                 targetMgr.FocusTarget = localPlayer;
         }
         else
         {
-            ImGui.Text("LocalPlayer is null."u8);
+            ImGui.Text("本地玩家为空。"u8);
         }
     }
 }

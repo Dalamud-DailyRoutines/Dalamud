@@ -38,7 +38,7 @@ internal class TaskSchedulerWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["tasksched", "taskscheduler"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Task Scheduler";
+    public string DisplayName { get; init; } = "任务调度器";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -54,7 +54,7 @@ internal class TaskSchedulerWidget : IDataWindowWidget
     {
         var framework = Service<Framework>.Get();
 
-        if (ImGui.Button("Clear list"u8))
+        if (ImGui.Button("清空列表"u8))
         {
             TaskTracker.Clear();
         }
@@ -63,23 +63,23 @@ internal class TaskSchedulerWidget : IDataWindowWidget
         ImGuiHelpers.ScaledDummy(10);
         ImGui.SameLine();
 
-        if (ImGui.Button("Cancel using CancellationTokenSource"u8))
+        if (ImGui.Button("通过 CancellationTokenSource 取消"u8))
         {
             this.taskSchedulerCancelSource.Cancel();
             this.taskSchedulerCancelSource = new();
         }
 
-        ImGui.Text("Run in any thread: "u8);
+        ImGui.Text("在任意线程中运行："u8);
         ImGui.SameLine();
 
-        if (ImGui.Button("Short Task.Run"u8))
+        if (ImGui.Button("短时 Task.Run"u8))
         {
             Task.Run(() => { Thread.Sleep(500); });
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Task in task(Delay)"u8))
+        if (ImGui.Button("任务中的任务（Delay）"u8))
         {
             var token = this.taskSchedulerCancelSource.Token;
             Task.Run(async () => await this.TestTaskInTaskDelay(token), token);
@@ -87,14 +87,14 @@ internal class TaskSchedulerWidget : IDataWindowWidget
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Task in task(Sleep)"u8))
+        if (ImGui.Button("任务中的任务（Sleep）"u8))
         {
             Task.Run(async () => await this.TestTaskInTaskSleep());
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Faulting task"u8))
+        if (ImGui.Button("故障任务"u8))
         {
             Task.Run(() =>
             {
@@ -104,52 +104,52 @@ internal class TaskSchedulerWidget : IDataWindowWidget
             });
         }
 
-        ImGui.Text("Run in Framework.Update: "u8);
+        ImGui.Text("在 Framework.Update 中运行："u8);
         ImGui.SameLine();
 
-        if (ImGui.Button("ASAP"u8))
+        if (ImGui.Button("立即"u8))
         {
-            _ = framework.RunOnTick(() => Log.Information("Framework.Update - ASAP"), cancellationToken: this.taskSchedulerCancelSource.Token);
+            _ = framework.RunOnTick(() => Log.Information("Framework.Update - 立即"), cancellationToken: this.taskSchedulerCancelSource.Token);
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("In 1s"u8))
+        if (ImGui.Button("1 秒后"u8))
         {
-            _ = framework.RunOnTick(() => Log.Information("Framework.Update - In 1s"), cancellationToken: this.taskSchedulerCancelSource.Token, delay: TimeSpan.FromSeconds(1));
+            _ = framework.RunOnTick(() => Log.Information("Framework.Update - 1 秒后"), cancellationToken: this.taskSchedulerCancelSource.Token, delay: TimeSpan.FromSeconds(1));
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("In 60f"u8))
+        if (ImGui.Button("60 帧后"u8))
         {
-            _ = framework.RunOnTick(() => Log.Information("Framework.Update - In 60f"), cancellationToken: this.taskSchedulerCancelSource.Token, delayTicks: 60);
+            _ = framework.RunOnTick(() => Log.Information("Framework.Update - 60 帧后"), cancellationToken: this.taskSchedulerCancelSource.Token, delayTicks: 60);
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("In 1s+120f"u8))
+        if (ImGui.Button("1 秒加 120 帧后"u8))
         {
-            _ = framework.RunOnTick(() => Log.Information("Framework.Update - In 1s+120f"), cancellationToken: this.taskSchedulerCancelSource.Token, delay: TimeSpan.FromSeconds(1), delayTicks: 120);
+            _ = framework.RunOnTick(() => Log.Information("Framework.Update - 1 秒加 120 帧后"), cancellationToken: this.taskSchedulerCancelSource.Token, delay: TimeSpan.FromSeconds(1), delayTicks: 120);
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("In 2s+60f"u8))
+        if (ImGui.Button("2 秒加 60 帧后"u8))
         {
-            _ = framework.RunOnTick(() => Log.Information("Framework.Update - In 2s+60f"), cancellationToken: this.taskSchedulerCancelSource.Token, delay: TimeSpan.FromSeconds(2), delayTicks: 60);
+            _ = framework.RunOnTick(() => Log.Information("Framework.Update - 2 秒加 60 帧后"), cancellationToken: this.taskSchedulerCancelSource.Token, delay: TimeSpan.FromSeconds(2), delayTicks: 60);
         }
 
-        if (ImGui.Button("Every 60f"u8))
+        if (ImGui.Button("每 60 帧"u8))
         {
             _ = framework.RunOnTick(
                 async () =>
                 {
                     for (var i = 0L; ; i++)
                     {
-                        Log.Information($"Loop #{i}; MainThread={ThreadSafety.IsMainThread}");
+                        Log.Information($"循环 #{i}；主线程={ThreadSafety.IsMainThread}");
                         var it = i;
-                        _ = Task.Factory.StartNew(() => Log.Information($" => Sub #{it}; MainThread={ThreadSafety.IsMainThread}"));
+                        _ = Task.Factory.StartNew(() => Log.Information($" => 子任务 #{it}；主线程={ThreadSafety.IsMainThread}"));
                         await framework.DelayTicks(60, this.taskSchedulerCancelSource.Token);
                     }
                 },
@@ -158,16 +158,16 @@ internal class TaskSchedulerWidget : IDataWindowWidget
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Every 1s"u8))
+        if (ImGui.Button("每 1 秒"u8))
         {
             _ = framework.RunOnTick(
                 async () =>
                 {
                     for (var i = 0L; ; i++)
                     {
-                        Log.Information($"Loop #{i}; MainThread={ThreadSafety.IsMainThread}");
+                        Log.Information($"循环 #{i}；主线程={ThreadSafety.IsMainThread}");
                         var it = i;
-                        _ = Task.Factory.StartNew(() => Log.Information($" => Sub #{it}; MainThread={ThreadSafety.IsMainThread}"));
+                        _ = Task.Factory.StartNew(() => Log.Information($" => 子任务 #{it}；主线程={ThreadSafety.IsMainThread}"));
                         await Task.Delay(TimeSpan.FromSeconds(1), this.taskSchedulerCancelSource.Token);
                     }
                 },
@@ -176,16 +176,16 @@ internal class TaskSchedulerWidget : IDataWindowWidget
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Every 60f (Await)"u8))
+        if (ImGui.Button("每 60 帧（Await）"u8))
         {
             _ = framework.Run(
                 async () =>
                 {
                     for (var i = 0L; ; i++)
                     {
-                        Log.Information($"Loop #{i}; MainThread={ThreadSafety.IsMainThread}");
+                        Log.Information($"循环 #{i}；主线程={ThreadSafety.IsMainThread}");
                         var it = i;
-                        _ = Task.Factory.StartNew(() => Log.Information($" => Sub #{it}; MainThread={ThreadSafety.IsMainThread}"));
+                        _ = Task.Factory.StartNew(() => Log.Information($" => 子任务 #{it}；主线程={ThreadSafety.IsMainThread}"));
                         await framework.DelayTicks(60, this.taskSchedulerCancelSource.Token);
                     }
                 },
@@ -194,16 +194,16 @@ internal class TaskSchedulerWidget : IDataWindowWidget
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Every 1s (Await)"u8))
+        if (ImGui.Button("每 1 秒（Await）"u8))
         {
             _ = framework.Run(
                 async () =>
                 {
                     for (var i = 0L; ; i++)
                     {
-                        Log.Information($"Loop #{i}; MainThread={ThreadSafety.IsMainThread}");
+                        Log.Information($"循环 #{i}；主线程={ThreadSafety.IsMainThread}");
                         var it = i;
-                        _ = Task.Factory.StartNew(() => Log.Information($" => Sub #{it}; MainThread={ThreadSafety.IsMainThread}"));
+                        _ = Task.Factory.StartNew(() => Log.Information($" => 子任务 #{it}；主线程={ThreadSafety.IsMainThread}"));
                         await Task.Delay(TimeSpan.FromSeconds(1), this.taskSchedulerCancelSource.Token);
                     }
                 },
@@ -212,22 +212,22 @@ internal class TaskSchedulerWidget : IDataWindowWidget
 
         ImGui.SameLine();
 
-        if (ImGui.Button("As long as it's in Framework Thread"u8))
+        if (ImGui.Button("确保在框架线程中运行"u8))
         {
-            Task.Run(async () => await framework.RunOnFrameworkThread(() => { Log.Information("Task dispatched from non-framework.update thread"); }));
-            framework.RunOnFrameworkThread(() => { Log.Information("Task dispatched from framework.update thread"); }).Wait();
+            Task.Run(async () => await framework.RunOnFrameworkThread(() => { Log.Information("从非 Framework.Update 线程派发任务"); }));
+            framework.RunOnFrameworkThread(() => { Log.Information("从 Framework.Update 线程派发任务"); }).Wait();
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Error in 1s"u8))
+        if (ImGui.Button("1 秒后出错"u8))
         {
-            _ = framework.RunOnTick(() => throw new Exception("Test Exception"), cancellationToken: this.taskSchedulerCancelSource.Token, delay: TimeSpan.FromSeconds(1));
+            _ = framework.RunOnTick(() => throw new Exception("测试异常"), cancellationToken: this.taskSchedulerCancelSource.Token, delay: TimeSpan.FromSeconds(1));
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Freeze 1s"u8))
+        if (ImGui.Button("冻结 1 秒"u8))
         {
             _ = framework.RunOnFrameworkThread(() => Helper().Wait());
             static async Task Helper() => await Task.Delay(1000);
@@ -235,23 +235,23 @@ internal class TaskSchedulerWidget : IDataWindowWidget
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Freeze Completely"u8))
+        if (ImGui.Button("完全冻结"u8))
         {
             _ = framework.Run(() => Helper().Wait());
             static async Task Helper() => await Task.Delay(1000);
         }
 
-        if (ImGui.CollapsingHeader("Download"u8))
+        if (ImGui.CollapsingHeader("下载"u8))
         {
             ImGui.InputText("URL"u8, ref this.url);
-            ImGui.InputText("Local Path"u8, ref this.localPath);
+            ImGui.InputText("本地路径"u8, ref this.localPath);
             ImGui.SameLine();
 
             if (ImGuiComponents.IconButton("##localpathpicker", FontAwesomeIcon.File))
             {
                 var defaultFileName = this.url.Split('\0', 2)[0].Split('/').Last();
                 this.fileDialogManager.SaveFileDialog(
-                    "Choose a local path",
+                    "选择本地路径",
                     "*",
                     defaultFileName,
                     string.Empty,
@@ -268,11 +268,11 @@ internal class TaskSchedulerWidget : IDataWindowWidget
 
             using var disabled = ImRaii.Disabled(this.downloadTask?.IsCompleted is false || string.IsNullOrEmpty(this.localPath));
             ImGui.AlignTextToFramePadding();
-            ImGui.Text("Download"u8);
+            ImGui.Text("下载方式"u8);
             ImGui.SameLine();
-            var downloadUsingGlobalScheduler = ImGui.Button("using default scheduler"u8);
+            var downloadUsingGlobalScheduler = ImGui.Button("使用默认调度器"u8);
             ImGui.SameLine();
-            var downloadUsingFramework = ImGui.Button("using Framework.Update"u8);
+            var downloadUsingFramework = ImGui.Button("使用 Framework.Update"u8);
             if (downloadUsingGlobalScheduler || downloadUsingFramework)
             {
                 var ct = this.taskSchedulerCancelSource.Token;
@@ -312,7 +312,7 @@ internal class TaskSchedulerWidget : IDataWindowWidget
                         }
                         catch (Exception e)
                         {
-                            Log.Error(e, "Failed to download {from} to {to}.", this.url, this.localPath);
+                            Log.Error(e, "无法将 {from} 下载到 {to}。", this.url, this.localPath);
                             try
                             {
                                 File.Delete(this.localPath);
@@ -327,7 +327,7 @@ internal class TaskSchedulerWidget : IDataWindowWidget
             }
         }
 
-        if (ImGui.Button("Drown in tasks"u8))
+        if (ImGui.Button("创建海量任务"u8))
         {
             var token = this.taskSchedulerCancelSource.Token;
             Task.Run(
@@ -401,11 +401,11 @@ internal class TaskSchedulerWidget : IDataWindowWidget
                 _ => throw new ArgumentOutOfRangeException(),
             };
 
-            if (ImGui.CollapsingHeader($"#{task.Id} - {task.Status} {(subTime - task.StartTime).TotalMilliseconds}ms###task{i}"))
+            if (ImGui.CollapsingHeader($"#{task.Id} - {task.Status} {(subTime - task.StartTime).TotalMilliseconds} ms###task{i}"))
             {
                 task.IsBeingViewed = true;
 
-                if (ImGui.Button("CANCEL (May not work)"u8))
+                if (ImGui.Button("取消（可能无效）"u8))
                 {
                     try
                     {
@@ -414,18 +414,18 @@ internal class TaskSchedulerWidget : IDataWindowWidget
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "Could not cancel task");
+                        Log.Error(ex, "无法取消任务");
                     }
                 }
 
                 ImGuiHelpers.ScaledDummy(10);
 
-                ImGui.Text(task.StackTrace?.ToString() ?? "Null StackTrace");
+                ImGui.Text(task.StackTrace?.ToString() ?? "堆栈跟踪为空");
 
                 if (task.Exception != null)
                 {
                     ImGuiHelpers.ScaledDummy(15);
-                    ImGui.TextColored(ImGuiColors.ErrorForeground, "EXCEPTION:"u8);
+                    ImGui.TextColored(ImGuiColors.ErrorForeground, "异常："u8);
                     ImGui.Text(task.Exception.ToString());
                 }
             }

@@ -37,7 +37,7 @@ public class IconBrowserWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["icon", "icons"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Icon Browser";
+    public string DisplayName { get; init; } = "图标浏览器";
 
     /// <inheritdoc/>
     public bool Ready { get; set; } = true;
@@ -74,11 +74,11 @@ public class IconBrowserWidget : IDataWindowWidget
 
         if (!this.iconIdsTask.IsCompleted)
         {
-            ImGui.Text("Loading..."u8);
+            ImGui.Text("加载中..."u8);
         }
         else if (!this.iconIdsTask.IsCompletedSuccessfully)
         {
-            ImGui.Text(this.iconIdsTask.Exception?.ToString() ?? "Unknown error");
+            ImGui.Text(this.iconIdsTask.Exception?.ToString() ?? "未知错误");
         }
         else
         {
@@ -136,10 +136,10 @@ public class IconBrowserWidget : IDataWindowWidget
         }
 
         ImGui.NextColumn();
-        ImGui.Checkbox("Show Image in Tooltip"u8, ref this.showTooltipImage);
+        ImGui.Checkbox("在工具提示中显示图像"u8, ref this.showTooltipImage);
 
         ImGui.NextColumn();
-        ImGui.InputFloat2("Icon Size", ref this.editIconSize);
+        ImGui.InputFloat2("图标大小", ref this.editIconSize);
         if (ImGui.IsItemDeactivatedAfterEdit())
         {
             this.iconSize = this.editIconSize;

@@ -23,6 +23,8 @@ internal class NounProcessorWidget : IDataWindowWidget
     /// <summary>A list of German grammatical cases.</summary>
     internal static readonly string[] GermanCases = [string.Empty, "Nominative", "Genitive", "Dative", "Accusative"];
 
+    internal static readonly string[] GermanCaseDisplayNames = [string.Empty, "主格", "属格", "与格", "宾格"];
+
     private static readonly Type[] NounSheets = [
         typeof(Aetheryte),
         typeof(BNpcName),
@@ -64,7 +66,7 @@ internal class NounProcessorWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["noun"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Noun Processor";
+    public string DisplayName { get; init; } = "名词处理器";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -107,7 +109,7 @@ internal class NounProcessorWidget : IDataWindowWidget
         var sheet = dataManager.Excel.GetSheet<RawRow>(Language.English, sheetType.Name);
         var minRowId = (int)sheet.FirstOrDefault().RowId;
         var maxRowId = (int)sheet.LastOrDefault().RowId;
-        if (ImGui.InputInt("RowId###RowId", ref this.rowId, 1, 10, flags: ImGuiInputTextFlags.AutoSelectAll))
+        if (ImGui.InputInt("行 ID###RowId", ref this.rowId, 1, 10, flags: ImGuiInputTextFlags.AutoSelectAll))
         {
             if (this.rowId < minRowId)
                 this.rowId = minRowId;
@@ -117,10 +119,10 @@ internal class NounProcessorWidget : IDataWindowWidget
         }
 
         ImGui.SameLine();
-        ImGui.Text($"(Range: {minRowId} - {maxRowId})");
+        ImGui.Text($"（范围：{minRowId} - {maxRowId}）");
 
         ImGui.SetNextItemWidth(120);
-        if (ImGui.InputInt("Amount###Amount", ref this.amount, 1, 10, flags: ImGuiInputTextFlags.AutoSelectAll))
+        if (ImGui.InputInt("数量###Amount", ref this.amount, 1, 10, flags: ImGuiInputTextFlags.AutoSelectAll))
         {
             if (this.amount <= 0)
                 this.amount = 1;
@@ -137,7 +139,7 @@ internal class NounProcessorWidget : IDataWindowWidget
         var numCases = language == ClientLanguage.German ? 4 : 1;
 
 #if DEBUG
-        if (ImGui.Button("Copy as self-test entry"u8))
+        if (ImGui.Button("复制为自测条目"u8))
         {
             var sb = new StringBuilder();
 
@@ -167,9 +169,9 @@ internal class NounProcessorWidget : IDataWindowWidget
         using var table = ImRaii.Table("TextDecoderTable"u8, 1 + numCases, ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("ArticleType"u8, ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn("冠词类型"u8, ImGuiTableColumnFlags.WidthFixed, 150);
         for (var i = 0; i < numCases; i++)
-            ImGui.TableSetupColumn(language == ClientLanguage.German ? GermanCases[i] : "Text");
+            ImGui.TableSetupColumn(language == ClientLanguage.German ? GermanCaseDisplayNames[i] : "文本");
         ImGui.TableSetupScrollFreeze(6, 1);
         ImGui.TableHeadersRow();
 
@@ -203,4 +205,5 @@ internal class NounProcessorWidget : IDataWindowWidget
             }
         }
     }
+
 }

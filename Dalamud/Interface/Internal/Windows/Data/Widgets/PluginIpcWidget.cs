@@ -28,7 +28,7 @@ internal class PluginIpcWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["ipc"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Plugin IPC";
+    public string DisplayName { get; init; } = "插件 IPC";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -49,8 +49,8 @@ internal class PluginIpcWidget : IDataWindowWidget
             this.ipcPub.RegisterAction(msg =>
             {
                 Log.Information(
-                    "Data action was called: {Msg}\n" +
-                    "    Context: {Context}",
+                    "数据操作已调用：{Msg}\n" +
+                    "    上下文：{Context}",
                     msg,
                     this.ipcPub.GetContext());
             });
@@ -58,8 +58,8 @@ internal class PluginIpcWidget : IDataWindowWidget
             this.ipcPub.RegisterFunc(msg =>
             {
                 Log.Information(
-                    "Data func was called: {Msg}\n" +
-                    "    Context: {Context}",
+                    "数据函数已调用：{Msg}\n" +
+                    "    上下文：{Context}",
                     msg,
                     this.ipcPub.GetContext());
                 return Guid.NewGuid().ToString();
@@ -81,8 +81,8 @@ internal class PluginIpcWidget : IDataWindowWidget
             this.ipcPubGo.RegisterAction(go =>
             {
                 Log.Information(
-                    "Data action was called: {Name}" +
-                    "\n    Context: {Context}",
+                    "数据操作已调用：{Name}" +
+                    "\n    上下文：{Context}",
                     go?.Name,
                     this.ipcPubGo.GetContext());
             });
@@ -90,8 +90,8 @@ internal class PluginIpcWidget : IDataWindowWidget
             this.ipcPubGo.RegisterFunc(go =>
             {
                 Log.Information(
-                    "Data func was called: {Name}\n" +
-                    "    Context: {Context}",
+                    "数据函数已调用：{Name}\n" +
+                    "    上下文：{Context}",
                     go?.Name,
                     this.ipcPubGo.GetContext());
 
@@ -110,27 +110,27 @@ internal class PluginIpcWidget : IDataWindowWidget
             this.ipcPub.SendMessage("PING");
         }
 
-        if (ImGui.Button("Action"u8))
+        if (ImGui.Button("调用操作"u8))
         {
             this.ipcSub.InvokeAction("button1");
         }
 
-        if (ImGui.Button("Func"u8))
+        if (ImGui.Button("调用函数"u8))
         {
             this.callGateResponse = this.ipcSub.InvokeFunc("button2");
         }
 
-        if (ImGui.Button("Action GO"u8))
+        if (ImGui.Button("调用操作（游戏对象）"u8))
         {
             this.ipcSubGo.InvokeAction(Service<ObjectTable>.Get().LocalPlayer);
         }
 
-        if (ImGui.Button("Func GO"u8))
+        if (ImGui.Button("调用函数（游戏对象）"u8))
         {
             this.callGateResponse = this.ipcSubGo.InvokeFunc(Service<ObjectTable>.Get().LocalPlayer);
         }
 
         if (!this.callGateResponse.IsNullOrEmpty())
-            ImGui.Text($"Response: {this.callGateResponse}");
+            ImGui.Text($"响应：{this.callGateResponse}");
     }
 }

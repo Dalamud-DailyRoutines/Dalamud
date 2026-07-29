@@ -27,7 +27,7 @@ internal class ServicesWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["services"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Service Container";
+    public string DisplayName { get; init; } = "服务容器";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -43,19 +43,19 @@ internal class ServicesWidget : IDataWindowWidget
     {
         var container = Service<ServiceContainer>.Get();
 
-        if (ImGui.CollapsingHeader("Dependencies"u8))
+        if (ImGui.CollapsingHeader("依赖关系"u8))
         {
-            if (ImGui.Button("Clear selection"u8))
+            if (ImGui.Button("清除选择"u8))
                 this.selectedNodes.Clear();
 
             ImGui.SameLine();
             switch (this.includeUnloadDependencies)
             {
-                case true when ImGui.Button("Show load-time dependencies"u8):
+                case true when ImGui.Button("显示加载时依赖关系"u8):
                     this.includeUnloadDependencies = false;
                     this.dependencyNodes = null;
                     break;
-                case false when ImGui.Button("Show unload-time dependencies"u8):
+                case false when ImGui.Button("显示卸载时依赖关系"u8):
                     this.includeUnloadDependencies = true;
                     this.dependencyNodes = null;
                     break;
@@ -231,35 +231,35 @@ internal class ServicesWidget : IDataWindowWidget
             }
         }
 
-        if (ImGui.CollapsingHeader("Singleton Services"u8))
+        if (ImGui.CollapsingHeader("单例服务"u8))
         {
             foreach (var instance in container.Instances)
             {
                 var isPublic = instance.Key.IsPublic;
 
-                ImGui.BulletText($"{instance.Key.FullName} ({instance.Key.GetServiceKind()})");
+                ImGui.BulletText($"{instance.Key.FullName}（{instance.Key.GetServiceKind()}）");
 
                 if (isPublic)
                 {
                     using var color = ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.WarningForeground);
-                    ImGui.Text("\t => PUBLIC!!!"u8);
+                    ImGui.Text("\t => 公共服务"u8);
                 }
 
                 switch (instance.Value.Visibility)
                 {
                     case ObjectInstanceVisibility.Internal:
-                        ImGui.Text("\t => Internally resolved"u8);
+                        ImGui.Text("\t => 仅供内部解析"u8);
                         break;
 
                     case ObjectInstanceVisibility.ExposedToPlugins:
                         var hasInterface = container.InterfaceToTypeMap.Values.Any(x => x == instance.Key);
                         using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.WarningForeground, !hasInterface))
                         {
-                            ImGui.Text("\t => Exposed to plugins!"u8);
+                            ImGui.Text("\t => 已向插件公开"u8);
                             ImGui.Text(
                                 hasInterface
-                                    ? $"\t => Provided via interface: {container.InterfaceToTypeMap.First(x => x.Value == instance.Key).Key.FullName}"
-                                    : "\t => NO INTERFACE!!!");
+                                    ? $"\t => 通过接口提供：{container.InterfaceToTypeMap.First(x => x.Value == instance.Key).Key.FullName}"
+                                    : "\t => 缺少接口");
                         }
 
                         break;

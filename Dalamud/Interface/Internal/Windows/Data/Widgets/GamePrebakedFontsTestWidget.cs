@@ -27,9 +27,9 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
 {
     private static readonly string[] FontScaleModes =
     [
-        nameof(FontScaleMode.Default),
-        nameof(FontScaleMode.SkipHandling),
-        nameof(FontScaleMode.UndoGlobalScale),
+        "默认",
+        "跳过处理",
+        "撤销全局缩放",
     ];
 
     private ImVectorWrapper<byte> testStringBuffer;
@@ -50,7 +50,7 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
     public string[]? CommandShortcuts { get; init; }
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Game Prebaked Fonts";
+    public string DisplayName { get; init; } = "游戏预烘焙字体";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -62,41 +62,41 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
     public unsafe void Draw()
     {
         ImGui.AlignTextToFramePadding();
-        if (ImGui.Combo("Global Scale per Font"u8, ref this.fontScaleMode, FontScaleModes))
+        if (ImGui.Combo("各字体的全局缩放"u8, ref this.fontScaleMode, FontScaleModes))
             this.ClearAtlas();
 
-        if (ImGui.Checkbox("Global Scale for Atlas"u8, ref this.atlasScaleMode))
-            this.ClearAtlas();
-
-        ImGui.SameLine();
-        ImGui.Checkbox("Word Wrap"u8, ref this.useWordWrap);
-
-        ImGui.SameLine();
-        if (ImGui.Checkbox("Italic"u8, ref this.useItalic))
+        if (ImGui.Checkbox("字体图集全局缩放"u8, ref this.atlasScaleMode))
             this.ClearAtlas();
 
         ImGui.SameLine();
-        if (ImGui.Checkbox("Bold"u8, ref this.useBold))
+        ImGui.Checkbox("自动换行"u8, ref this.useWordWrap);
+
+        ImGui.SameLine();
+        if (ImGui.Checkbox("斜体"u8, ref this.useItalic))
             this.ClearAtlas();
 
         ImGui.SameLine();
-        if (ImGui.Checkbox("Minimum Range"u8, ref this.useMinimumBuild))
+        if (ImGui.Checkbox("粗体"u8, ref this.useBold))
             this.ClearAtlas();
 
         ImGui.SameLine();
-        if (ImGui.Button("Reset Text"u8) || this.testStringBuffer.IsDisposed)
+        if (ImGui.Checkbox("最小字符范围"u8, ref this.useMinimumBuild))
+            this.ClearAtlas();
+
+        ImGui.SameLine();
+        if (ImGui.Button("重置文本"u8) || this.testStringBuffer.IsDisposed)
         {
             this.testStringBuffer.Dispose();
             this.testStringBuffer = ImVectorWrapper.CreateFromSpan(
-                "(Game)-[Font] {Test}. 0123456789!! <氣気气きキ기>。"u8,
+                "(游戏)-[字体] {测试}。0123456789!! <氣気气きキ기>。"u8,
                 minCapacity: 1024);
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Test Lock"u8))
+        if (ImGui.Button("测试锁"u8))
             Task.Run(this.TestLock);
 
-        if (ImGui.Button("Choose Editor Font"u8))
+        if (ImGui.Button("选择编辑器字体"u8))
         {
             if (this.chooserDialog is null)
             {
@@ -123,7 +123,7 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
                 fcd.SelectedFontSpecChanged += spec =>
                 {
                     this.fontSpec = spec;
-                    Log.Information("Selected font: {font}", this.fontSpec);
+                    Log.Information("已选择字体：{font}", this.fontSpec);
                     this.fontDialogHandle?.Dispose();
                     this.fontDialogHandle = null;
                 };
@@ -154,7 +154,7 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
             ImGui.Text($"{this.chooserDialog.PopupPosition}, {this.chooserDialog.PopupSize}");
 
             ImGui.SameLine();
-            if (ImGui.Button("Random Location"u8))
+            if (ImGui.Button("随机位置"u8))
             {
                 var monitors = ImGui.GetPlatformIO().Monitors;
                 var monitor = monitors[Random.Shared.Next() % monitors.Size];
@@ -176,7 +176,7 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
             this.privateAtlas,
             e => e.OnPreBuild(tk => tk.SetFontScaleMode(tk.Font, (FontScaleMode)this.fontScaleMode)));
 
-        fixed (byte* labelPtr = "Test Input"u8)
+        fixed (byte* labelPtr = "测试输入"u8)
         {
             if (!this.atlasScaleMode)
                 ImGui.SetWindowFontScale(1 / ImGuiHelpers.GlobalScale);
@@ -242,7 +242,7 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
         var counter = 0;
         foreach (var (family, items) in this.fontHandles)
         {
-            if (!ImGui.CollapsingHeader($"{family} Family"))
+            if (!ImGui.CollapsingHeader($"{family} 字体族"))
                 continue;
 
             foreach (var (gfs, handle) in items)
@@ -259,7 +259,7 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
                     }
                     else if (!handle.Value.Available)
                     {
-                        ImGui.Text("Loading..."u8[..(8 + ((Environment.TickCount / 200) % 3))]);
+                        ImGui.Text("加载中..."u8[..(10 + ((Environment.TickCount / 200) % 3))]);
                     }
                     else
                     {
@@ -310,7 +310,7 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
         if (this.fontHandles is not { } fontHandlesCopy)
             return;
 
-        Log.Information($"{nameof(GamePrebakedFontsTestWidget)}: {nameof(this.TestLock)} waiting for build");
+        Log.Information($"{nameof(GamePrebakedFontsTestWidget)}：{nameof(this.TestLock)} 正在等待构建");
 
         await using var garbage = new DisposeSafety.ScopedFinalizer();
         var fonts = new List<ImFontPtr>();
@@ -328,11 +328,11 @@ internal class GamePrebakedFontsTestWidget : IDataWindowWidget, IDisposable
         }
         catch (ObjectDisposedException)
         {
-            Log.Information($"{nameof(GamePrebakedFontsTestWidget)}: {nameof(this.TestLock)} cancelled");
+            Log.Information($"{nameof(GamePrebakedFontsTestWidget)}：{nameof(this.TestLock)} 已取消");
             return;
         }
 
-        Log.Information($"{nameof(GamePrebakedFontsTestWidget)}: {nameof(this.TestLock)} waiting in lock");
+        Log.Information($"{nameof(GamePrebakedFontsTestWidget)}：{nameof(this.TestLock)} 正在锁中等待");
         await Task.Delay(5000);
 
         foreach (var (font, handle) in fonts.Zip(handles))

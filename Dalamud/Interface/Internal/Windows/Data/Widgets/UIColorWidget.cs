@@ -22,7 +22,7 @@ internal class UiColorWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["uicolor"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "UIColor";
+    public string DisplayName { get; init; } = "界面颜色";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -37,15 +37,15 @@ internal class UiColorWidget : IDataWindowWidget
     public void Draw()
     {
         var colors = Service<DataManager>.GetNullable()?.GetExcelSheet<UIColor>()
-            ?? throw new InvalidOperationException("UIColor sheet not loaded.");
+            ?? throw new InvalidOperationException("UIColor 表尚未加载。");
 
         Service<SeStringRenderer>.Get().CompileAndDrawWrapped(
-            "· Color notation is #" +
+            "· 颜色以 #" +
             "<edgecolor(0xFFEEEE)><color(0xFF0000)>RR<color(stackcolor)><edgecolor(stackcolor)>" +
             "<edgecolor(0xEEFFEE)><color(0x00FF00)>GG<color(stackcolor)><edgecolor(stackcolor)>" +
-            "<edgecolor(0xEEEEFF)><color(0x0000FF)>BB<color(stackcolor)><edgecolor(stackcolor)>.<br>" +
-            "· Click on a color to copy the color code.<br>" +
-            "· Hover on a color to preview the text with edge, when the next color has been used together.");
+            "<edgecolor(0xEEEEFF)><color(0x0000FF)>BB<color(stackcolor)><edgecolor(stackcolor)> 形式表示。<br>" +
+            "· 单击颜色可复制颜色代码。<br>" +
+            "· 与后一种颜色搭配使用时，将鼠标悬停在颜色上可预览带描边的文本。");
 
         using var table = ImRaii.Table("UIColor"u8, 9);
         if (!table.Success)
@@ -61,15 +61,15 @@ internal class UiColorWidget : IDataWindowWidget
         colorw = Math.Max(colorw, ImGui.CalcTextSize("#EEEEEE"u8).X);
         colorw = Math.Max(colorw, ImGui.CalcTextSize("#FFFFFF"u8).X);
         colorw += ImGui.GetFrameHeight() + ImGui.GetStyle().FramePadding.X;
-        ImGui.TableSetupColumn("Row ID"u8, ImGuiTableColumnFlags.WidthFixed, rowidw);
-        ImGui.TableSetupColumn("Dark"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
-        ImGui.TableSetupColumn("Light"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
-        ImGui.TableSetupColumn("Classic FF"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
-        ImGui.TableSetupColumn("Clear Blue"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
-        ImGui.TableSetupColumn("Clear White"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
-        ImGui.TableSetupColumn("Clear Green"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
-        ImGui.TableSetupColumn("Clear Grey"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
-        ImGui.TableSetupColumn("Clear Pink"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
+        ImGui.TableSetupColumn("行 ID"u8, ImGuiTableColumnFlags.WidthFixed, rowidw);
+        ImGui.TableSetupColumn("深色"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
+        ImGui.TableSetupColumn("浅色"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
+        ImGui.TableSetupColumn("经典 FF"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
+        ImGui.TableSetupColumn("透明蓝"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
+        ImGui.TableSetupColumn("透明白"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
+        ImGui.TableSetupColumn("透明绿"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
+        ImGui.TableSetupColumn("透明灰"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
+        ImGui.TableSetupColumn("透明粉"u8, ImGuiTableColumnFlags.WidthFixed, colorw);
         ImGui.TableHeadersRow();
 
         var clipper = ImGui.ImGuiListClipper();
@@ -231,7 +231,7 @@ internal class UiColorWidget : IDataWindowWidget
             Service<NotificationManager>.Get().AddNotification(
                 new()
                 {
-                    Content = $"Copied \"{rgbtext}\".",
+                    Content = $"已复制“{rgbtext}”。",
                     Title = this.DisplayName,
                     Type = NotificationType.Success,
                 });

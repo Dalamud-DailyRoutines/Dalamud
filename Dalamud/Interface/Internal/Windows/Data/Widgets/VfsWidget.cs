@@ -21,7 +21,7 @@ internal class VfsWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["vfs"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "VFS Performance";
+    public string DisplayName { get; init; } = "VFS 性能";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -38,14 +38,14 @@ internal class VfsWidget : IDataWindowWidget
         var service = Service<ReliableFileStorage>.Get();
         var dalamud = Service<Dalamud>.Get();
 
-        ImGui.InputInt("Num bytes"u8, ref this.numBytes);
-        ImGui.InputInt("Reps"u8, ref this.reps);
+        ImGui.InputInt("字节数"u8, ref this.numBytes);
+        ImGui.InputInt("重复次数"u8, ref this.reps);
 
         var path = Path.Combine(dalamud.StartInfo.WorkingDirectory!, "test.bin");
 
-        if (ImGui.Button("Write"u8))
+        if (ImGui.Button("写入"u8))
         {
-            Log.Information("=== WRITING ===");
+            Log.Information("=== 正在写入 ===");
             var data = new byte[this.numBytes];
             var stopwatch = new Stopwatch();
             var acc = 0L;
@@ -56,15 +56,15 @@ internal class VfsWidget : IDataWindowWidget
                 service.WriteAllBytesAsync(path, data).GetAwaiter().GetResult();
                 stopwatch.Stop();
                 acc += stopwatch.ElapsedMilliseconds;
-                Log.Information("Turn {Turn} took {Ms}ms", i, stopwatch.ElapsedMilliseconds);
+                Log.Information("第 {Turn} 次耗时 {Ms} ms", i, stopwatch.ElapsedMilliseconds);
             }
 
-            Log.Information("Took {Ms}ms in total", acc);
+            Log.Information("总计耗时 {Ms} ms", acc);
         }
 
-        if (ImGui.Button("Read"u8))
+        if (ImGui.Button("读取"u8))
         {
-            Log.Information("=== READING ===");
+            Log.Information("=== 正在读取 ===");
             var stopwatch = new Stopwatch();
             var acc = 0L;
 
@@ -74,17 +74,17 @@ internal class VfsWidget : IDataWindowWidget
                 service.ReadAllBytesAsync(path).GetAwaiter().GetResult();
                 stopwatch.Stop();
                 acc += stopwatch.ElapsedMilliseconds;
-                Log.Information("Turn {Turn} took {Ms}ms", i, stopwatch.ElapsedMilliseconds);
+                Log.Information("第 {Turn} 次耗时 {Ms} ms", i, stopwatch.ElapsedMilliseconds);
             }
 
-            Log.Information("Took {Ms}ms in total", acc);
+            Log.Information("总计耗时 {Ms} ms", acc);
         }
 
-        if (ImGui.Button("Test Config"u8))
+        if (ImGui.Button("测试配置"u8))
         {
             var config = Service<DalamudConfiguration>.Get();
 
-            Log.Information("=== READING ===");
+            Log.Information("=== 正在读取 ===");
             var stopwatch = new Stopwatch();
             var acc = 0L;
 
@@ -94,10 +94,10 @@ internal class VfsWidget : IDataWindowWidget
                 config.ForceSave();
                 stopwatch.Stop();
                 acc += stopwatch.ElapsedMilliseconds;
-                Log.Information("Turn {Turn} took {Ms}ms", i, stopwatch.ElapsedMilliseconds);
+                Log.Information("第 {Turn} 次耗时 {Ms} ms", i, stopwatch.ElapsedMilliseconds);
             }
 
-            Log.Information("Took {Ms}ms in total", acc);
+            Log.Information("总计耗时 {Ms} ms", acc);
         }
     }
 }

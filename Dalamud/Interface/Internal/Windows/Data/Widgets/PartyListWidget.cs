@@ -15,7 +15,7 @@ internal class PartyListWidget : IDataWindowWidget
     public string[]? CommandShortcuts { get; init; } = ["partylist", "party"];
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "Party List";
+    public string DisplayName { get; init; } = "小队列表";
 
     /// <inheritdoc/>
     public bool Ready { get; set; }
@@ -31,20 +31,20 @@ internal class PartyListWidget : IDataWindowWidget
     {
         var partyList = Service<PartyList>.Get();
 
-        ImGui.Checkbox("Resolve GameData"u8, ref this.resolveGameData);
+        ImGui.Checkbox("解析游戏数据"u8, ref this.resolveGameData);
 
-        ImGui.Text($"GroupManager: {partyList.GroupManagerAddress:X}");
-        ImGui.Text($"GroupList: {partyList.GroupListAddress:X}");
-        ImGui.Text($"AllianceList: {partyList.AllianceListAddress:X}");
+        ImGui.Text($"队伍管理器：{partyList.GroupManagerAddress:X}");
+        ImGui.Text($"小队列表：{partyList.GroupListAddress:X}");
+        ImGui.Text($"团队列表：{partyList.AllianceListAddress:X}");
 
-        ImGui.Text($"{partyList.Length} Members");
+        ImGui.Text($"{partyList.Length} 名成员");
 
         for (var i = 0; i < partyList.Length; i++)
         {
             var member = partyList[i];
             if (member == null)
             {
-                ImGui.Text($"[{i}] was null");
+                ImGui.Text($"[{i}] 为空");
                 continue;
             }
 
@@ -54,7 +54,7 @@ internal class PartyListWidget : IDataWindowWidget
                 var actor = member.GameObject;
                 if (actor == null)
                 {
-                    ImGui.Text("Actor was null"u8);
+                    ImGui.Text("角色为空"u8);
                 }
                 else
                 {

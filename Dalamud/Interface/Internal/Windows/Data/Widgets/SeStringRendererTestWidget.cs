@@ -30,7 +30,7 @@ namespace Dalamud.Interface.Internal.Windows.Data.Widgets;
 /// </summary>
 internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
 {
-    private static readonly string[] ThemeNames = ["Dark", "Light", "Classic FF", "Clear Blue", "Clear White", "Clear Green"];
+    private static readonly string[] ThemeNames = ["深色", "浅色", "经典 FF", "透明蓝", "透明白", "透明绿"];
     private ImVectorWrapper<byte> testStringBuffer;
     private string testString = string.Empty;
     private ReadOnlySeString? logkind;
@@ -40,7 +40,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
     private bool alignToFramePadding;
 
     /// <inheritdoc/>
-    public string DisplayName { get; init; } = "SeStringRenderer Test";
+    public string DisplayName { get; init; } = "SeStringRenderer 测试";
 
     /// <inheritdoc/>
     public string[]? CommandShortcuts { get; init; }
@@ -63,59 +63,59 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
     public void Draw()
     {
         var t2 = ImGui.ColorConvertU32ToFloat4(this.style.Color ??= ImGui.GetColorU32(ImGuiCol.Text));
-        if (ImGui.ColorEdit4("Color", ref t2))
+        if (ImGui.ColorEdit4("颜色", ref t2))
             this.style.Color = ImGui.ColorConvertFloat4ToU32(t2);
 
         t2 = ImGui.ColorConvertU32ToFloat4(this.style.EdgeColor ??= 0xFF000000u);
-        if (ImGui.ColorEdit4("Edge Color", ref t2))
+        if (ImGui.ColorEdit4("描边颜色", ref t2))
             this.style.EdgeColor = ImGui.ColorConvertFloat4ToU32(t2);
 
         ImGui.SameLine();
         var t = this.style.ForceEdgeColor;
-        if (ImGui.Checkbox("Forced"u8, ref t))
+        if (ImGui.Checkbox("强制"u8, ref t))
             this.style.ForceEdgeColor = t;
 
         t2 = ImGui.ColorConvertU32ToFloat4(this.style.ShadowColor ??= 0xFF000000u);
-        if (ImGui.ColorEdit4("Shadow Color"u8, ref t2))
+        if (ImGui.ColorEdit4("阴影颜色"u8, ref t2))
             this.style.ShadowColor = ImGui.ColorConvertFloat4ToU32(t2);
 
         t2 = ImGui.ColorConvertU32ToFloat4(this.style.LinkHoverBackColor ??= ImGui.GetColorU32(ImGuiCol.ButtonHovered));
-        if (ImGui.ColorEdit4("Link Hover Color"u8, ref t2))
+        if (ImGui.ColorEdit4("链接悬停颜色"u8, ref t2))
             this.style.LinkHoverBackColor = ImGui.ColorConvertFloat4ToU32(t2);
 
         t2 = ImGui.ColorConvertU32ToFloat4(this.style.LinkActiveBackColor ??= ImGui.GetColorU32(ImGuiCol.ButtonActive));
-        if (ImGui.ColorEdit4("Link Active Color"u8, ref t2))
+        if (ImGui.ColorEdit4("链接激活颜色"u8, ref t2))
             this.style.LinkActiveBackColor = ImGui.ColorConvertFloat4ToU32(t2);
 
         var t3 = this.style.LineHeight ??= 1f;
-        if (ImGui.DragFloat("Line Height"u8, ref t3, 0.01f, 0.4f, 3f, "%.02f"))
+        if (ImGui.DragFloat("行高"u8, ref t3, 0.01f, 0.4f, 3f, "%.02f"))
             this.style.LineHeight = t3;
 
         t3 = this.style.Opacity ??= 1f;
-        if (ImGui.DragFloat("Opacity"u8, ref t3, 0.005f, 0f, 1f, "%.02f"))
+        if (ImGui.DragFloat("不透明度"u8, ref t3, 0.005f, 0f, 1f, "%.02f"))
             this.style.Opacity = t3;
 
         t3 = this.style.EdgeStrength ??= 0.25f;
-        if (ImGui.DragFloat("Edge Strength"u8, ref t3, 0.005f, 0f, 1f, "%.02f"))
+        if (ImGui.DragFloat("描边强度"u8, ref t3, 0.005f, 0f, 1f, "%.02f"))
             this.style.EdgeStrength = t3;
 
         t = this.style.Edge;
-        if (ImGui.Checkbox("Edge"u8, ref t))
+        if (ImGui.Checkbox("描边"u8, ref t))
             this.style.Edge = t;
 
         ImGui.SameLine();
         t = this.style.Bold;
-        if (ImGui.Checkbox("Bold"u8, ref t))
+        if (ImGui.Checkbox("粗体"u8, ref t))
             this.style.Bold = t;
 
         ImGui.SameLine();
         t = this.style.Italic;
-        if (ImGui.Checkbox("Italic"u8, ref t))
+        if (ImGui.Checkbox("斜体"u8, ref t))
             this.style.Italic = t;
 
         ImGui.SameLine();
         t = this.style.Shadow;
-        if (ImGui.Checkbox("Shadow"u8, ref t))
+        if (ImGui.Checkbox("阴影"u8, ref t))
             this.style.Shadow = t;
 
         ImGui.SameLine();
@@ -128,29 +128,29 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
 
         ImGui.SameLine();
         t = this.style.LinkUnderlineThickness > 0f;
-        if (ImGui.Checkbox("Link Underline"u8, ref t))
+        if (ImGui.Checkbox("链接下划线"u8, ref t))
             this.style.LinkUnderlineThickness = t ? 1f : 0f;
 
         ImGui.SameLine();
         t = this.style.WrapWidth is null;
-        if (ImGui.Checkbox("Word Wrap"u8, ref t))
+        if (ImGui.Checkbox("自动换行"u8, ref t))
             this.style.WrapWidth = t ? null : float.PositiveInfinity;
 
         t = this.interactable;
-        if (ImGui.Checkbox("Interactable"u8, ref t))
+        if (ImGui.Checkbox("可交互"u8, ref t))
             this.interactable = t;
 
         ImGui.SameLine();
         t = this.useEntity;
-        if (ImGui.Checkbox("Use Entity Replacements"u8, ref t))
+        if (ImGui.Checkbox("使用实体替换"u8, ref t))
             this.useEntity = t;
 
         ImGui.SameLine();
         t = this.alignToFramePadding;
-        if (ImGui.Checkbox("Align to Frame Padding"u8, ref t))
+        if (ImGui.Checkbox("与框架内边距对齐"u8, ref t))
             this.alignToFramePadding = t;
 
-        if (ImGui.CollapsingHeader("LogKind Preview"u8))
+        if (ImGui.CollapsingHeader("LogKind 预览"u8))
         {
             if (this.logkind is null)
             {
@@ -166,7 +166,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
                     {
                         if (p.Payload.Type == ReadOnlySePayloadType.Macro && p.Payload.MacroCode == MacroCode.String)
                         {
-                            tt.Append("Text"u8);
+                            tt.Append("文本"u8);
                             continue;
                         }
 
@@ -182,7 +182,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
             ImGuiHelpers.SeStringWrapped(this.logkind.Value.Data.Span, this.style);
         }
 
-        if (ImGui.CollapsingHeader("Draw into drawlist"))
+        if (ImGui.CollapsingHeader("绘制到绘制列表"))
         {
             ImGuiHelpers.ScaledDummy(100);
             ImGui.SetCursorScreenPos(ImGui.GetItemRectMin() + ImGui.GetStyle().FramePadding);
@@ -194,24 +194,24 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
             var dl = ImGui.GetWindowDrawList();
             dl.PushClipRect(clipMin, clipMax);
             ImGuiHelpers.CompileSeStringWrapped(
-                "<icon(1)>Test test<icon(1)>",
+                "<icon(1)>测试文本<icon(1)>",
                 new SeStringDrawParams { Color = 0xFFFFFFFF, WrapWidth = float.MaxValue, TargetDrawList = dl });
             dl.PopClipRect();
         }
 
-        if (ImGui.CollapsingHeader("Addon Table"u8))
+        if (ImGui.CollapsingHeader("Addon 表"u8))
         {
             using var table = ImRaii.Table("Addon Sheet"u8, 3);
             if (table.Success)
             {
                 ImGui.TableSetupScrollFreeze(0, 1);
-                ImGui.TableSetupColumn("Row ID"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("0000000"u8).X);
-                ImGui.TableSetupColumn("Text"u8, ImGuiTableColumnFlags.WidthStretch);
-                ImGui.TableSetupColumn("Misc"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("AAAAAAAAAAAAAAAAA"u8).X);
+                ImGui.TableSetupColumn("行 ID"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("0000000"u8).X);
+                ImGui.TableSetupColumn("文本"u8, ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn("其他"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("AAAAAAAAAAAAAAAAA"u8).X);
                 ImGui.TableHeadersRow();
 
                 var addon = Service<DataManager>.GetNullable()?.GetExcelSheet<Addon>() ??
-                            throw new InvalidOperationException("Addon sheet not loaded.");
+                            throw new InvalidOperationException("Addon 表尚未加载。");
 
                 var clipper = ImGui.ImGuiListClipper();
                 clipper.Begin(addon.Count);
@@ -233,7 +233,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
                         ImGuiHelpers.SeStringWrapped(row.Text, this.style);
 
                         ImGui.TableNextColumn();
-                        if (ImGui.Button("Print to Chat"u8))
+                        if (ImGui.Button("输出到聊天框"u8))
                             Service<ChatGui>.Get().Print(row.Text);
                     }
                 }
@@ -242,7 +242,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
             }
         }
 
-        if (ImGui.Button("Reset Text"u8) || this.testStringBuffer.IsDisposed)
+        if (ImGui.Button("重置文本"u8) || this.testStringBuffer.IsDisposed)
         {
             this.testStringBuffer.Dispose();
             this.testStringBuffer = ImVectorWrapper.CreateFromSpan(
@@ -253,18 +253,18 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Print to Chat Log"u8))
+        if (ImGui.Button("输出到聊天日志"u8))
         {
             Service<ChatGui>.Get().Print(Service<SeStringRenderer>.Get().CompileAndCache(this.testString));
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Copy as Image"))
+        if (ImGui.Button("复制为图像"))
         {
             _ = Service<DevTextureSaveMenu>.Get().ShowTextureSaveMenuAsync(
                 this.DisplayName,
-                $"From {nameof(SeStringRendererTestWidget)}",
+                $"来自 {nameof(SeStringRendererTestWidget)}",
                 Task.FromResult(
                     Service<TextureManager>.Get().CreateTextureFromSeString(
                         ReadOnlySeString.FromMacroString(
@@ -281,26 +281,26 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
 
         ImGuiHelpers.ScaledDummy(3);
         ImGuiHelpers.CompileSeStringWrapped(
-            "Optional features implemented for the following test input:<br>" +
-            "· <colortype(710)>line breaks<colortype(0)> are automatically replaced to <colortype(710)>\\<br><colortype(0)>.<br>" +
-            "· <colortype(710)>D<link(0xCE)>alamud<colortype(0)> will display Dalamud.<br>" +
-            "· <colortype(710)>W<link(0xCE)>hite<colortype(0)> will display White.<br>" +
-            "· <colortype(710)>D<link(0xCE)>efaultIcon<colortype(0)> will display DefaultIcon.<br>" +
-            "· <colortype(710)>D<link(0xCE)>isabledIcon<colortype(0)> will display DisabledIcon.<br>" +
-            "· <colortype(710)>O<link(0xCE)>utdatedInstallableIcon<colortype(0)> will display OutdatedInstallableIcon.<br>" +
-            "· <colortype(710)>T<link(0xCE)>roubleIcon<colortype(0)> will display TroubleIcon.<br>" +
-            "· <colortype(710)>D<link(0xCE)>evPluginIcon<colortype(0)> will display DevPluginIcon.<br>" +
-            "· <colortype(710)>U<link(0xCE)>pdateIcon<colortype(0)> will display UpdateIcon.<br>" +
-            "· <colortype(710)>I<link(0xCE)>nstalledIcon<colortype(0)> will display InstalledIcon.<br>" +
-            "· <colortype(710)>T<link(0xCE)>hirdIcon<colortype(0)> will display ThirdIcon.<br>" +
-            "· <colortype(710)>T<link(0xCE)>hirdInst<link(0xCE)>alledIcon<colortype(0)> will display ThirdInstalledIcon.<br>" +
-            "· <colortype(710)>C<link(0xCE)>hangelogApiBumpIcon<colortype(0)> will display ChangelogApiBumpIcon.<br>" +
-            "· <colortype(710)>icon<link(0xCE)>(5)<colortype(0)> will display icon(5). This is different from \\<icon<link(0xCE)>(5)>.<br>" +
-            "· <colortype(710)>tex<link(0xCE)>(ui/loadingimage/-nowloading_base25_hr1.tex)<colortype(0)> will display tex(ui/loadingimage/-nowloading_base25_hr1.tex).",
+            "以下测试输入实现了可选功能：<br>" +
+            "· <colortype(710)>换行符<colortype(0)>会自动替换为 <colortype(710)>\\<br><colortype(0)>。<br>" +
+            "· <colortype(710)>D<link(0xCE)>alamud<colortype(0)> 将显示 Dalamud。<br>" +
+            "· <colortype(710)>W<link(0xCE)>hite<colortype(0)> 将显示 White。<br>" +
+            "· <colortype(710)>D<link(0xCE)>efaultIcon<colortype(0)> 将显示 DefaultIcon。<br>" +
+            "· <colortype(710)>D<link(0xCE)>isabledIcon<colortype(0)> 将显示 DisabledIcon。<br>" +
+            "· <colortype(710)>O<link(0xCE)>utdatedInstallableIcon<colortype(0)> 将显示 OutdatedInstallableIcon。<br>" +
+            "· <colortype(710)>T<link(0xCE)>roubleIcon<colortype(0)> 将显示 TroubleIcon。<br>" +
+            "· <colortype(710)>D<link(0xCE)>evPluginIcon<colortype(0)> 将显示 DevPluginIcon。<br>" +
+            "· <colortype(710)>U<link(0xCE)>pdateIcon<colortype(0)> 将显示 UpdateIcon。<br>" +
+            "· <colortype(710)>I<link(0xCE)>nstalledIcon<colortype(0)> 将显示 InstalledIcon。<br>" +
+            "· <colortype(710)>T<link(0xCE)>hirdIcon<colortype(0)> 将显示 ThirdIcon。<br>" +
+            "· <colortype(710)>T<link(0xCE)>hirdInst<link(0xCE)>alledIcon<colortype(0)> 将显示 ThirdInstalledIcon。<br>" +
+            "· <colortype(710)>C<link(0xCE)>hangelogApiBumpIcon<colortype(0)> 将显示 ChangelogApiBumpIcon。<br>" +
+            "· <colortype(710)>icon<link(0xCE)>(5)<colortype(0)> 将显示 icon(5)，效果与 \\<icon<link(0xCE)>(5)> 不同。<br>" +
+            "· <colortype(710)>tex<link(0xCE)>(ui/loadingimage/-nowloading_base25_hr1.tex)<colortype(0)> 将显示 tex(ui/loadingimage/-nowloading_base25_hr1.tex)。",
             this.style);
         ImGuiHelpers.ScaledDummy(3);
 
-        fixed (byte* labelPtr = "Test Input"u8)
+        fixed (byte* labelPtr = "测试输入"u8)
         {
             if (ImGui.InputTextMultiline(
                     labelPtr,
@@ -339,7 +339,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
                 ImGui.Separator();
                 if (this.alignToFramePadding)
                     ImGui.AlignTextToFramePadding();
-                ImGui.Text($"Hovered[{offset}]: {new ReadOnlySeStringSpan(envelope).ToString()}; {payload}");
+                ImGui.Text($"悬停内容[{offset}]：{new ReadOnlySeStringSpan(envelope).ToString()}；{payload}");
                 if (clicked && payload is DalamudLinkPayload { Plugin: "test" } dlp)
                     Util.OpenLink(dlp.ExtraString);
             }
@@ -348,7 +348,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
                 ImGui.Separator();
                 if (this.alignToFramePadding)
                     ImGui.AlignTextToFramePadding();
-                ImGuiHelpers.CompileSeStringWrapped("If a link is hovered, it will be displayed here.", this.style);
+                ImGuiHelpers.CompileSeStringWrapped("悬停链接时，其内容将显示在此处。", this.style);
             }
         }
         else
@@ -359,7 +359,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
         ImGui.Separator();
         if (this.alignToFramePadding)
             ImGui.AlignTextToFramePadding();
-        ImGuiHelpers.CompileSeStringWrapped("Extra line for alignment testing.", this.style);
+        ImGuiHelpers.CompileSeStringWrapped("用于测试对齐的额外一行。", this.style);
     }
 
     private SeStringReplacementEntity GetEntity(scoped in SeStringDrawState state, int byteOffset)
