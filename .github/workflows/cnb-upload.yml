@@ -120,35 +120,28 @@ jobs:
             local UPLOAD_RESP=$(cat "$UPLOAD_RESP_TMP")
             rm -f "$UPLOAD_RESP_TMP"
 
-            echo "[DEBUG] asset-upload-url HTTP: $UPLOAD_HTTP"
-            echo "[DEBUG] asset-upload-url body: $UPLOAD_RESP"
-
             if [ "$UPLOAD_HTTP" -ge 400 ]; then
               echo "::error::Failed to get upload URL (HTTP $UPLOAD_HTTP)"
+              echo "Response: $UPLOAD_RESP"
               exit 1
             fi
 
             local UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.upload_url')
             local VERIFY_URL=$(echo "$UPLOAD_RESP" | jq -r '.verify_url')
 
-            echo "[DEBUG] upload_url: $UPLOAD_URL"
-            echo "[DEBUG] verify_url: $VERIFY_URL"
-
             # 从 verify_url 提取 upload_token 和 asset_path
+            # verify_url 格式: .../asset-upload-confirmation/{upload_token}/{asset_path}
             local UPLOAD_TOKEN=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/([^/]+)/.*|\1|')
             local ASSET_PATH=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/[^/]+/(.*)|\1|')
-
-            echo "[DEBUG] upload_token: $UPLOAD_TOKEN"
-            echo "[DEBUG] asset_path: $ASSET_PATH"
 
             # 3b. PUT 上传文件 (直接上传到存储，不走 CNB API 网关)
             local PUT_AUTH=(-H "$AUTH")
             local PUT_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT -T "$ASSET_FILE" "${PUT_AUTH[@]}" "$UPLOAD_URL")
-            echo "[DEBUG] PUT upload HTTP: $PUT_CODE"
             if [ "$PUT_CODE" -ge 400 ]; then
               echo "::error::File upload failed: HTTP $PUT_CODE for $ASSET_NAME"
               exit 1
             fi
+            echo "PUT upload: HTTP $PUT_CODE"
 
             # 3c. 确认上传
             local CONF_RESP_TMP=$(mktemp)
@@ -157,9 +150,6 @@ jobs:
               "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-confirmation/$UPLOAD_TOKEN/$ASSET_PATH")
             local CONF_RESP=$(cat "$CONF_RESP_TMP")
             rm -f "$CONF_RESP_TMP"
-
-            echo "[DEBUG] confirmation HTTP: $CONF_HTTP"
-            echo "[DEBUG] confirmation body: $CONF_RESP"
 
             if [ "$CONF_HTTP" -ge 400 ]; then
               echo "::error::Upload confirmation failed: HTTP $CONF_HTTP"
