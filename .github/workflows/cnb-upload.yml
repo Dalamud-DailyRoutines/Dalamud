@@ -88,14 +88,44 @@ jobs:
 
           # ── 2. 创建新 Release ──
           echo "::group::Create CNB Release"
-          RELEASE_RESP=$(curl -sf -X POST "${HEADERS[@]}" \
-            -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"body\":\"Release $TAG\",\"prerelease\":false,\"make_latest\":\"true\"}" \
+          HTTP_RESP=$(mktemp)
+          HTTP_CODE=$(curl -s -o "$HTTP_RESP" -w "%{http_code}" -X POST "${HEADERS[@]}" \
+            -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"body\":\"Release $TAG\",\"target_commitish\":\"master\",\"prerelease\":false,\"make_latest\":\"true\"}" \
             "$API/$REPO/-/releases")
+          RELEASE_RESP=$(cat "$HTTP_RESP")
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response: $RELEASE_RESP"
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Failed to create CNB Release (HTTP $HTTP_CODE)"
+            exit 1
+          fi
           RELEASE_ID=$(echo "$RELEASE_RESP" | jq -r '.id')
           echo "Release created: id=$RELEASE_ID, tag=$TAG"
           echo "::endgroup::"
 
           # ── 3. 上传附件 (hashes.json + latest.7z) ──
+          api_call() {
+            # usage: api_call METHOD URL [DATA]
+            # stdout: response body (on success); exits on failure
+            local method="$1" url="$2" data="${3:-}"
+            local tmpfile=$(mktemp)
+            local http_code
+            local extra_args=()
+            if [ -n "$data" ]; then
+              extra_args=(-d "$data")
+            fi
+            http_code=$(curl -s -o "$tmpfile" -w "%{http_code}" -X "$method" "${HEADERS[@]}" "${extra_args[@]}" "$url")
+            local body=$(cat "$tmpfile")
+            rm -f "$tmpfile"
+            echo "::debug::HTTP $method $url -> $http_code"
+            if [ "$http_code" -ge 400 ]; then
+              echo "::error::API error: HTTP $http_code" >&2
+              echo "Response: $body" >&2
+              exit 1
+            fi
+            echo "$body"
+          }
+
           upload_asset() {
             local ASSET_FILE="$1"
             local ASSET_NAME="$2"
@@ -103,24 +133,29 @@ jobs:
 
             echo "::group::Upload $ASSET_NAME ($FILE_SIZE bytes)"
 
-            # 3a. 获取上传 URL
-            UPLOAD_RESP=$(curl -sf -X POST "${HEADERS[@]}" \
-              -d "{\"asset_name\":\"$ASSET_NAME\",\"size\":$FILE_SIZE,\"overwrite\":true}" \
-              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-url")
+            # 3a. 获取上传 URL (CNB OpenAPI)
+            local UPLOAD_RESP=$(api_call POST \
+              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-url" \
+              "{\"asset_name\":\"$ASSET_NAME\",\"size\":$FILE_SIZE,\"overwrite\":true}")
 
-            UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.upload_url')
-            VERIFY_URL=$(echo "$UPLOAD_RESP" | jq -r '.verify_url')
+            local UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.upload_url')
+            local VERIFY_URL=$(echo "$UPLOAD_RESP" | jq -r '.verify_url')
 
             # 从 verify_url 提取 upload_token 和 asset_path
-            # verify_url 格式: .../asset-upload-confirmation/{upload_token}/{asset_path}
-            UPLOAD_TOKEN=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/([^/]+)/.*|\1|')
-            ASSET_PATH=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/[^/]+/(.*)|\1|')
+            local UPLOAD_TOKEN=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/([^/]+)/.*|\1|')
+            local ASSET_PATH=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/[^/]+/(.*)|\1|')
 
-            # 3b. PUT 上传文件
-            curl -sf -X PUT -T "$ASSET_FILE" "$UPLOAD_URL"
+            # 3b. PUT 上传文件 (直接上传到存储，不走 CNB API 网关)
+            local PUT_AUTH=(-H "$AUTH")
+            local PUT_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT -T "$ASSET_FILE" "${PUT_AUTH[@]}" "$UPLOAD_URL")
+            if [ "$PUT_CODE" -ge 400 ]; then
+              echo "::error::File upload failed: HTTP $PUT_CODE for $ASSET_NAME"
+              exit 1
+            fi
+            echo "PUT upload: HTTP $PUT_CODE"
 
             # 3c. 确认上传
-            curl -sf -X POST "${HEADERS[@]}" \
+            api_call POST \
               "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-confirmation/$UPLOAD_TOKEN/$ASSET_PATH"
 
             echo "::endgroup::"
