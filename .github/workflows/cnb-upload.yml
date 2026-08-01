@@ -104,28 +104,6 @@ jobs:
           echo "::endgroup::"
 
           # ── 3. 上传附件 (hashes.json + latest.7z) ──
-          api_call() {
-            # usage: api_call METHOD URL [DATA]
-            # stdout: response body (on success); exits on failure
-            local method="$1" url="$2" data="${3:-}"
-            local tmpfile=$(mktemp)
-            local http_code
-            local extra_args=()
-            if [ -n "$data" ]; then
-              extra_args=(-d "$data")
-            fi
-            http_code=$(curl -s -o "$tmpfile" -w "%{http_code}" -X "$method" "${HEADERS[@]}" "${extra_args[@]}" "$url")
-            local body=$(cat "$tmpfile")
-            rm -f "$tmpfile"
-            echo "::debug::HTTP $method $url -> $http_code"
-            if [ "$http_code" -ge 400 ]; then
-              echo "::error::API error: HTTP $http_code" >&2
-              echo "Response: $body" >&2
-              exit 1
-            fi
-            echo "$body"
-          }
-
           upload_asset() {
             local ASSET_FILE="$1"
             local ASSET_NAME="$2"
@@ -134,29 +112,60 @@ jobs:
             echo "::group::Upload $ASSET_NAME ($FILE_SIZE bytes)"
 
             # 3a. 获取上传 URL (CNB OpenAPI)
-            local UPLOAD_RESP=$(api_call POST \
-              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-url" \
-              "{\"asset_name\":\"$ASSET_NAME\",\"size\":$FILE_SIZE,\"overwrite\":true}")
+            local UPLOAD_RESP_TMP=$(mktemp)
+            local UPLOAD_HTTP=$(curl -s -o "$UPLOAD_RESP_TMP" -w "%{http_code}" \
+              -X POST "${HEADERS[@]}" \
+              -d "{\"asset_name\":\"$ASSET_NAME\",\"size\":$FILE_SIZE,\"overwrite\":true}" \
+              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-url")
+            local UPLOAD_RESP=$(cat "$UPLOAD_RESP_TMP")
+            rm -f "$UPLOAD_RESP_TMP"
+
+            echo "[DEBUG] asset-upload-url HTTP: $UPLOAD_HTTP"
+            echo "[DEBUG] asset-upload-url body: $UPLOAD_RESP"
+
+            if [ "$UPLOAD_HTTP" -ge 400 ]; then
+              echo "::error::Failed to get upload URL (HTTP $UPLOAD_HTTP)"
+              exit 1
+            fi
 
             local UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.upload_url')
             local VERIFY_URL=$(echo "$UPLOAD_RESP" | jq -r '.verify_url')
+
+            echo "[DEBUG] upload_url: $UPLOAD_URL"
+            echo "[DEBUG] verify_url: $VERIFY_URL"
 
             # 从 verify_url 提取 upload_token 和 asset_path
             local UPLOAD_TOKEN=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/([^/]+)/.*|\1|')
             local ASSET_PATH=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/[^/]+/(.*)|\1|')
 
+            echo "[DEBUG] upload_token: $UPLOAD_TOKEN"
+            echo "[DEBUG] asset_path: $ASSET_PATH"
+
             # 3b. PUT 上传文件 (直接上传到存储，不走 CNB API 网关)
             local PUT_AUTH=(-H "$AUTH")
             local PUT_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT -T "$ASSET_FILE" "${PUT_AUTH[@]}" "$UPLOAD_URL")
+            echo "[DEBUG] PUT upload HTTP: $PUT_CODE"
             if [ "$PUT_CODE" -ge 400 ]; then
               echo "::error::File upload failed: HTTP $PUT_CODE for $ASSET_NAME"
               exit 1
             fi
-            echo "PUT upload: HTTP $PUT_CODE"
 
             # 3c. 确认上传
-            api_call POST \
-              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-confirmation/$UPLOAD_TOKEN/$ASSET_PATH"
+            local CONF_RESP_TMP=$(mktemp)
+            local CONF_HTTP=$(curl -s -o "$CONF_RESP_TMP" -w "%{http_code}" \
+              -X POST "${HEADERS[@]}" \
+              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-confirmation/$UPLOAD_TOKEN/$ASSET_PATH")
+            local CONF_RESP=$(cat "$CONF_RESP_TMP")
+            rm -f "$CONF_RESP_TMP"
+
+            echo "[DEBUG] confirmation HTTP: $CONF_HTTP"
+            echo "[DEBUG] confirmation body: $CONF_RESP"
+
+            if [ "$CONF_HTTP" -ge 400 ]; then
+              echo "::error::Upload confirmation failed: HTTP $CONF_HTTP"
+              echo "Response: $CONF_RESP"
+              exit 1
+            fi
 
             echo "::endgroup::"
             echo "$ASSET_NAME uploaded successfully."
