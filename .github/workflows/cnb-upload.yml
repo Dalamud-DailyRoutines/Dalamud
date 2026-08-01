@@ -39,56 +39,134 @@ jobs:
             --dir ./assets
           ls -la ./assets/
 
-      - name: Sync to CNB repository
+      # ── Git: 只提交 RELEASE 文件到 CNB 代码仓库 ──
+      - name: Sync RELEASE file to CNB repo
         env:
           CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
         run: |
-          retry() { local n=0; until "$@"; do n=$((n+1)); [ $n -ge 3 ] && return 1; echo "Retry $n/3..."; sleep 3; done; }
-
           TAG="${{ steps.tag.outputs.tag }}"
           CNB_REPO="https://cnb.cool/atmoomen/dalamud-distribute.git"
           CNB_PUSH="https://cnb:$CNB_TOKEN@cnb.cool/atmoomen/dalamud-distribute.git"
 
-          # Clone CNB distribute repo (shallow)
-          retry git clone --depth 1 "$CNB_REPO" cnb-repo
+          git clone --depth 1 "$CNB_REPO" cnb-repo
           cd cnb-repo
 
-          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # --- Sync release assets ---
-          # Update RELEASE file at repo root
           echo -n "$TAG" > RELEASE
+          git add RELEASE
+          git commit -m "release: $TAG" || echo "Nothing to commit"
+          git push "$CNB_PUSH" HEAD:master
 
-          # Create tag directory and copy assets
-          mkdir -p "$TAG"
-          cp ../assets/hashes.json "$TAG/"
-          cp ../assets/latest.7z "$TAG/"
+      # ── CNB Release: 将产物作为 Release 附件发布 ──
+      - name: Publish CNB Release with assets
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+        run: |
+          set -e
 
-          # --- Cleanup old versions (keep latest 5) ---
-          VERSIONS=$(find . -maxdepth 1 -type d -name '[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-[0-9][0-9]' | sed 's|^\./||' | sort)
-          KEEP=$(echo "$VERSIONS" | tail -5)
+          TAG="${{ steps.tag.outputs.tag }}"
+          API="https://api.cnb.cool"
+          REPO="atmoomen/dalamud-distribute"
+          AUTH="Authorization: Bearer $CNB_TOKEN"
+          ACCEPT="Accept: application/vnd.cnb.api+json"
+          HEADERS=(-H "$AUTH" -H "$ACCEPT" -H "Content-Type: application/json")
 
-          DELETED=0
-          for ver in $VERSIONS; do
-            if ! echo "$KEEP" | grep -qx "$ver"; then
-              echo "Deleting old version: $ver"
-              git rm -r "$ver"
-              DELETED=1
-            fi
-          done
-
-          # Commit and push
-          if [ "$DELETED" = "1" ]; then
-            git add RELEASE "$TAG/"
-            git commit -m "release: $TAG + cleanup old versions" || echo "Nothing to commit"
+          # ── 1. 检查是否已有同名 Release，有则删除 ──
+          echo "::group::Check existing release"
+          EXISTING=$(curl -sf "${HEADERS[@]}" "$API/$REPO/-/releases/tags/$TAG" || true)
+          if [ -n "$EXISTING" ]; then
+            OLD_ID=$(echo "$EXISTING" | jq -r '.id')
+            echo "Found existing release id=$OLD_ID, deleting..."
+            curl -sf -X DELETE "${HEADERS[@]}" "$API/$REPO/-/releases/$OLD_ID"
+            echo "Old release deleted."
           else
-            git add RELEASE "$TAG/"
-            git commit -m "release: $TAG" || echo "Nothing to commit"
+            echo "No existing release with tag $TAG."
+          fi
+          echo "::endgroup::"
+
+          # ── 2. 创建新 Release ──
+          echo "::group::Create CNB Release"
+          RELEASE_RESP=$(curl -sf -X POST "${HEADERS[@]}" \
+            -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"body\":\"Release $TAG\",\"prerelease\":false,\"make_latest\":\"true\"}" \
+            "$API/$REPO/-/releases")
+          RELEASE_ID=$(echo "$RELEASE_RESP" | jq -r '.id')
+          echo "Release created: id=$RELEASE_ID, tag=$TAG"
+          echo "::endgroup::"
+
+          # ── 3. 上传附件 (hashes.json + latest.7z) ──
+          upload_asset() {
+            local ASSET_FILE="$1"
+            local ASSET_NAME="$2"
+            local FILE_SIZE=$(stat -c%s "$ASSET_FILE")
+
+            echo "::group::Upload $ASSET_NAME ($FILE_SIZE bytes)"
+
+            # 3a. 获取上传 URL
+            UPLOAD_RESP=$(curl -sf -X POST "${HEADERS[@]}" \
+              -d "{\"asset_name\":\"$ASSET_NAME\",\"size\":$FILE_SIZE,\"overwrite\":true}" \
+              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-url")
+
+            UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.upload_url')
+            VERIFY_URL=$(echo "$UPLOAD_RESP" | jq -r '.verify_url')
+
+            # 从 verify_url 提取 upload_token 和 asset_path
+            # verify_url 格式: .../asset-upload-confirmation/{upload_token}/{asset_path}
+            UPLOAD_TOKEN=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/([^/]+)/.*|\1|')
+            ASSET_PATH=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/[^/]+/(.*)|\1|')
+
+            # 3b. PUT 上传文件
+            curl -sf -X PUT -T "$ASSET_FILE" "$UPLOAD_URL"
+
+            # 3c. 确认上传
+            curl -sf -X POST "${HEADERS[@]}" \
+              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-confirmation/$UPLOAD_TOKEN/$ASSET_PATH"
+
+            echo "::endgroup::"
+            echo "$ASSET_NAME uploaded successfully."
+          }
+
+          upload_asset ./assets/hashes.json "hashes.json"
+          upload_asset ./assets/latest.7z   "latest.7z"
+
+      # ── 清理旧 Release（保留最新 5 个）──
+      - name: Cleanup old releases
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+        run: |
+          API="https://api.cnb.cool"
+          REPO="atmoomen/dalamud-distribute"
+          AUTH="Authorization: Bearer $CNB_TOKEN"
+          ACCEPT="Accept: application/vnd.cnb.api+json"
+          HEADERS=(-H "$AUTH" -H "$ACCEPT")
+
+          RELEASES=$(curl -sf "${HEADERS[@]}" "$API/$REPO/-/releases?page_size=100" | jq -r '.[].tag_name')
+
+          # 按 tag_name 排序（日期格式的版本号天然可排序）
+          SORTED=$(echo "$RELEASES" | sort)
+          KEEP=5
+          TOTAL=$(echo "$SORTED" | wc -l)
+
+          if [ "$TOTAL" -le "$KEEP" ]; then
+            echo "Only $TOTAL releases, nothing to clean. (keep=$KEEP)"
+            exit 0
           fi
 
-          retry git push "$CNB_PUSH" HEAD:master
+          DELETE_COUNT=$((TOTAL - KEEP))
+          TO_DELETE=$(echo "$SORTED" | head -n "$DELETE_COUNT")
+          KEPT=$(echo "$SORTED" | tail -n "$KEEP")
 
-          echo "Kept versions:"
-          echo "$KEEP"
+          echo "Keep latest $KEEP releases:"
+          echo "$KEPT"
+
+          for tag in $TO_DELETE; do
+            echo "::group::Deleting release: $tag"
+            REL=$(curl -sf "${HEADERS[@]}" "$API/$REPO/-/releases/tags/$tag" || true)
+            if [ -n "$REL" ]; then
+              REL_ID=$(echo "$REL" | jq -r '.id')
+              curl -sf -X DELETE "${HEADERS[@]}" "$API/$REPO/-/releases/$REL_ID"
+              echo "Deleted release $tag (id=$REL_ID)"
+            fi
+            echo "::endgroup::"
+          done
