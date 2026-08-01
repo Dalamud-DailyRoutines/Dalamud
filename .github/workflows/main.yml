@@ -162,3 +162,11 @@ jobs:
     with:
       tag: ${{ needs.build.outputs.tag }}
     secrets: inherit
+
+  upload-cnb:
+    name: Upload to CNB
+    needs: build
+    uses: ./.github/workflows/cnb-upload.yml
+    with:
+      tag: ${{ needs.build.outputs.tag }}
+    secrets: inherit

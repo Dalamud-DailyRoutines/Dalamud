@@ -1,0 +1,94 @@
+name: Upload to CNB
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Release tag (leave empty to auto-detect latest)'
+        type: string
+        required: false
+
+jobs:
+  upload:
+    name: Upload to CNB
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Determine release tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName --jq '.[0].tagName')
+          fi
+          echo "TAG 定为: $TAG"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ steps.tag.outputs.tag }}" \
+            --repo ${{ github.repository }} \
+            --pattern 'hashes.json' \
+            --pattern 'latest.7z' \
+            --dir ./assets
+          ls -la ./assets/
+
+      - name: Sync to CNB repository
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+        run: |
+          retry() { local n=0; until "$@"; do n=$((n+1)); [ $n -ge 3 ] && return 1; echo "Retry $n/3..."; sleep 3; done; }
+
+          TAG="${{ steps.tag.outputs.tag }}"
+          CNB_REPO="https://cnb.cool/atmoomen/dalamud-distribute.git"
+          CNB_PUSH="https://cnb:$CNB_TOKEN@cnb.cool/atmoomen/dalamud-distribute.git"
+
+          # Clone CNB distribute repo (shallow)
+          retry git clone --depth 1 "$CNB_REPO" cnb-repo
+          cd cnb-repo
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # --- Sync release assets ---
+          # Update RELEASE file at repo root
+          echo -n "$TAG" > RELEASE
+
+          # Create tag directory and copy assets
+          mkdir -p "$TAG"
+          cp ../assets/hashes.json "$TAG/"
+          cp ../assets/latest.7z "$TAG/"
+
+          # --- Cleanup old versions (keep latest 5) ---
+          VERSIONS=$(find . -maxdepth 1 -type d -name '[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-[0-9][0-9]' | sed 's|^\./||' | sort)
+          KEEP=$(echo "$VERSIONS" | tail -5)
+
+          DELETED=0
+          for ver in $VERSIONS; do
+            if ! echo "$KEEP" | grep -qx "$ver"; then
+              echo "Deleting old version: $ver"
+              git rm -r "$ver"
+              DELETED=1
+            fi
+          done
+
+          # Commit and push
+          if [ "$DELETED" = "1" ]; then
+            git add RELEASE "$TAG/"
+            git commit -m "release: $TAG + cleanup old versions" || echo "Nothing to commit"
+          else
+            git add RELEASE "$TAG/"
+            git commit -m "release: $TAG" || echo "Nothing to commit"
+          fi
+
+          retry git push "$CNB_PUSH" HEAD:master
+
+          echo "Kept versions:"
+          echo "$KEEP"
