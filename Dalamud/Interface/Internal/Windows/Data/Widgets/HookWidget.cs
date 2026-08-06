@@ -24,7 +24,6 @@ internal unsafe class HookWidget : IDataWindowWidget
     private readonly List<IDalamudHook> hookStressTestList = [];
 
     private Hook<MessageBoxWDelegate>? messageBoxMinHook;
-    private bool hookUseMinHook;
 
     private int hookStressTestCount;
     private int hookStressTestMax = 1000;
@@ -76,12 +75,10 @@ internal unsafe class HookWidget : IDataWindowWidget
     {
         try
         {
-            ImGui.Checkbox("使用 MinHook（仅适用于常规 Hook，AsmHook 仅支持 Reloaded）"u8, ref this.hookUseMinHook);
-
             ImGui.Separator();
 
             if (ImGui.Button("创建"u8))
-                this.messageBoxMinHook = Hook<MessageBoxWDelegate>.FromSymbol("User32", "MessageBoxW", this.MessageBoxWDetour, this.hookUseMinHook);
+                this.messageBoxMinHook = Hook<MessageBoxWDelegate>.FromSymbol("User32", "MessageBoxW", this.MessageBoxWDetour);
 
             if (ImGui.Button("启用"u8))
                 this.messageBoxMinHook?.Enable();
@@ -217,8 +214,7 @@ internal unsafe class HookWidget : IDataWindowWidget
         var hook = Hook<MessageBoxWDelegate>.FromSymbol(
             "User32",
             "MessageBoxW",
-            this.MessageBoxWDetour,
-            this.hookUseMinHook);
+            this.MessageBoxWDetour);
 
         this.messageBoxWOriginal = hook.Original;
         hook.Enable();

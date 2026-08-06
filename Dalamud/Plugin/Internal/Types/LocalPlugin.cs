@@ -217,9 +217,14 @@ internal class LocalPlugin : IAsyncDisposable
     public bool IsThirdParty => this.manifest.IsThirdParty;
 
     /// <summary>
-    /// 获取一个值，表示此插件是否应该被允许加载。
+    /// Gets a value indicating whether this plugin should be allowed to load automatically, for example when
+    /// profile want states are applied.
+    /// Plugins whose last load attempt faulted are excluded here so that automatic load paths don't retry
+    /// over and over. User can still reload/retry explicitly through the installer's enable toggle.
     /// </summary>
-    public bool ApplicableForLoad => !this.IsOutdated && !(!this.IsDev && this.State == PluginState.UnloadError) && this.CheckPolicy();
+    public bool ApplicableForAutomaticLoads => !this.IsBanned && !this.IsOutdated
+                                     && !(!this.IsDev && this.State is PluginState.UnloadError or PluginState.LoadError)
+                                     && this.CheckPolicy();
 
     /// <summary>
     /// 获取此插件的有效版本。
@@ -287,10 +292,14 @@ internal class LocalPlugin : IAsyncDisposable
                 case PluginState.Loaded:
                     throw new InvalidPluginOperationException($"无法加载 {this.Name}，已经加载");
                 case PluginState.LoadError:
-                    if (!this.IsDev)
+                    // A previous load attempt has failed. The failure will have cleaned up all of
+                    // the plugin's resources, so we can simply try loading again.
+                    // Automatic load paths skip plugins in this state via ApplicableForAutomaticLoads,
+                    // so the retry must have come from user interaction in that case.
+                    if (this.instance is not null)
                     {
-                        throw new InvalidPluginOperationException(
-                            $"无法加载 {this.Name}，加载先前失败，请先卸载");
+                        throw new InternalPluginStateException(
+                            "插件加载失败，但是其实例无法被清除");
                     }
 
                     break;
@@ -409,38 +418,32 @@ internal class LocalPlugin : IAsyncDisposable
             this.serviceScope = ioc.GetScope();
             this.serviceScope.RegisterPrivateScopes(this); // 添加这个 LocalPlugin 作为私有作用域，以便服务可以获取它
 
-            try
-            {
-                Log.Information("Creating plugin instance for {PluginName} (async={IsAsync})", this.InternalName, this.pluginType!.IsAssignableTo(typeof(IAsyncDalamudPlugin)));
-                this.instance = await CreatePluginInstance(
-                                    this.manifest,
-                                    this.serviceScope,
-                                    this.pluginType!,
-                                    this.dalamudInterface,
-                                    cancellationToken);
-                this.State = PluginState.Loaded;
-                Log.Information("完成加载 {PluginName}", this.InternalName);
+            Log.Information("正在创建 {PluginName} 插件的实例 (异步={IsAsync})", this.InternalName, this.pluginType!.IsAssignableTo(typeof(IAsyncDalamudPlugin)));
+            this.instance = await CreatePluginInstance(
+                                this.manifest,
+                                this.serviceScope,
+                                this.pluginType!,
+                                this.dalamudInterface,
+                                cancellationToken);
+            this.State = PluginState.Loaded;
+            Log.Information("加载插件 {PluginName} 完成", this.InternalName);
 
-                var manager = Service<PluginManager>.Get();
-                manager.NotifyPluginsForStateChange(PluginListInvalidationKind.Loaded, [this.manifest.InternalName]);
-            }
-            catch (Exception ex)
-            {
-                this.State = PluginState.LoadError;
-                Log.Error(
-                    ex,
-                    "加载 {PluginName} 时出错，绑定并调用插件构造函数失败",
-                    this.InternalName);
-                await this.ClearAndDisposeAllResources(PluginLoaderDisposalMode.ImmediateDispose);
-            }
+            var manager = Service<PluginManager>.Get();
+            manager.NotifyPluginsForStateChange(PluginListInvalidationKind.Loaded, [this.manifest.InternalName]);
         }
         catch (Exception ex)
         {
             // 这些是"用户错误"，我们不想将插件标记为失败
             if (ex is not InvalidPluginOperationException)
+            {
                 this.State = PluginState.LoadError;
 
-            // 如果前提条件失败，不要将其记录为错误，因为它实际上不是错误。
+                // Immediately clean up whatever the failed load attempt left behind. This guarantees that a
+                // plugin in the LoadError state holds no resources and may be loaded again.
+                await this.ClearAndDisposeAllResources(PluginLoaderDisposalMode.ImmediateDispose);
+            }
+
+            // If a precondition fails, don't record it as an error, as it isn't really.
             if (ex is PluginPreconditionFailedException)
                 Log.Warning(ex.Message);
             else
@@ -527,8 +530,10 @@ internal class LocalPlugin : IAsyncDisposable
     {
         ObjectDisposedException.ThrowIf(this.disposed, nameof(LocalPlugin));
 
-        // Don't unload if we're a dev plugin and have an unload error, this is a bad idea but whatever
-        if (this.IsDev && this.State != PluginState.UnloadError)
+        // Only unload if the plugin is actually loaded. A plugin that faulted while loading or that
+        // was never loaded holds no resources and can be loaded again directly.
+        // Plugins with unload errors are not unloaded again either, LoadAsync will throw an error for them.
+        if (this.State == PluginState.Loaded)
             await this.UnloadAsync(PluginLoaderDisposalMode.None);
 
         await this.LoadAsync(PluginLoadReason.Reload, true);
