@@ -31,10 +31,11 @@ internal class PluginRepository
     ];
     
     // 预置第三方库
-    public static readonly HashSet<string> PresetRepos = new(StringComparer.OrdinalIgnoreCase)
-    {
+    public static readonly HashSet<string> PresetRepos =
+    [
+        with(StringComparer.OrdinalIgnoreCase),
         // AtmoOmen
-        "https://gh.atmoomen.top/DalamudPlugins/main/pluginmaster.json",
+        "https://gh.atmoomen.top/raw.githubusercontent.com/AtmoOmen/DalamudPlugins/main/pluginmaster.json",
         // Nyy
         "https://gp.xuolu.com/love.json",
         // Siren
@@ -45,7 +46,7 @@ internal class PluginRepository
         "https://raw.githubusercontent.com/RedAsteroid/DalamudPlugins/main/pluginmaster.json",
         // 逆光喵
         "https://raw.githubusercontent.com/NiGuangOwO/DalamudPlugins/main/pluginmaster.json"
-    };
+    ];
     
     private const int HttpRequestTimeoutSeconds = 20;
 
