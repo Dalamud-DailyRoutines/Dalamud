@@ -43,6 +43,7 @@ namespace Dalamud.Injector
 
                 Init(args);
                 args.Remove("-v"); // Remove "verbose" flag
+                args.Remove("--verbose");
 
                 if (args.Count >= 2 && args[1].ToLowerInvariant() == "launch-test")
                 {
@@ -87,7 +88,11 @@ namespace Dalamud.Injector
                 args.Remove("--managed-restart");
 
                 var mainCommand = args[1].ToLowerInvariant();
-                if (mainCommand.Length > 0 && mainCommand.Length <= 6 && "inject"[..mainCommand.Length] == mainCommand)
+                if (mainCommand == "sandbox-prepare")
+                {
+                    return ProcessSandboxPrepareCommand(args, startInfo);
+                }
+                else if (mainCommand.Length > 0 && mainCommand.Length <= 6 && "inject"[..mainCommand.Length] == mainCommand)
                 {
                     return ProcessInjectCommand(args, startInfo);
                 }
@@ -129,7 +134,7 @@ namespace Dalamud.Injector
 
         private static void Init(List<string> args)
         {
-            InitLogging(args.Any(x => x == "-v"), args);
+            InitLogging(args.Any(x => x is "-v" or "--verbose"), args);
             InitUnhandledException(args);
 
             var cwd = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory
@@ -503,6 +508,7 @@ namespace Dalamud.Injector
                 "symbol_load_patches",
                 "disable_game_debugging_protection",
                 "faster_decompression",
+                "appcontainer_known_folders",
             };
             startInfo.BootDotnetOpenProcessHookMode = 0;
             startInfo.BootWaitMessageBox |= args.Contains("--msgbox1") ? 1 : 0;
@@ -554,7 +560,19 @@ namespace Dalamud.Injector
                 Console.WriteLine("{0}        [--handle-owner=inherited-handle-value]", exeSpaces);
                 Console.WriteLine("{0}        [--without-dalamud] [--no-fix-acl]", exeSpaces);
                 Console.WriteLine("{0}        [--no-wait]", exeSpaces);
+                Console.WriteLine("{0}        [--sandbox] [--no-sandbox] [--sandbox-config=path/to/dalamudSandbox.json]", exeSpaces);
                 Console.WriteLine("{0}        [-- game_arg1=value1 game_arg2=value2 ...]", exeSpaces);
+            }
+
+            if (particularCommand is null or "sandbox-prepare")
+            {
+                Console.WriteLine("{0} sandbox-prepare [-h/--help] [-g path/to/ffxiv_dx11.exe] [--game=path/to/ffxiv_dx11.exe]", exeName);
+                Console.WriteLine("{0}                 [--sandbox-config=path/to/dalamudSandbox.json] [--write-config]", exeSpaces);
+                Console.WriteLine("{0}   准备环境以正确使用 --sandbox 运行。请以管理员身份打开命令提示符并至少运行一次：", exeSpaces);
+                Console.WriteLine("{0}   授予你无权访问的路径以及回环（loopback）豁免都需要这一步。", exeSpaces);
+                Console.WriteLine("{0}   当沙盒配置中设置了 \"enabledGlobally\" 时，沙盒将应用于每次启动。", exeSpaces);
+                Console.WriteLine("{0}   --no-sandbox 可使单次启动不使用沙盒。", exeSpaces);
+                Console.WriteLine("{0}   --write-config 会在默认位置创建一份配置（如果尚不存在）。", exeSpaces);
             }
 
             Console.WriteLine("指定 Dalamud 启动信息： [--dalamud-working-directory=path] [--dalamud-configuration-path=path]");
@@ -697,6 +715,10 @@ namespace Dalamud.Injector
             var waitForGameWindow = true;
             var encryptArguments = false;
 
+            // null = not specified on command line, use config
+            bool? useSandbox = null;
+            string? sandboxConfigPath = null;
+
             var parsingGameArgument = false;
             for (var i = 2; i < args.Count; i++)
             {
@@ -725,6 +747,20 @@ namespace Dalamud.Injector
                 else if (args[i] == "--no-fix-acl" || args[i] == "--no-acl-fix")
                 {
                     noFixAcl = true;
+                }
+                else if (args[i] == "--sandbox")
+                {
+                    useSandbox = true;
+                }
+                else if (args[i] == "--no-sandbox")
+                {
+                    useSandbox = false;
+                }
+                else if (args[i].StartsWith("--sandbox-config="))
+                {
+                    // When using --sandbox-config assume sandboxing, but never when --no-sandbox
+                    useSandbox ??= true;
+                    sandboxConfigPath = args[i].Split('=', 2)[1];
                 }
                 else if (args[i] == "-g")
                 {
@@ -835,50 +871,9 @@ namespace Dalamud.Injector
 
             if (gamePath == null)
             {
-                try
-                {
-                    if (dalamudStartInfo.Platform == OSPlatform.Windows)
-                    {
-                        gamePath = FindGamePathFromLauncherConfig();
-                        Log.Information("使用 XIVLauncher 配置的游戏安装路径: {0}", gamePath);
-                    }
-                    else if (dalamudStartInfo.Platform == OSPlatform.Linux)
-                    {
-                        var homeDir = $"Z:\\home\\{Environment.UserName}";
-                        var xivlauncherDir = Path.Combine(homeDir, ".xlcore");
-                        var launcherConfigPath = Path.Combine(xivlauncherDir, "launcher.ini");
-                        var config = File.ReadAllLines(launcherConfigPath)
-                            .Where(line => line.Contains('='))
-                            .ToDictionary(line => line.Split('=')[0], line => line.Split('=')[1]);
-                        gamePath = Path.Combine("Z:" + config["GamePath"].Replace('/', '\\'), "game", "ffxiv_dx11.exe");
-                        Log.Information("使用 XIVLauncher Core 配置的游戏安装路径： {0}", gamePath);
-                    }
-                    else
-                    {
-                        var homeDir = $"Z:\\Users\\{Environment.UserName}";
-                        var xomlauncherDir = Path.Combine(homeDir, "Library", "Application Support", "XIV on Mac");
-                        // we could try to parse the binary plist file here if we really wanted to...
-                        gamePath = Path.Combine(xomlauncherDir, "ffxiv", "game", "ffxiv_dx11.exe");
-                        Log.Information("使用 XOM 默认游戏安装路径： {0}", gamePath);
-                    }
-                }
-                catch (Exception)
-                {
-                    Log.Error("读取启动器配置以获取游戏路径失败，请使用 -g 指定。");
-                    return -1;
-                }
-
+                gamePath = ResolveGamePath(dalamudStartInfo);
                 if (gamePath == null)
-                {
-                    Log.Error("未指定游戏路径, 且无法从启动器配置中确定路径, 请使用 -g 参数指定");
                     return -1;
-                }
-
-                if (!File.Exists(gamePath))
-                {
-                    Log.Error("未找到文件： {0}", gamePath);
-                    return -1;
-                }
             }
 
             if (useFakeArguments)
@@ -945,26 +940,49 @@ namespace Dalamud.Injector
                 gameArgumentString = string.Join(" ", gameArguments.Select(x => EncodeParameterArgument(x)));
             }
 
-            var process = GameStart.LaunchGame(
-                Path.GetDirectoryName(gamePath) ?? throw new DirectoryNotFoundException($"无法确定 {gamePath} 的父目录"),
-                gamePath,
-                gameArgumentString,
-                noFixAcl,
-                p =>
-                {
-                    var argFix = new ArgFixer(p);
-                    argFix.Fix();
+            AppContainerLaunchContext? sandboxContext = null;
+            if (useSandbox != false)
+            {
+                var sandboxConfig = SandboxConfiguration.Load(
+                    sandboxConfigPath ?? SandboxConfiguration.DefaultPath,
+                    sandboxConfigPath != null);
 
-                    if (!withoutDalamud && dalamudStartInfo.LoadMethod == LoadMethod.Entrypoint)
+                if (useSandbox != true && sandboxConfig.EnabledGlobally)
+                    Log.Information("[SANDBOX] 已通过配置文件 '{DefaultConfigPath}' 启用沙盒，可通过 --no-sandbox 参数禁用。", SandboxConfiguration.DefaultPath);
+
+                if (useSandbox == true || sandboxConfig.EnabledGlobally)
+                    sandboxContext = SetupSandbox(dalamudStartInfo, sandboxConfig, gamePath);
+            }
+
+            Process process;
+            try
+            {
+                process = GameStart.LaunchGame(
+                    Path.GetDirectoryName(gamePath) ?? throw new DirectoryNotFoundException($"无法确定 {gamePath} 的父目录"),
+                    gamePath,
+                    gameArgumentString,
+                    noFixAcl,
+                    p =>
                     {
-                        var startInfo = AdjustStartInfo(dalamudStartInfo, gamePath);
-                        Log.Information("使用启动信息： {0}", JsonConvert.SerializeObject(startInfo));
-                        Marshal.ThrowExceptionForHR(
-                            RewriteRemoteEntryPointW(p.Handle, gamePath, JsonConvert.SerializeObject(startInfo)));
-                        Log.Verbose("已调用 RewriteRemoteEntryPointW。");
-                    }
-                },
-                waitForGameWindow);
+                        var argFix = new ArgFixer(p);
+                        argFix.Fix();
+
+                        if (!withoutDalamud && dalamudStartInfo.LoadMethod == LoadMethod.Entrypoint)
+                        {
+                            var startInfo = AdjustStartInfo(dalamudStartInfo, gamePath);
+                            Log.Information("使用启动信息： {0}", JsonConvert.SerializeObject(startInfo));
+                            Marshal.ThrowExceptionForHR(
+                                RewriteRemoteEntryPointW(p.Handle, gamePath, JsonConvert.SerializeObject(startInfo)));
+                            Log.Verbose("已调用 RewriteRemoteEntryPointW。");
+                        }
+                    },
+                    waitForGameWindow,
+                    sandboxContext);
+            }
+            finally
+            {
+                sandboxContext?.Dispose();
+            }
 
             Log.Verbose("游戏进程已启动，PID： {0}", process.Id);
 
@@ -998,6 +1016,425 @@ namespace Dalamud.Injector
 
             Log.CloseAndFlush();
             return 0;
+        }
+
+        /// <summary>
+        /// Prepare the AppContainer sandbox by loading the config and changing/migrating paths as necessary.
+        /// </summary>
+        private static SandboxLayout BuildSandboxLayout(DalamudStartInfo startInfo, SandboxConfiguration config, string gamePath)
+        {
+            var appDataDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var xivlauncherDir = Path.Combine(appDataDir, "XIVLauncher");
+
+            // XL root must never be readable or writable from the sandbox, so we need to move all data
+            // into a subfolder that we can grant access to
+            var dataDir = Path.Combine(xivlauncherDir, "dalamudUserData");
+            var logsDir = Path.Combine(dataDir, "logs");
+            var tempDir = Path.Combine(dataDir, "temp");
+            Directory.CreateDirectory(dataDir);
+            Directory.CreateDirectory(logsDir);
+            Directory.CreateDirectory(tempDir);
+
+            var configDir = Path.GetDirectoryName(Path.GetFullPath(startInfo.ConfigurationPath!));
+            if (PathsEqual(configDir, xivlauncherDir))
+            {
+                var configFileName = Path.GetFileName(startInfo.ConfigurationPath!);
+                MigrateFileToSandbox(Path.Combine(xivlauncherDir, configFileName), Path.Combine(dataDir, configFileName));
+                MigrateFileToSandbox(Path.Combine(xivlauncherDir, "dalamudVfs.db"), Path.Combine(dataDir, "dalamudVfs.db"));
+                MigrateFileToSandbox(Path.Combine(xivlauncherDir, "dalamudUI.ini"), Path.Combine(dataDir, "dalamudUI.ini"));
+                MigrateDirectoryToSandbox(Path.Combine(xivlauncherDir, "pluginConfigs"), Path.Combine(dataDir, "pluginConfigs"));
+
+                startInfo.ConfigurationPath = Path.Combine(dataDir, configFileName);
+                Log.Information("[SANDBOX] 已将配置路径重定向到 {Path}", startInfo.ConfigurationPath);
+            }
+
+            if (PathsEqual(startInfo.LogPath, xivlauncherDir) ||
+                IsAtOrUnder(startInfo.LogPath, startInfo.WorkingDirectory))
+            {
+                startInfo.LogPath = logsDir;
+                Log.Information("[SANDBOX] 已将日志路径重定向到 {Path}", startInfo.LogPath);
+            }
+
+            startInfo.BootLogPath = GetLogPath(startInfo.LogPath, "dalamud.boot", startInfo.LogName);
+
+            var grants = new List<SandboxGrant>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            void Add(string? path, uint access, bool create = false)
+            {
+                if (string.IsNullOrEmpty(path))
+                    return;
+
+                path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+                if (!seen.Add($"{path}|{access}"))
+                    return;
+
+                grants.Add(new SandboxGrant(path, access, create));
+            }
+
+            // Read/execute for binaries and static data
+            var runtimeDir = Environment.GetEnvironmentVariable("DALAMUD_RUNTIME") ?? Path.Combine(xivlauncherDir, "runtime");
+            Add(Path.GetDirectoryName(gamePath), AppContainerHelper.AccessReadExecute);
+            Add(startInfo.WorkingDirectory, AppContainerHelper.AccessReadExecute);
+            Add(runtimeDir, AppContainerHelper.AccessReadExecute);
+            Add(startInfo.AssetDirectory, AppContainerHelper.AccessReadExecute);
+
+            // Modify for state
+            if (!string.IsNullOrEmpty(startInfo.AssetDirectory))
+                Add(Path.Combine(startInfo.AssetDirectory, "..", "local"),  AppContainerHelper.AccessModify, true);
+
+            Add(startInfo.PluginDirectory, AppContainerHelper.AccessModify, true);
+            Add(dataDir, AppContainerHelper.AccessModify);
+            Add(Path.GetDirectoryName(startInfo.ConfigurationPath!), AppContainerHelper.AccessModify);
+            Add(startInfo.LogPath, AppContainerHelper.AccessModify);
+            Add(Path.Combine(xivlauncherDir, "devPlugins"), AppContainerHelper.AccessModify);
+            Add(
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games", "FINAL FANTASY XIV - A Realm Reborn"),
+                AppContainerHelper.AccessModify,
+                true);
+            if (!string.IsNullOrEmpty(startInfo.TempDirectory))
+                Add(startInfo.TempDirectory, AppContainerHelper.AccessModify, true);
+
+            foreach (var allowed in config.AllowedPaths)
+            {
+                Add(
+                    Environment.ExpandEnvironmentVariables(allowed.Path),
+                    allowed.Write ? AppContainerHelper.AccessModify : AppContainerHelper.AccessReadExecute);
+            }
+
+            // Sanity check all grants against folders that we should absolutely never grant modify to
+            foreach (var grant in grants.Where(x => x.Access == AppContainerHelper.AccessModify))
+            {
+                string? violated = null;
+                if (PathsEqual(grant.Path, xivlauncherDir))
+                    violated = "XIVLauncher 根目录";
+                else if (IsAtOrUnder(grant.Path, startInfo.WorkingDirectory))
+                    violated = "Dalamud 的工作目录（存放 Dalamud 自身的二进制文件）";
+                else if (IsAtOrUnder(grant.Path, runtimeDir))
+                    violated = ".NET 运行时目录";
+                else if (IsAtOrUnder(grant.Path, Path.GetDirectoryName(gamePath)))
+                    violated = "游戏安装目录";
+
+                if (violated != null)
+                {
+                    throw new CommandLineException(
+                        $"拒绝向沙盒授予 {grant.Path} 的写入权限：它位于 {violated} 内。" +
+                        "该路径必须保持只读，否则沙盒将失去意义。");
+                }
+            }
+
+            return new SandboxLayout(config, tempDir, runtimeDir, grants);
+        }
+
+        /// <summary>
+        /// Apply or verify the sandbox layout's grants against the actual container.
+        /// Paths whose DACL could not be written are returned rather than throwing, since we might not
+        /// have permissions to set DACLs on some objects and need to tell the user that elevation is required.
+        /// </summary>
+        private static List<SandboxGrant> ApplySandboxGrants(SandboxLayout layout, AppContainerLaunchContext ctx, bool verbose)
+        {
+            var denied = new List<SandboxGrant>();
+
+            foreach (var grant in layout.Grants)
+            {
+                if (grant.Create)
+                    Directory.CreateDirectory(grant.Path);
+
+                if (!Directory.Exists(grant.Path) && !File.Exists(grant.Path))
+                {
+                    Log.Verbose("[SANDBOX] 跳过不存在的路径 {Path}", grant.Path);
+                    continue;
+                }
+
+                var access = grant.Access == AppContainerHelper.AccessModify ? "修改" : "读取/执行";
+                switch (AppContainerHelper.EnsureAccess(grant.Path, ctx.ContainerSid, grant.Access))
+                {
+                    case GrantResult.AlreadyGranted:
+                        if (verbose)
+                            Log.Information("[SANDBOX] {Path} 已具有 {Access} 权限", grant.Path, access);
+                        break;
+
+                    case GrantResult.Granted:
+                        Log.Information("[SANDBOX] 已授予 {Path} {Access} 权限", grant.Path, access);
+                        break;
+
+                    case GrantResult.AccessDenied:
+                        denied.Add(grant);
+                        break;
+                }
+            }
+
+            return denied;
+        }
+
+        private static AppContainerLaunchContext? SetupSandbox(DalamudStartInfo startInfo, SandboxConfiguration config, string gamePath)
+        {
+            if (startInfo.Platform != OSPlatform.Windows)
+            {
+                Log.Warning("[SANDBOX] AppContainer 沙盒仅在 Windows 上受支持，将以无沙盒方式启动");
+                return null;
+            }
+
+            var layout = BuildSandboxLayout(startInfo, config, gamePath);
+
+            Log.Verbose("[SANDBOX] 使用沙盒布局： {Layout}", JsonConvert.SerializeObject(layout));
+
+            var ctx = AppContainerHelper.CreateContext(
+                layout.Config.ContainerName,
+                "Dalamud",
+                "在 Dalamud 的 AppContainer 沙盒中运行的 FFXIV",
+                layout.Config.Capabilities);
+
+            try
+            {
+                ctx.TempDirectoryOverride = layout.TempDirectory;
+                ctx.RuntimeDirectoryOverride = layout.RuntimeDirectory;
+                Log.Information("[SANDBOX] 正在使用 AppContainer {Name}（{Sid}）", layout.Config.ContainerName, ctx.ContainerSidString);
+
+                var denied = ApplySandboxGrants(layout, ctx, false);
+                if (denied.Count > 0)
+                {
+                    throw new SandboxPreparationRequiredException(
+                        denied.Select(x => x.Path).ToList(),
+                        layout.Config.ContainerName);
+                }
+
+                if (layout.Config.LoopbackExempt)
+                    AppContainerHelper.TryAddLoopbackExemption(ctx);
+
+                return ctx;
+            }
+            catch
+            {
+                ctx.Dispose();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Prepares persistent filesystem ACLs and the loopback excemption, if necessary.
+        /// </summary>
+        private static int ProcessSandboxPrepareCommand(List<string> args, DalamudStartInfo startInfo)
+        {
+            string? gamePath = null;
+            string? sandboxConfigPath = null;
+            var showHelp = false;
+            var writeConfig = false;
+
+            for (var i = 2; i < args.Count; i++)
+            {
+                if (args[i] == "-h" || args[i] == "--help")
+                    showHelp = true;
+                else if (args[i] == "-g")
+                    gamePath = args[++i];
+                else if (args[i].StartsWith("--game="))
+                    gamePath = args[i].Split('=', 2)[1];
+                else if (args[i].StartsWith("--sandbox-config="))
+                    sandboxConfigPath = args[i].Split('=', 2)[1];
+                else if (args[i] == "--write-config")
+                    writeConfig = true;
+                else
+                    Log.Warning($"参数 \"{args[i]}\" 非有效命令行参数，已忽略。");
+            }
+
+            if (showHelp)
+            {
+                ProcessHelpCommand(args, "sandbox-prepare");
+                return 0;
+            }
+
+            if (startInfo.Platform != OSPlatform.Windows)
+            {
+                Log.Error("AppContainer 沙盒仅在 Windows 上受支持。");
+                return -1;
+            }
+
+            gamePath ??= ResolveGamePath(startInfo);
+            if (gamePath == null)
+                return -1;
+
+            var elevated = AppContainerHelper.IsElevated();
+            Log.Information("当前{0}以管理员身份运行。", elevated ? string.Empty : "未");
+
+            var config = SandboxConfiguration.Load(
+                sandboxConfigPath ?? SandboxConfiguration.DefaultPath,
+                sandboxConfigPath != null);
+
+            if (writeConfig)
+            {
+                if (config.TryWrite(SandboxConfiguration.DefaultPath))
+                {
+                    Log.Information("已将沙盒配置写入 {Path}", SandboxConfiguration.DefaultPath);
+                }
+                else
+                {
+                    Log.Warning(
+                        "未写入沙盒配置：{Path} 已存在。如需重新生成，请先删除该文件。",
+                        SandboxConfiguration.DefaultPath);
+                }
+            }
+
+            var layout = BuildSandboxLayout(startInfo, config, gamePath);
+
+            using var ctx = AppContainerHelper.CreateContext(
+                layout.Config.ContainerName,
+                "Dalamud",
+                "在 Dalamud 的 AppContainer 沙盒中运行的 FFXIV",
+                layout.Config.Capabilities);
+
+            Log.Information(
+                "[SANDBOX] 正在使用 AppContainer {Name}（{Sid}）",
+                layout.Config.ContainerName,
+                ctx.ContainerSidString);
+
+            var denied = ApplySandboxGrants(layout, ctx, true);
+
+            if (layout.Config.LoopbackExempt)
+                AppContainerHelper.TryAddLoopbackExemption(ctx);
+
+            if (denied.Count > 0)
+            {
+                Log.Error(
+                    "无法在 {Count} 个路径上写入 DACL：{Paths}",
+                    denied.Count,
+                    string.Concat(denied.Select(x => $"{Environment.NewLine}    {x.Path}")));
+                Log.Error(
+                    elevated
+                        ? "以管理员身份运行时仍出现此情况通常意味着 Bug。请检查路径是否只读，或所在文件系统是否不支持 ACL。"
+                        : "请以管理员身份重新运行此命令。");
+                return -1;
+            }
+
+            Log.Information("沙盒准备完成！现在可以使用 --sandbox 启动（无需管理员权限）。");
+
+            if (!config.EnabledGlobally)
+            {
+                Log.Information(
+                    "未传递 --sandbox 的启动仍将不使用沙盒。如需让每次启动都使用沙盒，请在 {Path} 中设置 \"enabledGlobally\": true。",
+                    SandboxConfiguration.DefaultPath);
+            }
+
+            return 0;
+        }
+
+        private static bool PathsEqual(string? a, string? b)
+        {
+            if (a == null || b == null)
+                return false;
+
+            return string.Equals(
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(a)),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(b)),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsAtOrUnder(string? path, string? ancestor)
+        {
+            if (path == null || ancestor == null)
+                return false;
+
+            if (PathsEqual(path, ancestor))
+                return true;
+
+            var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+            var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(ancestor)) + Path.DirectorySeparatorChar;
+            return full.StartsWith(root, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void MigrateFileToSandbox(string source, string target)
+        {
+            try
+            {
+                if (!File.Exists(source) || File.Exists(target))
+                    return;
+
+                File.Copy(source, target);
+                Log.Information("[SANDBOX] 已将 {Source} 迁移到 {Target}", source, target);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[SANDBOX] 无法将 {Source} 迁移到 {Target}", source, target);
+            }
+        }
+
+        private static void MigrateDirectoryToSandbox(string source, string target)
+        {
+            try
+            {
+                if (!Directory.Exists(source) || Directory.Exists(target))
+                    return;
+
+                static void CopyRecursively(DirectoryInfo from, DirectoryInfo to)
+                {
+                    foreach (var dir in from.GetDirectories())
+                        CopyRecursively(dir, to.CreateSubdirectory(dir.Name));
+
+                    foreach (var file in from.GetFiles())
+                        file.CopyTo(Path.Combine(to.FullName, file.Name));
+                }
+
+                CopyRecursively(new DirectoryInfo(source), Directory.CreateDirectory(target));
+                Log.Information("[SANDBOX] 已将 {Source} 迁移到 {Target}", source, target);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[SANDBOX] 无法将 {Source} 迁移到 {Target}", source, target);
+            }
+        }
+
+        /// <summary>
+        /// Determine the game path from the platform's launcher configuration.
+        /// Logs and returns null when it could not be determined.
+        /// </summary>
+        private static string? ResolveGamePath(DalamudStartInfo dalamudStartInfo)
+        {
+            string? gamePath;
+            try
+            {
+                if (dalamudStartInfo.Platform == OSPlatform.Windows)
+                {
+                    gamePath = FindGamePathFromLauncherConfig();
+                    Log.Information("使用 XIVLauncher 配置的游戏安装路径： {0}", gamePath);
+                }
+                else if (dalamudStartInfo.Platform == OSPlatform.Linux)
+                {
+                    var homeDir = $"Z:\\home\\{Environment.UserName}";
+                    var xivlauncherDir = Path.Combine(homeDir, ".xlcore");
+                    var launcherConfigPath = Path.Combine(xivlauncherDir, "launcher.ini");
+                    var config = File.ReadAllLines(launcherConfigPath)
+                        .Where(line => line.Contains('='))
+                        .ToDictionary(line => line.Split('=')[0], line => line.Split('=')[1]);
+                    gamePath = Path.Combine("Z:" + config["GamePath"].Replace('/', '\\'), "game", "ffxiv_dx11.exe");
+                    Log.Information("使用 XIVLauncher Core 配置的游戏安装路径： {0}", gamePath);
+                }
+                else
+                {
+                    var homeDir = $"Z:\\Users\\{Environment.UserName}";
+                    var xomlauncherDir = Path.Combine(homeDir, "Library", "Application Support", "XIV on Mac");
+                    // we could try to parse the binary plist file here if we really wanted to...
+                    gamePath = Path.Combine(xomlauncherDir, "ffxiv", "game", "ffxiv_dx11.exe");
+                    Log.Information("使用 XOM 默认游戏安装路径： {0}", gamePath);
+                }
+            }
+            catch (Exception)
+            {
+                Log.Error("读取启动器配置以获取游戏路径失败，请使用 -g 指定。");
+                return null;
+            }
+
+            if (gamePath == null)
+            {
+                Log.Error("未指定游戏路径，且无法从启动器配置中确定路径，请使用 -g 参数指定");
+                return null;
+            }
+
+            if (!File.Exists(gamePath))
+            {
+                Log.Error("未找到文件： {0}", gamePath);
+                return null;
+            }
+
+            return gamePath;
         }
 
         private static string? FindGamePathFromLauncherConfig()
@@ -1222,6 +1659,27 @@ namespace Dalamud.Injector
             public CommandLineException(string cause)
                 : base(cause)
             {
+            }
+        }
+
+        private sealed record SandboxGrant(string Path, uint Access, bool Create);
+
+        private sealed record SandboxLayout(SandboxConfiguration Config, string TempDirectory, string RuntimeDirectory, List<SandboxGrant> Grants);
+
+        private sealed class SandboxPreparationRequiredException(List<string> paths, string containerName)
+            : Exception(BuildMessage(paths, containerName))
+        {
+            private static string BuildMessage(List<string> paths, string containerName)
+            {
+                var exeName = Path.GetFileNameWithoutExtension(Environment.ProcessPath) ?? "Dalamud.Injector";
+                var sb = new StringBuilder();
+                sb.AppendLine($"沙盒（{containerName}）缺少文件系统权限，且无法自动授予：");
+                foreach (var path in paths)
+                    sb.AppendLine($" => {path}");
+                sb.AppendLine();
+                sb.AppendLine("请以管理员身份运行一次以下命令，然后正常启动：");
+                sb.Append($"    {exeName}.exe sandbox-prepare");
+                return sb.ToString();
             }
         }
     }

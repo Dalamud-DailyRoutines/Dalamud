@@ -1,39 +1,30 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Numerics;
 using System.Text;
 
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility.Raii;
+using Dalamud.Memory;
+using Dalamud.Utility;
 
 using Serilog;
-
-using TerraFX.Interop.Windows;
-
-using static TerraFX.Interop.Windows.Windows;
 
 namespace Dalamud.Interface.Internal.Windows.Data.Widgets;
 
 /// <summary>
 /// Widget for inspecting how much of the address space around a given address is still usable for hook trampolines.
 /// </summary>
-internal unsafe class AddressSpaceWidget : IDataWindowWidget
+internal class AddressSpaceWidget : IDataWindowWidget
 {
-    // dwAllocationGranularity is always 64k for Windows on x64
-    private const ulong Granularity = 0x10000;
-
-    // rel32 displacement reach
-    private const ulong RelativeJumpReach = int.MaxValue;
-
-    private readonly List<Region> regions = [];
     private readonly List<AnchorChoice> anchors = [];
 
+    private List<MemoryRegion> regions = [];
     private int selectedAnchor;
     private string customAddress = string.Empty;
-    private WindowStats stats;
+    private AddressSpaceWindow stats;
     private bool scanned;
 
     /// <inheritdoc/>
@@ -81,52 +72,10 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         this.DrawFreeBlocks();
     }
 
-    private static string FormatBytes(ulong bytes) => bytes switch
-    {
-        >= 1UL << 30 => $"{bytes / (double)(1UL << 30):F2} GB",
-        >= 1UL << 20 => $"{bytes / (double)(1UL << 20):F2} MB",
-        >= 1UL << 10 => $"{bytes / (double)(1UL << 10):F2} KB",
-        _ => $"{bytes} B",
-    };
-
-    private static (ulong Count, ulong First) CountGranules(ulong start, ulong end)
-    {
-        if (end <= start || end - start < Granularity)
-            return (0, 0);
-
-        var first = (start + Granularity - 1) & ~(Granularity - 1);
-        var last = (end - Granularity) & ~(Granularity - 1);
-
-        if (last < first)
-            return (0, 0);
-
-        return (((last - first) / Granularity) + 1, first);
-    }
-
     private void Rescan()
     {
         this.scanned = true;
-        this.regions.Clear();
-
-        MEMORY_BASIC_INFORMATION mbi;
-        ulong address = 0;
-
-        while (VirtualQuery((void*)address, &mbi, (nuint)sizeof(MEMORY_BASIC_INFORMATION)) != 0)
-        {
-            var start = (ulong)mbi.BaseAddress;
-            var size = (ulong)mbi.RegionSize;
-
-            if (size == 0)
-                break;
-
-            this.regions.Add(new Region(start, size, mbi.State, mbi.Protect));
-
-            var next = start + size;
-            if (next <= address)
-                break;
-
-            address = next;
-        }
+        this.regions = AddressSpaceAnalysis.ScanRegions();
 
         this.RefreshAnchors();
         this.Recompute();
@@ -184,58 +133,8 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         return ulong.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
     }
 
-    private void Recompute()
-    {
-        var anchor = this.GetAnchorAddress();
-        if (anchor == 0)
-        {
-            this.stats = default;
-            return;
-        }
-
-        var windowStart = anchor > RelativeJumpReach ? anchor - RelativeJumpReach : 0;
-        var windowEnd = anchor + RelativeJumpReach;
-
-        var result = new WindowStats
-        {
-            Anchor = anchor,
-            WindowStart = windowStart,
-            WindowEnd = windowEnd,
-        };
-
-        foreach (var region in this.regions)
-        {
-            var start = Math.Max(region.Start, windowStart);
-            var end = Math.Min(region.End, windowEnd);
-
-            if (end <= start)
-                continue;
-
-            var length = end - start;
-
-            if ((region.State & MEM.MEM_FREE) != 0)
-            {
-                result.Free += length;
-
-                var (count, _) = CountGranules(start, end);
-                result.AllocatableGranules += count;
-
-                if (count * Granularity > result.LargestFreeRun)
-                    result.LargestFreeRun = count * Granularity;
-            }
-            else if ((region.State & MEM.MEM_COMMIT) != 0)
-            {
-                result.Committed += length;
-            }
-            else
-            {
-                result.Reserved += length;
-            }
-        }
-
-        result.WindowSize = windowEnd - windowStart;
-        this.stats = result;
-    }
+    private void Recompute() =>
+        this.stats = AddressSpaceAnalysis.AnalyzeWindow(this.GetAnchorAddress(), this.regions);
 
     private void DrawAnchorPicker()
     {
@@ -272,11 +171,11 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         }
 
         var s = this.stats;
-        var allocatable = s.AllocatableGranules * Granularity;
+        var allocatable = s.AllocatableGranules * AddressSpaceAnalysis.Granularity;
         var stranded = s.Free > allocatable ? s.Free - allocatable : 0;
         var exhaustion = 1.0f - (allocatable / (float)s.WindowSize);
 
-        ImGui.Text($"锚点 0x{s.Anchor:X}，窗口 0x{s.WindowStart:X} - 0x{s.WindowEnd:X}（{FormatBytes(s.WindowSize)}）");
+        ImGui.Text($"锚点 0x{s.Anchor:X}，窗口 0x{s.WindowStart:X} - 0x{s.WindowEnd:X}（{Util.FormatBytes(s.WindowSize)}）");
 
         ImGui.ProgressBar(exhaustion, new Vector2(-1, 0), $"已耗尽 {exhaustion * 100:F2}%");
 
@@ -284,12 +183,12 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
         {
             if (table.Success)
             {
-                Row("可分配", $"{FormatBytes(allocatable)}, 共 {s.AllocatableGranules} 个 64 KB 粒度块");
-                Row("最大连续空间", FormatBytes(s.LargestFreeRun));
-                Row("空闲 (原始)", FormatBytes(s.Free));
-                Row("零散空闲空间", FormatBytes(stranded));
-                Row("已保留", FormatBytes(s.Reserved));
-                Row("已提交", FormatBytes(s.Committed));
+                Row("可分配", $"{Util.FormatBytes(allocatable)}, 共 {s.AllocatableGranules} 个 64 KB 粒度块");
+                Row("最大连续空间", Util.FormatBytes(s.LargestFreeRun));
+                Row("空闲 (原始)", Util.FormatBytes(s.Free));
+                Row("零散空闲空间", Util.FormatBytes(stranded));
+                Row("已保留", Util.FormatBytes(s.Reserved));
+                Row("已提交", Util.FormatBytes(s.Committed));
             }
         }
 
@@ -325,14 +224,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
 
         ImGui.Text("窗口范围内最大的空闲块"u8);
 
-        var blocks = this.regions
-                         .Where(x => (x.State & MEM.MEM_FREE) != 0)
-                         .Select(x => (Start: Math.Max(x.Start, this.stats.WindowStart), End: Math.Min(x.End, this.stats.WindowEnd)))
-                         .Where(x => x.End > x.Start)
-                         .Select(x => (x.Start, x.End, Granules: CountGranules(x.Start, x.End).Count))
-                         .OrderByDescending(x => x.Granules)
-                         .Take(20)
-                         .ToList();
+        var blocks = AddressSpaceAnalysis.GetLargestFreeBlocks(this.regions, this.stats, 20);
 
         using var table = ImRaii.Table("##addressSpaceFree"u8, 4, ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders, new Vector2(0, 200));
         if (!table.Success)
@@ -352,7 +244,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
             ImGui.TableNextColumn();
             ImGui.TextUnformatted($"0x{block.End:X}");
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(FormatBytes(block.End - block.Start));
+            ImGui.TextUnformatted(Util.FormatBytes(block.End - block.Start));
             ImGui.TableNextColumn();
             ImGui.TextUnformatted(block.Granules.ToString());
         }
@@ -367,7 +259,7 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
 
         if (s.WindowSize != 0)
         {
-            var allocatable = s.AllocatableGranules * Granularity;
+            var allocatable = s.AllocatableGranules * AddressSpaceAnalysis.Granularity;
             sb.AppendLine(
                 $"0x{s.Anchor:X} 周围的窗口：0x{s.WindowStart:X}-0x{s.WindowEnd:X}，" +
                 $"可分配 {allocatable}（{s.AllocatableGranules} 个粒度块），空闲 {s.Free}，" +
@@ -376,31 +268,13 @@ internal unsafe class AddressSpaceWidget : IDataWindowWidget
 
         foreach (var region in this.regions)
         {
-            var state = (region.State & MEM.MEM_FREE) != 0 ? "空闲" :
-                        (region.State & MEM.MEM_COMMIT) != 0 ? "提交" : "保留";
+            var state = region.IsFree ? "空闲" :
+                        region.IsCommitted ? "提交" : "保留";
             sb.AppendLine($"0x{region.Start:X16}-0x{region.End:X16} {region.Size,16} {state,-8} 保护=0x{region.Protect:X}");
         }
 
         Log.Information("{Map}", sb.ToString());
     }
 
-    private readonly record struct Region(ulong Start, ulong Size, uint State, uint Protect)
-    {
-        public ulong End => this.Start + this.Size;
-    }
-
     private readonly record struct AnchorChoice(string Name, ulong Address);
-
-    private struct WindowStats
-    {
-        public ulong Anchor;
-        public ulong WindowStart;
-        public ulong WindowEnd;
-        public ulong WindowSize;
-        public ulong Free;
-        public ulong Reserved;
-        public ulong Committed;
-        public ulong AllocatableGranules;
-        public ulong LargestFreeRun;
-    }
 }
