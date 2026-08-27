@@ -15,6 +15,7 @@ using Dalamud.Interface.Internal.ReShadeHandling;
 using Dalamud.Interface.Style;
 using Dalamud.Interface.Windowing.Persistence;
 using Dalamud.IoC.Internal;
+using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Internal.AutoUpdate;
 using Dalamud.Plugin.Internal.Profiles;
 using Dalamud.Plugin.Internal.Types;
@@ -23,7 +24,6 @@ using Dalamud.Utility;
 
 using Newtonsoft.Json;
 
-using Serilog;
 using Serilog.Events;
 
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -40,6 +40,7 @@ namespace Dalamud.Configuration.Internal;
 #pragma warning restore SA1015
 internal sealed class DalamudConfiguration : IInternalDisposableService
 {
+    private static readonly ModuleLog Log = ModuleLog.Create<DalamudConfiguration>();
 
     private static readonly JsonSerializerSettings SerializerSettings = new()
     {
@@ -574,12 +575,9 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
         {
             await fs.ReadAllTextAsync(path, text =>
             {
-                deserialized =
-                    JsonConvert.DeserializeObject<DalamudConfiguration>(text, SerializerSettings);
-
                 // If this reads as null, the file was empty, that's no good
-                if (deserialized == null)
-                    throw new Exception("Read config was null.");
+                deserialized = JsonConvert.DeserializeObject<DalamudConfiguration>(text, SerializerSettings)
+                    ?? throw new Exception("Read config was null.");
             });
         }
         catch (FileNotFoundException)
@@ -588,7 +586,7 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
         }
         catch (Exception e)
         {
-            Log.Error(e, "Could not load DalamudConfiguration at {Path}, creating new", path);
+            Log.Error(e, "Could not load configuration at {Path}, creating new", path);
         }
 
         deserialized ??= new DalamudConfiguration();
@@ -601,7 +599,7 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
         }
         catch (Exception e)
         {
-            Log.Error(e, "Failed to set defaults or cleanup for DalamudConfiguration");
+            Log.Error(e, "Failed to set defaults or cleanup");
         }
 
         return deserialized;
@@ -705,14 +703,14 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
             await Service<ReliableFileStorage>.Get().WriteAllTextAsync(
                                                    this.configPath,
                                                    JsonConvert.SerializeObject(this, SerializerSettings));
-            Log.Verbose("DalamudConfiguration saved");
+            Log.Verbose("Configuration saved");
         }).ContinueWith(t =>
         {
             if (t.IsFaulted)
             {
                 Log.Error(
                     t.Exception,
-                    "Failed to save DalamudConfiguration to {Path}",
+                    "Failed to save configuration to {Path}",
                     this.configPath);
             }
         });

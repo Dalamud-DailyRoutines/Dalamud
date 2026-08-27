@@ -81,12 +81,12 @@
         <PackageReference Include="TerraFX.Interop.Windows" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator\Dalamud.EnumGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
         <ProjectReference Include="..\lib\Lumina\src\Lumina\Lumina.csproj" />
+        <ProjectReference Include="..\generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator\Dalamud.EnumGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <ItemGroup>
-        <None Remove="EnumCloneMap.txt"/>
+        <None Remove="EnumCloneMap.txt" />
         <AdditionalFiles Include="EnumCloneMap.txt" />
     </ItemGroup>
 

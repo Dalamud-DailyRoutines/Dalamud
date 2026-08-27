@@ -633,36 +633,36 @@ internal class PluginInstallerWindow : Window, IDisposable
                     ImGuiHelpers.CenteredText("安装插件中...");
                     break;
                 case LoadingIndicatorKind.Manager:
+                {
+                    if (pluginManager.PluginsReady && !pluginManager.ReposReady)
                     {
-                        if (pluginManager.PluginsReady && !pluginManager.ReposReady)
-                        {
-                            ImGuiHelpers.CenteredText("加载插件仓库中...");
-                            ImGuiHelpers.ScaledDummy(10);
+                        ImGuiHelpers.CenteredText("加载插件仓库中...");
+                        ImGuiHelpers.ScaledDummy(10);
 
-                            DrawProgressBar(pluginManager.Repos, x => x.State != PluginRepositoryState.Success &&
-                                                                      x.State != PluginRepositoryState.Fail &&
-                                                                      x.IsEnabled,
-                                            x => x.IsEnabled,
-                                            x => ImGuiHelpers.CenteredText($"正在加载 {x.PluginMasterUrl}"));
-                        }
-                        else if (!pluginManager.PluginsReady && pluginManager.ReposReady)
-                        {
-                            ImGuiHelpers.CenteredText("加载已安装插件中...");
-                            ImGuiHelpers.ScaledDummy(10);
-
-                            DrawProgressBar(pluginManager.InstalledPlugins, x => x.State == PluginState.Loading,
-                                            x => x.State is PluginState.Loaded or
-                                                     PluginState.LoadError or
-                                                     PluginState.Loading,
-                                            x => ImGuiHelpers.CenteredText($"正在加载 {x.Name}"));
-                        }
-                        else
-                        {
-                            ImGuiHelpers.CenteredText("加载插件仓库与插件信息中...");
-                        }
+                        DrawProgressBar(pluginManager.Repos, x => x.State != PluginRepositoryState.Success &&
+                                                                  x.State != PluginRepositoryState.Fail &&
+                                                                  x.IsEnabled,
+                                        x => x.IsEnabled,
+                                        x => ImGuiHelpers.CenteredText($"加载 {x.PluginMasterUrl} 中"));
                     }
+                    else if (!pluginManager.PluginsReady && pluginManager.ReposReady)
+                    {
+                        ImGuiHelpers.CenteredText("加载已安装插件中...");
+                        ImGuiHelpers.ScaledDummy(10);
 
-                    break;
+                        DrawProgressBar(pluginManager.InstalledPlugins, x => x.State == PluginState.Loading,
+                                        x => x.State is PluginState.Loaded or
+                                                 PluginState.LoadError or
+                                                 PluginState.Loading,
+                                        x => ImGuiHelpers.CenteredText($"加载 {x.Name} 中"));
+                    }
+                    else
+                    {
+                        ImGuiHelpers.CenteredText("加载仓库与插件中...");
+                    }
+                }
+
+                break;
                 case LoadingIndicatorKind.ProfilesLoading:
                     ImGuiHelpers.CenteredText("应用合集中...");
                     break;
@@ -679,7 +679,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
                 ImGuiHelpers.BeginHorizontalButtonGroup()
                             .Add(
-                                "Restart in Safe Mode",
+                                "以安全模式重启",
                                 () =>
                                 {
                                     var config = Service<DalamudConfiguration>.Get();
@@ -1963,7 +1963,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         var configuration = Service<DalamudConfiguration>.Get();
         var favoriteList = configuration.FavoritePluginInternalName;
         var filteredList = pluginList
-                           // Filter out plugins that don't match the search if any
+                          // Filter out plugins that don't match the search if any
                           .Where(plugin => !this.IsManifestFiltered(plugin.Manifest))
                           .Where(plugin => !applyPluginFilters || !this.IsInstalledPluginFiltered(plugin, false))
                           .ToList();
@@ -3794,6 +3794,22 @@ internal class PluginInstallerWindow : Window, IDisposable
 
             ImGui.Separator();
 
+            // Open plugin folder
+            if (configuration.DevMode == true && ImGui.MenuItem(Locs.PluginContext_OpenPluginFolder))
+                Util.OpenLink(plugin.DllFile.Directory.ToString());
+
+            // Open config file
+            var configFile = pluginManager.PluginConfigs.GetConfigFile(plugin.InternalName);
+            if (configFile.Exists && ImGui.MenuItem(Locs.PluginContext_OpenConfigFile))
+                Util.OpenLink(configFile.ToString());
+
+            // Open config folder
+            var configDir = pluginManager.PluginConfigs.GetConfigDirectory(plugin.InternalName);
+            if (configDir.Exists && ImGui.MenuItem(Locs.PluginContext_OpenConfigFolder))
+                Util.OpenLink(configDir.ToString());
+
+            ImGui.Separator();
+
             if (ImGui.MenuItem(Locs.PluginContext_DeletePluginConfigReload))
             {
                 this.ShowDeletePluginConfigWarningModal(plugin.Manifest.Name, optIn != null).ContinueWith(t =>
@@ -5086,6 +5102,12 @@ internal class PluginInstallerWindow : Window, IDisposable
         public static string RepoContext_BottomPinRepo => "置底该插件库";
 
         public static string RepoContext_UnbottomPinRepo => "取消置底该插件库";
+
+        public static string PluginContext_OpenConfigFile => Loc.Localize("InstallerOpenConfigFile", "Open config file");
+
+        public static string PluginContext_OpenConfigFolder => Loc.Localize("InstallerOpenConfigFolder", "Open config folder");
+
+        public static string PluginContext_OpenPluginFolder => Loc.Localize("InstallerOpenPluginFolder", "Open plugin folder");
 
         #endregion
 

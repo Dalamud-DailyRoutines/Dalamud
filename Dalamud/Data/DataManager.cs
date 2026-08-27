@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Dalamud.Game;
 using Dalamud.IoC;
 using Dalamud.IoC.Internal;
+using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using Dalamud.Utility.Timing;
@@ -16,8 +17,6 @@ using Lumina.Excel;
 using Lumina.Excel.Sheets;
 
 using Newtonsoft.Json;
-
-using Serilog;
 
 namespace Dalamud.Data;
 
@@ -34,6 +33,8 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
     // REGION TODO: 固定为简体中文
     private const ClientLanguage DefaultLanguage = ClientLanguage.ChineseSimplified;
     
+    private static readonly ModuleLog Log = ModuleLog.Create<DataManager>();
+
     private readonly Thread luminaResourceThread;
     private readonly CancellationTokenSource luminaCancellationTokenSource;
     private readonly RsvResolver rsvResolver;
@@ -47,7 +48,7 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
 
         try
         {
-            Log.Verbose("Starting data load...");
+            Log.Verbose("Initializing Lumina...");
 
             using (Timings.Start("Lumina Init"))
             {

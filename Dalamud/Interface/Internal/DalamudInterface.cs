@@ -143,7 +143,11 @@ internal class DalamudInterface : IInternalDisposableService
             gameGui,
             titleScreenMenu,
             consoleManager,
-            addonLifecycle) { IsOpen = false };
+            addonLifecycle)
+        {
+            IsOpen = false,
+        };
+        
         this.profilerWindow = new ProfilerWindow() { IsOpen = false };
         this.hitchSettingsWindow = new HitchSettingsWindow() { IsOpen = false };
 
