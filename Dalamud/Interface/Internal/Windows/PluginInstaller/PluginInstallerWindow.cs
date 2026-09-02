@@ -3037,11 +3037,11 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             using var color = ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.ErrorForeground);
 
-            var bodyText = $"插件 API 版本 ({plugin?.Manifest.DalamudApiLevel ?? 0}) 与 Dalamud API 版本 ({PluginManager.DalamudApiLevel}) 不对应, 无法使用" + " ";
+            var bodyText = $"插件 API 版本 ({plugin?.Manifest.DalamudApiLevel ?? 0}) 与 Dalamud API 版本 ({PluginManager.DalamudApiLevel}) 不匹配，无法加载。" + " ";
             if (flags.HasFlag(PluginHeaderFlags.UpdateAvailable))
-                bodyText += "\n存在可用更新, 可以尝试更新后再试";
+                bodyText += "请更新后重试。";
             else
-                bodyText += "\n请静待插件或框架 API 版本相匹配";
+                bodyText += "请等待插件更新适配。";
             
             using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.DalamudRed))
                 ImGui.TextWrapped(bodyText);
