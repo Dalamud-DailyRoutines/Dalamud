@@ -633,7 +633,6 @@ internal class PluginInstallerWindow : Window, IDisposable
                     ImGuiHelpers.CenteredText("安装插件中...");
                     break;
                 case LoadingIndicatorKind.Manager:
-                {
                     if (pluginManager.PluginsReady && !pluginManager.ReposReady)
                     {
                         ImGuiHelpers.CenteredText("加载插件仓库中...");
@@ -660,9 +659,8 @@ internal class PluginInstallerWindow : Window, IDisposable
                     {
                         ImGuiHelpers.CenteredText("加载仓库与插件中...");
                     }
-                }
 
-                break;
+                    break;
                 case LoadingIndicatorKind.ProfilesLoading:
                     ImGuiHelpers.CenteredText("应用合集中...");
                     break;

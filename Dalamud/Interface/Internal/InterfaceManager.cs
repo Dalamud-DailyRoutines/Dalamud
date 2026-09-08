@@ -1169,9 +1169,7 @@ internal partial class InterfaceManager : IInternalDisposableService
             && gamepadState.Raw(GamepadButtons.L1) > 0
             && gamepadState.Pressed(GamepadButtons.L3) > 0)
         {
-            io.ConfigFlags ^= ImGuiConfigFlags.NavEnableGamepad;
-            gamepadState.NavEnableGamepad ^= true;
-            dalamudInterface.ToggleGamepadModeNotifierWindow();
+            gamepadState.EnableGamepadNav ^= true;
         }
 
         if (gamepadEnabled && (io.ConfigFlags & ImGuiConfigFlags.NavEnableGamepad) > 0)
