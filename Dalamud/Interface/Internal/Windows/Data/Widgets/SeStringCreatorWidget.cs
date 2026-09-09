@@ -111,13 +111,16 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         { LinkMacroPayloadType.Quest, ["行 ID"] },
         { LinkMacroPayloadType.Achievement, ["行 ID"] },
         { LinkMacroPayloadType.HowTo, ["行 ID"] },
-        // PartyFinderNotification
+        { LinkMacroPayloadType.PartyFinderNotification, [] },
         { LinkMacroPayloadType.Status, ["状态 ID"] },
         { LinkMacroPayloadType.PartyFinder, ["招募 ID", string.Empty, "世界 ID"] },
         { LinkMacroPayloadType.AkatsukiNote, ["行 ID"] },
         { LinkMacroPayloadType.Description, ["行 ID"] },
         { LinkMacroPayloadType.WKSPioneeringTrail, ["行 ID", "子行 ID"] },
         { LinkMacroPayloadType.MKDLore, ["行 ID"] },
+        // TODO: add new LinkMacroPayloadTypes
+        // { LinkMacroPayloadType.EventTutorial, ["RowId"] },
+        // { LinkMacroPayloadType.Emote, ["Emote"] },
         { DalamudLinkType, ["命令 ID", "附加值 1", "附加值 2", "附加字符串"] },
     };
 
@@ -1092,6 +1095,29 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                         akatsukiNoteRow.ListName.ValueNullable is { } akatsukiNoteStringRow:
                         ImGui.SameLine();
                         ImGui.Text(akatsukiNoteStringRow.Text.ExtractText());
+                        break;
+
+                    case LinkMacroPayloadType.WKSPioneeringTrail when
+                        dataManager.GetSubrowExcelSheet<WKSPioneeringTrail>(this.language).TryGetRow(u32, out var wksPioneeringTrailRow) &&
+                        wksPioneeringTrailRow[0].LogEntry.IsValid:
+                        ImGui.SameLine();
+                        ImGui.Text(wksPioneeringTrailRow[0].LogEntry.Value.DevelopmentLogName.ToString());
+                        break;
+
+                    case LinkMacroPayloadType.MKDLore when dataManager.GetExcelSheet<MKDLore>(this.language).TryGetRow(u32, out var mkdLoreRow):
+                        ImGui.SameLine();
+                        ImGui.Text(mkdLoreRow.Name.ToString());
+                        break;
+
+                    // TODO: use new LinkMacroPayloadTypes
+                    case (LinkMacroPayloadType)14/*LinkMacroPayloadType.EventTutorial*/ when dataManager.GetExcelSheet<EventTutorial>(this.language).TryGetRow(u32, out var eventTutorialRow):
+                        ImGui.SameLine();
+                        ImGui.Text(eventTutorialRow.Singular.ToString());
+                        break;
+
+                    case (LinkMacroPayloadType)15/*LinkMacroPayloadType.Emote*/ when dataManager.GetExcelSheet<Emote>(this.language).TryGetRow(u32, out var emoteRow):
+                        ImGui.SameLine();
+                        ImGui.Text(emoteRow.Name.ToString());
                         break;
                 }
             }
