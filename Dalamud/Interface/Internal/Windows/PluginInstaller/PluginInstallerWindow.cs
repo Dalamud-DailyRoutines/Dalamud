@@ -4460,7 +4460,7 @@ internal class PluginInstallerWindow : Window, IDisposable
             ImGui.SameLine();
 
             var clicked = big ?
-                              ImGuiComponents.IconButtonWithText(FontAwesomeIcon.Globe, "Open website") :
+                              ImGuiComponents.IconButtonWithText(FontAwesomeIcon.Globe, "打开网站") :
                               ImGuiComponents.IconButton(FontAwesomeIcon.Globe);
             if (clicked)
             {
