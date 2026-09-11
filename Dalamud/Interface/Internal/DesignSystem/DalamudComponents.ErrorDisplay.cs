@@ -48,7 +48,7 @@ internal static partial class DalamudComponents
             using var child = ImRaii.Child("##ErrorDetails", new Vector2(0, 200 * ImGuiHelpers.GlobalScale), true);
             using (ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.DalamudGrey))
             {
-                ImGui.TextWrapped(Loc.Localize("ErrorDisplayDetails", "Error Details:"));
+                ImGui.TextWrapped("错误详情");
                 ImGui.Separator();
                 ImGui.TextWrapped(error.ToString());
             }
@@ -58,7 +58,7 @@ internal static partial class DalamudComponents
                 var windowSize = ImGui.GetWindowSize();
                 var scrollbarWidth = ImGui.GetScrollMaxY() > 0 ? ImGui.GetStyle().ScrollbarSize : 0f;
 
-                var copyText = Loc.Localize("ErrorDisplayCopy", "Copy");
+                var copyText = Loc.Localize("ErrorDisplayCopy", "复制");
                 var buttonWidth = ImGuiComponents.GetIconButtonWithTextWidth(FontAwesomeIcon.Copy, copyText);
                 ImGui.SetCursorPos(new Vector2(
                                        windowSize.X - scrollbarWidth - buttonWidth - ImGui.GetStyle().FramePadding.X,

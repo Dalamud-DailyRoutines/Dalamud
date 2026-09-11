@@ -859,15 +859,15 @@ public class WindowHost
     {
         // TODO: Once window systems are services, offer to reload the plugin
         DalamudComponents.DrawErrorDisplay(
-            Loc.Localize("WindowSystemErrorOccurred", "An error occurred while rendering this window. Please contact the developer for details."),
+            "窗口渲染异常，请咨询插件开发者获悉详情。",
             this.lastError,
             [
-                (Loc.Localize("WindowSystemErrorRecoverButton", "Attempt to retry"), () =>
+                ("重新渲染", () =>
                     {
                         this.hasError = false;
                         this.lastError = null;
                     }),
-                (Loc.Localize("WindowSystemErrorClose", "Close Window"), () =>
+                ("关闭窗口", () =>
                 {
                     this.Window.IsOpen = false;
                     this.hasError = false;
