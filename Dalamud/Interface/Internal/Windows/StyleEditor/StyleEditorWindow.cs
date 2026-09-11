@@ -347,6 +347,8 @@ public class StyleEditorWindow : Window
                             colorVal = property.GetValue(StyleModelV1.DalamudStandard.BuiltInColors);
                             property.SetValue(workStyle.BuiltInColors, colorVal);
                         }
+                        if (colorVal == null)
+                            continue;
 
                         var color = (Vector4)colorVal;
 
