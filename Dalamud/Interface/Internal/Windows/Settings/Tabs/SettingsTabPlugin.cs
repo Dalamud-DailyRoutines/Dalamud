@@ -237,12 +237,6 @@ internal class SettingsTabPlugin : SettingsTab
 
             _ = Service<PluginManager>.Get().ReloadAllReposAsync();
         }
-
-        ImGuiHelpers.ScaledDummy(15f);
-
-        ImGui.Separator();
-        
-        ImGuiHelpers.ScaledDummy(15f);
         
         ImGuiHelpers.ScaledDummy(15f);
 
