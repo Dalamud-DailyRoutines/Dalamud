@@ -165,8 +165,8 @@ internal sealed class SettingsTabLook : SettingsTab
         new GapSettingsEntry(5),
 
         new SettingsEntry<bool>(
-            LazyLoc.Localize("DalamudSettingAllowSeasonalEvent", "Allow Seasonal Events"),
-            LazyLoc.Localize("DalamudSettingAllowSeasonalEventHint", "Allow Dalamud to run certain seasonal events, such as April Fools.\nPlugins may also choose to hide certain content during seasonal events if this setting is disabled, but certain plugins may not respect this setting."),
+            "允许展示季节活动",
+            "启用后，Dalamud 会在部分节日（如愚人节）运行一些特殊逻辑，改变部分交互逻辑或外观样式。部分插件可能会读取此处设置。",
             c => c.AllowSeasonalEvents,
             (v, c) => c.AllowSeasonalEvents = v),
 
