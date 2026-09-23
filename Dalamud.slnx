@@ -16,11 +16,6 @@
       <Platform Project="x64" />
     </Project>
   </Folder>
-  <Folder Name="/CN/">
-    <Project Path="lib/FfxivArgLauncher/FfxivArgLauncher.csproj" />
-    <Project Path="lib/Lumina.Excel/src/Lumina.Excel/Lumina.Excel.csproj" />
-    <Project Path="lib/Lumina/src/Lumina/Lumina.csproj" />
-  </Folder>
   <Folder Name="/Dependencies/" />
   <Folder Name="/Dependencies/CS/">
     <Project Path="lib/FFXIVClientStructs/FFXIVClientStructs.Generators/FFXIVClientStructs.Generators.csproj" />
@@ -33,6 +28,14 @@
     <Project Path="external/cimguizmo/cimguizmo.vcxproj" />
     <Project Path="external/cimplot/cimplot.vcxproj" />
   </Folder>
+    
+    <Folder Name="/CN/">
+        <Project Path="lib/FfxivArgLauncher/FfxivArgLauncher.csproj" />
+        <Project Path="lib/Lumina.Excel/src/Lumina.Excel/Lumina.Excel.csproj" />
+        <Project Path="lib/Lumina.Excel/src/Lumina.Excel.Generator/Lumina.Excel.Generator.csproj" />
+        <Project Path="lib/Lumina/src/Lumina/Lumina.csproj" />
+    </Folder>
+    
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path=".gitignore" />

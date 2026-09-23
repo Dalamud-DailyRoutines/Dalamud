@@ -113,14 +113,13 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         { LinkMacroPayloadType.HowTo, ["行 ID"] },
         { LinkMacroPayloadType.PartyFinderNotification, [] },
         { LinkMacroPayloadType.Status, ["状态 ID"] },
-        { LinkMacroPayloadType.PartyFinder, ["招募 ID", string.Empty, "世界 ID"] },
+        { LinkMacroPayloadType.PartyFinder, ["招募 ID", string.Empty, "服务器 ID"] },
         { LinkMacroPayloadType.AkatsukiNote, ["行 ID"] },
         { LinkMacroPayloadType.Description, ["行 ID"] },
-        { LinkMacroPayloadType.WKSPioneeringTrail, ["行 ID", "子行 ID"] },
+        { LinkMacroPayloadType.WKSPioneeringTrail, ["行 ID", "SubrowId"] },
         { LinkMacroPayloadType.MKDLore, ["行 ID"] },
-        // TODO: add new LinkMacroPayloadTypes
-        // { LinkMacroPayloadType.EventTutorial, ["RowId"] },
-        // { LinkMacroPayloadType.Emote, ["Emote"] },
+        { LinkMacroPayloadType.EventTutorial, ["行 ID"] },
+        { LinkMacroPayloadType.Emote, ["表情"] },
         { DalamudLinkType, ["命令 ID", "附加值 1", "附加值 2", "附加字符串"] },
     };
 
@@ -1109,13 +1108,12 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                         ImGui.Text(mkdLoreRow.Name.ToString());
                         break;
 
-                    // TODO: use new LinkMacroPayloadTypes
-                    case (LinkMacroPayloadType)14/*LinkMacroPayloadType.EventTutorial*/ when dataManager.GetExcelSheet<EventTutorial>(this.language).TryGetRow(u32, out var eventTutorialRow):
+                    case LinkMacroPayloadType.EventTutorial when dataManager.GetExcelSheet<EventTutorial>(this.language).TryGetRow(u32, out var eventTutorialRow):
                         ImGui.SameLine();
                         ImGui.Text(eventTutorialRow.Singular.ToString());
                         break;
 
-                    case (LinkMacroPayloadType)15/*LinkMacroPayloadType.Emote*/ when dataManager.GetExcelSheet<Emote>(this.language).TryGetRow(u32, out var emoteRow):
+                    case LinkMacroPayloadType.Emote when dataManager.GetExcelSheet<Emote>(this.language).TryGetRow(u32, out var emoteRow):
                         ImGui.SameLine();
                         ImGui.Text(emoteRow.Name.ToString());
                         break;
