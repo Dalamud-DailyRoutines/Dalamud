@@ -429,7 +429,7 @@ internal class LocalPlugin : IAsyncDisposable
             Log.Information("加载插件 {PluginName} 完成", this.InternalName);
 
             var manager = Service<PluginManager>.Get();
-            manager.NotifyPluginsForStateChange(PluginListInvalidationKind.Loaded, [this.manifest.InternalName]);
+            manager.NotifyPluginsForStateChange(PluginListInvalidationKind.Loaded, [new ActivePluginsChangedEventArgs.AffectedPlugin(this, null)]);
         }
         catch (Exception ex)
         {
@@ -504,7 +504,7 @@ internal class LocalPlugin : IAsyncDisposable
             Log.Information("完成卸载 {PluginName}", this.InternalName);
 
             var manager = Service<PluginManager>.Get();
-            manager.NotifyPluginsForStateChange(PluginListInvalidationKind.Unloaded, [this.manifest.InternalName]);
+            manager.NotifyPluginsForStateChange(PluginListInvalidationKind.Unloaded, [new ActivePluginsChangedEventArgs.AffectedPlugin(this, null)]);
         }
         catch (Exception ex)
         {

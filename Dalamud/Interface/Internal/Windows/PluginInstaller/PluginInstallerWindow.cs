@@ -997,7 +997,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                                                        : Locs.ErrorModal_UpdaterFail(errorPluginCount);
 
                                 var hintInsert = errorPlugins
-                                                 .Aggregate(string.Empty, (current, pluginUpdateStatus) => $"{current}* {pluginUpdateStatus.InternalName} ({PluginUpdateStatus.LocalizeUpdateStatusKind(pluginUpdateStatus.Status)})\n")
+                                                 .Aggregate(string.Empty, (current, pluginUpdateStatus) => $"{current}* {pluginUpdateStatus.AffectedPlugin.InternalName} ({PluginUpdateStatus.LocalizeUpdateStatusKind(pluginUpdateStatus.Status)})\n")
                                                  .TrimEnd();
                                 errorMessage += Locs.ErrorModal_HintBlame(hintInsert);
 
@@ -3484,7 +3484,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         var thisWasUpdated = false;
         if (this.updatedPlugins != null && !plugin.IsDev)
         {
-            var update = this.updatedPlugins.FirstOrDefault(update => update.InternalName == plugin.Manifest.InternalName);
+            var update = this.updatedPlugins.FirstOrDefault(update => update.AffectedPlugin.InternalName == plugin.Manifest.InternalName);
             if (update != null)
             {
                 if (update.Status == PluginUpdateStatus.StatusKind.Success)
@@ -5203,7 +5203,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         public static string Notifications_NoUpdatesFound => "未找到任何更新";
         public static string Notifications_UpdatesInstalledTitle => "更新已安装";
         public static string Notifications_UpdatesInstalled(List<PluginUpdateStatus> updates)
-            => $"{updates.Count} 个插件已更新\n\n{string.Join(", ", updates.Select(x => x.InternalName))}";
+            => $"{updates.Count} 个插件已更新\n\n{string.Join(", ", updates.Select(x => x.AffectedPlugin.InternalName))}";
         public static string Notifications_PluginDisabledTitle => "插件已禁用";
         public static string Notifications_PluginDisabled(string name) => $"'{name}' 已被禁用";
         public static string Notifications_PluginEnabledTitle => "插件已启用";

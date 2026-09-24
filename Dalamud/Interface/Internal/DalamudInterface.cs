@@ -1142,10 +1142,10 @@ internal class DalamudInterface : IInternalDisposableService
                 {
                     ImGui.PushFont(InterfaceManager.MonoFont);
 
-                    ImGui.BeginMenu($"分支: {Versioning.GetGitBranch() ?? "???"}", false);
+                    ImGui.BeginMenu($"分支: {Versioning.GetGitBranch() ?? "???"} (轨道 {Versioning.GetActiveTrack() ?? "???"})", false);
                     ImGui.BeginMenu($"版本: {Versioning.GetScmVersion()}", false);
-                    ImGui.BeginMenu(this.FrameCount.ToString("000000"), false);
-                    ImGui.BeginMenu(ImGui.GetIO().Framerate.ToString("000"), false);
+                    ImGui.BeginMenu(this.FrameCount.ToString("000000", CultureInfo.InvariantCulture), false);
+                    ImGui.BeginMenu(ImGui.GetIO().Framerate.ToString("000", CultureInfo.InvariantCulture), false);
                     ImGui.BeginMenu($"内存: {Util.FormatBytes(GC.GetTotalMemory(false))}", false);
 
                     var videoMem = this.interfaceManager.GetD3dMemoryInfo();

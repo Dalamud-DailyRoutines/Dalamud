@@ -2038,12 +2038,17 @@ int main() {
         https://github.com/sumatrapdfreader/sumatrapdf/blob/master/src/utils/DbgHelpDyn.cpp
         */
 
+        // Get working dir (for PDBs for native things we ship)
+        std::wstring selfPath(PATHCCH_MAX_CCH, L'\0');
+        selfPath.resize(GetModuleFileNameExW(GetCurrentProcess(), GetModuleHandleW(nullptr), &selfPath[0], PATHCCH_MAX_CCH));
+        const auto dalamudDir = std::filesystem::path(selfPath).parent_path().wstring();
+
         if (g_bSymbolsAvailable) {
             SymRefreshModuleList(g_hProcess);
         }
         else if (!assetDir.empty())
         {
-            auto symbol_search_path = std::format(L".;{}", (assetDir / "UIRes" / "pdb").wstring());
+            auto symbol_search_path = std::format(L".;{};{}", dalamudDir, (assetDir / "UIRes" / "pdb").wstring());
 
             g_bSymbolsAvailable = SymInitializeW(g_hProcess, symbol_search_path.c_str(), true);
             logging::I("Init symbols with PDB at {}", symbol_search_path);
@@ -2052,8 +2057,10 @@ int main() {
         }
         else
         {
-            g_bSymbolsAvailable = SymInitializeW(g_hProcess, nullptr, true);
-            logging::I("Init symbols without PDB");
+            auto symbol_search_path = std::format(L".;{}", dalamudDir);
+
+            g_bSymbolsAvailable = SymInitializeW(g_hProcess, symbol_search_path.c_str(), true);
+            logging::I("Init symbols without game PDB at {}", symbol_search_path);
         }
 
         if (!g_bSymbolsAvailable) {
@@ -2182,7 +2189,7 @@ int main() {
         if (pProgressDialog)
             pProgressDialog->SetLine(3, L"正在刷新模块列表", FALSE, NULL);
 
-        SymRefreshModuleList(GetCurrentProcess());
+        SymRefreshModuleList(g_hProcess);
         print_exception_info(crashingThreadOsId, exinfo.hThreadHandle, exinfo.ExceptionPointers, exinfo.ContextRecord, log);
 
         // Capture the log content we show in the dialog window (after the call stack is appended).

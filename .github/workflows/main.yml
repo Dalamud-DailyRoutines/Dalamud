@@ -20,6 +20,7 @@ jobs:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
       NUGET_XMLDOC_MODE: skip
+      CONFIGURATION: Release
     steps:
       - name: Checkout Dalamud
         uses: actions/checkout@v5
@@ -57,23 +58,6 @@ jobs:
           echo "new_tag=$newTag" >> $env:GITHUB_OUTPUT
           echo "TAG=$newTag" >> $env:GITHUB_ENV
 
-      - name: Setup MSBuild Path
-        run: |
-          $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
-          if (-not (Test-Path -LiteralPath $vswhere)) {
-            throw "未找到 vswhere，无法定位 MSBuild。"
-          }
-
-          $msbuildPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
-          if (-not $msbuildPath) {
-            throw "未找到 MSBuild.exe，请确认 Runner 已安装 Visual Studio Build Tools。"
-          }
-
-          $msbuildDir = Split-Path -Path $msbuildPath -Parent
-          $msbuildDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          Write-Host "MSBuild 路径：$msbuildPath"
-          echo "MSBUILD_EXE=$msbuildPath" >> $env:GITHUB_ENV
-
       - name: Create and Push Git Tag
         run: |
           git config --global user.name "github-actions[bot]"
@@ -94,6 +78,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
+      - name: Install CMake
+        env:
+          CMAKE_VERSION: "4.2.0"
+        run: |
+          $name = "cmake-$env:CMAKE_VERSION-windows-x86_64"
+          $url = "https://cmake.org/files/v$($env:CMAKE_VERSION -replace '\.\d+$', '')"
+          Invoke-WebRequest "$url/$name.zip" -OutFile "$env:RUNNER_TEMP\cmake.zip"
+          Invoke-WebRequest "$url/cmake-$env:CMAKE_VERSION-SHA-256.txt" -OutFile "$env:RUNNER_TEMP\cmake.sha256"
+
+          $expected = (Select-String -Path "$env:RUNNER_TEMP\cmake.sha256" -Pattern "  $name.zip$").Line.Split(' ')[0]
+          $actual = (Get-FileHash "$env:RUNNER_TEMP\cmake.zip" -Algorithm SHA256).Hash
+          if ($actual -ne $expected) { throw "CMake checksum mismatch: $actual != $expected" }
+
+          Expand-Archive "$env:RUNNER_TEMP\cmake.zip" $env:RUNNER_TEMP
+          "$env:RUNNER_TEMP\$name\bin" >> $env:GITHUB_PATH
+
       - name: Define VERSION
         run: |
           # VERSION 文件包含仓库名、分支名、短提交哈希与发布标签
@@ -109,11 +109,14 @@ jobs:
             $env:TAG
           ) | Set-Content -LiteralPath VERSION -Encoding utf8
 
-      - name: Build and Test Dalamud
-        run: .\build.ps1 ci
+      - name: Build Dalamud
+        run: .\build.cmd $env:CONFIGURATION
+
+      - name: Test Dalamud
+        run: dotnet test .\Dalamud.Test\Dalamud.Test.csproj -c $env:CONFIGURATION -p:WarningLevel=0
 
       - name: Create hashlist
-        run: .\CreateHashList.ps1 .\bin\Release
+        run: .\tools\create_hashlist.ps1 .\bin\Release
 
       - name: Install 7-Zip
         run: |
