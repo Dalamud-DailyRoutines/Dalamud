@@ -5201,20 +5201,20 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         #region Notifications
         public static string Notifications_PluginInstalledTitle => "插件已安装";
-        public static string Notifications_PluginInstalled(string name) => $"'{name}' 已成功安装";
+        public static string Notifications_PluginInstalled(string name) => $"安装了“{name}”。";
         public static string Notifications_PluginNotInstalledTitle => "插件未安装";
-        public static string Notifications_PluginNotInstalled(string name) => $"'{name}' 安装失败";
+        public static string Notifications_PluginNotInstalled(string name) => $"安装“{name}”失败。";
         public static string Notifications_NoUpdatesFoundTitle => "未找到更新";
         public static string Notifications_NoUpdatesFound => "未找到任何更新";
         public static string Notifications_UpdatesInstalledTitle => "更新已安装";
         public static string Notifications_UpdatesInstalled(List<PluginUpdateStatus> updates)
-            => $"{updates.Count} 个插件已更新\n\n{string.Join(", ", updates.Select(x => x.AffectedPlugin.InternalName))}";
+            => $"更新了{updates.Count}个插件。\n\n{string.Join("，", updates.Select(x => x.AffectedPlugin.InternalName))}";
         public static string Notifications_PluginDisabledTitle => "插件已禁用";
-        public static string Notifications_PluginDisabled(string name) => $"'{name}' 已被禁用";
+        public static string Notifications_PluginDisabled(string name) => $"禁用了“{name}”。";
         public static string Notifications_PluginEnabledTitle => "插件已启用";
-        public static string Notifications_PluginEnabled(string name) => $"'{name}' 已被启用";
+        public static string Notifications_PluginEnabled(string name) => $"启用了“{name}”。";
         public static string Notifications_RepoUrlCopiedTitle => "已复制";
-        public static string Notifications_RepoUrlCopied => "仓库链接已复制到剪贴板";
+        public static string Notifications_RepoUrlCopied => "复制了仓库链接到剪贴板。";
         #endregion
 
         #region Footer
