@@ -615,27 +615,27 @@ internal class PluginInstallerWindow : Window, IDisposable
             switch (this.loadingIndicatorKind)
             {
                 case LoadingIndicatorKind.Unknown:
-                    ImGuiHelpers.CenteredText("总之在干点什么, 但不知道在干什么");
+                    ImGuiHelpers.CenteredText("加载中……");
                     break;
                 case LoadingIndicatorKind.EnablingSingle:
-                    ImGuiHelpers.CenteredText("启用插件中...");
+                    ImGuiHelpers.CenteredText("启用插件中……");
                     break;
                 case LoadingIndicatorKind.DisablingSingle:
-                    ImGuiHelpers.CenteredText("禁用插件中...");
+                    ImGuiHelpers.CenteredText("禁用插件中……");
                     break;
                 case LoadingIndicatorKind.UpdatingSingle:
-                    ImGuiHelpers.CenteredText("更新插件中...");
+                    ImGuiHelpers.CenteredText("更新插件中……");
                     break;
                 case LoadingIndicatorKind.UpdatingAll:
-                    ImGuiHelpers.CenteredText("批量更新插件中...");
+                    ImGuiHelpers.CenteredText("批量更新插件中……");
                     break;
                 case LoadingIndicatorKind.Installing:
-                    ImGuiHelpers.CenteredText("安装插件中...");
+                    ImGuiHelpers.CenteredText("安装插件中……");
                     break;
                 case LoadingIndicatorKind.Manager:
                     if (pluginManager.PluginsReady && !pluginManager.ReposReady)
                     {
-                        ImGuiHelpers.CenteredText("加载插件仓库中...");
+                        ImGuiHelpers.CenteredText("加载插件仓库中……");
                         ImGuiHelpers.ScaledDummy(10);
 
                         DrawProgressBar(pluginManager.Repos, x => x.State != PluginRepositoryState.Success &&
@@ -646,23 +646,23 @@ internal class PluginInstallerWindow : Window, IDisposable
                     }
                     else if (!pluginManager.PluginsReady && pluginManager.ReposReady)
                     {
-                        ImGuiHelpers.CenteredText("加载已安装插件中...");
+                        ImGuiHelpers.CenteredText("加载已安装插件中……");
                         ImGuiHelpers.ScaledDummy(10);
 
                         DrawProgressBar(pluginManager.InstalledPlugins, x => x.State == PluginState.Loading,
                                         x => x.State is PluginState.Loaded or
                                                  PluginState.LoadError or
                                                  PluginState.Loading,
-                                        x => ImGuiHelpers.CenteredText($"加载 {x.Name} 中"));
+                                        x => ImGuiHelpers.CenteredText($"加载{x.Name}中……"));
                     }
                     else
                     {
-                        ImGuiHelpers.CenteredText("加载仓库与插件中...");
+                        ImGuiHelpers.CenteredText("加载仓库与插件中……");
                     }
 
                     break;
                 case LoadingIndicatorKind.ProfilesLoading:
-                    ImGuiHelpers.CenteredText("应用合集中...");
+                    ImGuiHelpers.CenteredText("应用合集中……");
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -672,7 +672,7 @@ internal class PluginInstallerWindow : Window, IDisposable
             {
                 ImGuiHelpers.ScaledDummy(10);
                 ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.AttentionForeground);
-                ImGuiHelpers.CenteredText("任一插件正在阻碍插件安装器加载, 请自行检查\n然后使用安全模式重启, 并删除相关插件");
+                ImGuiHelpers.CenteredText("有插件正在阻止插件安装器加载。\n可以点击下方按钮以安全模式重启, 然后删除相关插件。");
                 ImGui.PopStyleColor();
 
                 ImGuiHelpers.BeginHorizontalButtonGroup()
@@ -2598,7 +2598,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
                         if (!imageTask.IsCompleted)
                         {
-                            ImGui.Text("Loading..."u8);
+                            ImGui.Text("加载中……"u8);
                             continue;
                         }
 
@@ -2672,7 +2672,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
             if (!imageTask.IsCompleted)
             {
-                ImGui.Text("Loading..."u8);
+                ImGui.Text("Loading……"u8);
                 return;
             }
 
@@ -3619,8 +3619,8 @@ internal class PluginInstallerWindow : Window, IDisposable
             if (this.hasDevPlugins)
             {
                 ImGuiHelpers.ScaledDummy(3);
-                ImGui.TextColored(ImGuiColors.DalamudGrey, $"WorkingPluginId: {plugin.EffectiveWorkingPluginId}");
-                ImGui.TextColored(ImGuiColors.DalamudGrey, $"Command prefix: {ConsoleManagerPluginUtil.GetSanitizedNamespaceName(plugin.InternalName)}");
+                ImGui.TextColored(ImGuiColors.DalamudGrey, $"插件生效标识符：{plugin.EffectiveWorkingPluginId}");
+                ImGui.TextColored(ImGuiColors.DalamudGrey, $"命名空间：{ConsoleManagerPluginUtil.GetSanitizedNamespaceName(plugin.InternalName)}");
                 ImGuiHelpers.ScaledDummy(3);
             }
 
@@ -3919,7 +3919,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                         .GetAwaiter().GetResult();
                 }
 
-                Task.Run(() => profileManager.ApplyAllWantStatesAsync("Remove from profile"))
+                Task.Run(() => profileManager.ApplyAllWantStatesAsync("从合集中移除"))
                     .ContinueWith(this.DisplayErrorContinuation, Locs.ErrorModal_ProfileApplyFail);
             }
 
@@ -4145,7 +4145,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, $"Error during OpenMain(): {plugin.Name}");
+                    Log.Error(ex, "打开“{PluginName}”的主界面失败。", plugin.Name);
                 }
             }
 
@@ -4172,7 +4172,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, $"Error during OpenConfig: {plugin.Name}");
+                    Log.Error(ex, "打开“{PluginName}”的配置界面失败。", plugin.Name);
                 }
             }
 
@@ -4206,7 +4206,7 @@ internal class PluginInstallerWindow : Window, IDisposable
     {
         if (!devPlugin.IsLoaded)
         {
-            ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "You have to load this plugin to see validation issues."u8);
+            ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "加载后可显示开发警告。"u8);
         }
         else
         {
@@ -4217,7 +4217,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                 ImGui.Text(FontAwesomeIcon.Check.ToIconString());
                 ImGui.PopFont();
                 ImGui.SameLine();
-                ImGui.TextColoredWrapped(ImGuiColors.SuccessForeground, "No validation issues found in this plugin!"u8);
+                ImGui.TextColoredWrapped(ImGuiColors.SuccessForeground, "无开发警告。"u8);
             }
             else
             {
@@ -4225,8 +4225,8 @@ internal class PluginInstallerWindow : Window, IDisposable
                     problem => devPlugin.DismissedValidationProblems.All(name => name != problem.GetType().Name));
                 var shouldBother = numValidProblems > 0;
                 var validationIssuesText = shouldBother ?
-                    $"Found {problems.Count} validation issue{(problems.Count > 1 ? "s" : string.Empty)} in this plugin!" :
-                    $"{problems.Count} dismissed validation issue{(problems.Count > 1 ? "s" : string.Empty)} in this plugin.";
+                    $"共{problems.Count}条开发警告。" :
+                    $"忽略了{problems.Count}条开发警告。";
 
                 using var col = ImRaii.PushColor(ImGuiCol.Text, shouldBother ? ImGuiColors.WarningForeground : ImGuiColors.DalamudGrey);
                 using var tree = ImRaii.TreeNode($"{validationIssuesText}###validationIssueCollapsible");
@@ -4250,7 +4250,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
                                 if (ImGui.IsItemHovered())
                                 {
-                                    ImGui.SetTooltip("Dismiss this issue"u8);
+                                    ImGui.SetTooltip("忽略");
                                 }
                             }
 
@@ -5011,7 +5011,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         #region Tab body
 
-        public static string TabBody_LoadingPlugins => "正在加载插件...";
+        public static string TabBody_LoadingPlugins => "正在加载插件……";
 
         public static string TabBody_DownloadFailed => "下载失败";
 
@@ -5034,7 +5034,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         public static string TabBody_NoPluginsIncompatible => "没有不兼容的插件";
 
-        public static string TabBody_NoPluginsFavorite => Loc.Localize("InstallerNoPluginsFavorite", "You don't have any favorite plugins.\nYou can mark plugins as favorite in the plugin context menu.");
+        public static string TabBody_NoPluginsFavorite => "无已收藏插件。\n可在右键菜单内收藏。";
 
         #endregion
 
@@ -5101,11 +5101,11 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         public static string RepoContext_UnbottomPinRepo => "取消置底该插件库";
 
-        public static string PluginContext_OpenConfigFile => Loc.Localize("InstallerOpenConfigFile", "Open config file");
+        public static string PluginContext_OpenConfigFile => "打开配置文件";
 
-        public static string PluginContext_OpenConfigFolder => Loc.Localize("InstallerOpenConfigFolder", "Open config folder");
+        public static string PluginContext_OpenConfigFolder => "打开配置文件夹";
 
-        public static string PluginContext_OpenPluginFolder => Loc.Localize("InstallerOpenPluginFolder", "Open plugin folder");
+        public static string PluginContext_OpenPluginFolder => "打开插件文件夹";
 
         #endregion
 
@@ -5188,9 +5188,9 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         #region Plugin icon tooltips
 
-        public static string PluginIconToolTip_FavoriteIconTooltip => Loc.Localize("InstallerFavoriteTooltip", "This plugin is in your favorites.");
+        public static string PluginIconToolTip_FavoriteIconTooltip => "已收藏";
 
-        public static string PluginIconToolTip_PinnedIconTooltip => Loc.Localize("InstallerPinnedTooltip", "This plugin is pinned to the top.");
+        public static string PluginIconToolTip_PinnedIconTooltip => "已置顶";
 
         #endregion
 
@@ -5215,7 +5215,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         #region Footer
         public static string FooterButton_UpdatePlugins => "更新插件";
         public static string FooterButton_UpdateSafeMode => "安全模式下无法更新";
-        public static string FooterButton_InProgress => "安装进行中...";
+        public static string FooterButton_InProgress => "安装进行中……";
         public static string FooterButton_NoUpdates => "未找到更新";
         public static string FooterButton_UpdateComplete(int count) => $"{count} 个插件已更新";
         public static string FooterButton_Settings => "设置";

@@ -62,7 +62,7 @@ internal static class PluginValidator
         var problems = new List<IValidationProblem>();
 
         if (!plugin.IsLoaded)
-            throw new InvalidOperationException("Plugin must be loaded to validate.");
+            throw new InvalidOperationException("插件未加载时无法检测开发问题。");
 
         if (!plugin.DalamudInterface!.LocalUiBuilder.HasConfigUi)
             problems.Add(new NoConfigUiProblem());
@@ -111,7 +111,7 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Warning;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => "The plugin does not register a config UI callback. If you have a settings window or section, please consider registering UiBuilder.OpenConfigUi to open it.";
+        public string GetLocalizedDescription() => "未注册配置界面回调。若有设置界面，可注册 UiBuilder.OpenConfigUi 以便于外部打开。";
     }
 
     /// <summary>
@@ -123,7 +123,7 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Warning;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => "The plugin does not register a main UI callback. If your plugin has a window that could be considered the main entrypoint to its features, please consider registering UiBuilder.OpenMainUi to open the plugin's main window.";
+        public string GetLocalizedDescription() => "未注册主界面回调。若有主界面，可注册 UiBuilder.OpenMainUi 以便于外部打开。";
     }
 
     /// <summary>
@@ -136,7 +136,7 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Fatal;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => $"The plugin has a command ({commandName}) without a help message. Please consider adding a help message to the command when registering it.";
+        public string GetLocalizedDescription() => $"命令 {commandName} 未配置帮助消息。";
     }
 
     /// <summary>
@@ -148,7 +148,7 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Information;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => "Your plugin does not have any tags in its manifest. Please consider adding some to make it easier for users to find your plugin in the installer.";
+        public string GetLocalizedDescription() => "清单文件中未配置任何标签。";
     }
 
     /// <summary>
@@ -160,7 +160,7 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Information;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => "Your plugin does not have a description in its manifest, or it is very terse. Please consider adding one to give users more information about your plugin.";
+        public string GetLocalizedDescription() => "清单文件中未配置描述，或描述过于简略。";
     }
 
     /// <summary>
@@ -172,7 +172,7 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Information;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => "Your plugin does not have a punchline in its manifest. Please consider adding one to give users a quick overview of what your plugin does.";
+        public string GetLocalizedDescription() => "清单文件中未配置标语。";
     }
 
     /// <summary>
@@ -184,7 +184,7 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Fatal;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => "Your plugin does not have a name in its manifest.";
+        public string GetLocalizedDescription() => "清单文件中未配置名称。";
     }
 
     /// <summary>
@@ -196,7 +196,7 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Fatal;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => "Your plugin does not have an author in its manifest.";
+        public string GetLocalizedDescription() => "清单文件中未配置作者。";
     }
 
     /// <summary>
@@ -208,8 +208,7 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Fatal;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => "Your plugin specifies an outdated API level. " +
-                                                   "Please update it by updating DalamudPackager or Dalamud.NET.Sdk.";
+        public string GetLocalizedDescription() => "指向了过时的 API 等级。请更新 DalamudPackager 或 Dalamud.NET.Sdk。";
     }
 
     /// <summary>
@@ -221,7 +220,6 @@ internal static class PluginValidator
         public ValidationSeverity Severity => ValidationSeverity.Fatal;
 
         /// <inheritdoc/>
-        public string GetLocalizedDescription() => "Your plugin's internal name is \"SamplePlugin\", indicating that you have not changed it. " +
-                                                   "You must change the internal name before publishing.";
+        public string GetLocalizedDescription() => "内部名称仍为“SamplePlugin”。若需要对外发布，请更改内部名称。";
     }
 }

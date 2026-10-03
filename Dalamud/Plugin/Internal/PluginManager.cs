@@ -299,8 +299,7 @@ internal class PluginManager : IInternalDisposableService
                                     new TextPayload("  ["),
                                     new UIForegroundPayload(500),
                                     this.openInstallerWindowPluginChangelogsLink.Result,
-                                    new TextPayload(
-                                        Loc.Localize("DalamudInstallerPluginChangelogHelp", "Open plugin changelogs")),
+                                    new TextPayload("更新日志"),
                                     RawPayload.LinkTerminator,
                                     new UIForegroundPayload(0),
                                     new TextPayload("]"),
