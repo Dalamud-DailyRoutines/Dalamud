@@ -1037,13 +1037,18 @@ internal class PluginInstallerWindow : Window, IDisposable
             ImGui.Spacing();
 
             var buttonWidth = 120f;
-            ImGui.SetCursorPosX((ImGui.GetWindowWidth() - buttonWidth) / 2);
+            ImGui.SetCursorPosX((ImGui.GetWindowWidth() - ((buttonWidth * 2) - (ImGui.GetStyle().ItemSpacing.Y * 2))) / 2);
 
             if (ImGui.Button(Locs.ErrorModalButton_Ok, new Vector2(buttonWidth, 40)))
             {
                 ImGui.CloseCurrentPopup();
                 this.errorModalTaskCompletionSource?.SetResult();
             }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button(Locs.ErrorModalButton_OpenLog, new Vector2(buttonWidth, 40)))
+                Service<DalamudInterface>.Get().ToggleLogWindow();
 
             ImGui.EndPopup();
         }
@@ -5286,6 +5291,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         #region Error modal buttons
         public static string ErrorModalButton_Ok => "确定";
+        public static string ErrorModalButton_OpenLog => "查看日志";
         #endregion
 
         #region Other
