@@ -169,6 +169,11 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     public bool? DevMode { get; set; }
 
     /// <summary>
+    /// Gets or sets the port that the developer mode MCP server listens on. Null uses the default port.
+    /// </summary>
+    public int MCPPort { get; set; } = 39217;
+
+    /// <summary>
     /// Gets or sets a list of additional settings for devPlugins. The key is the absolute path
     /// to the plugin DLL. This is automatically generated for any plugins in the devPlugins folder.
     /// However by specifiying this value manually, you can add arbitrary files outside the normal

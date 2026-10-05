@@ -70,6 +70,8 @@
         <PackageReference Include="Microsoft.Windows.CsWin32">
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="Lib.Harmony" />
+        <PackageReference Include="ModelContextProtocol.Core" />
         <PackageReference Include="Newtonsoft.Json" />
         <PackageReference Include="Serilog" />
         <PackageReference Include="Serilog.Sinks.Async" />
@@ -83,6 +85,10 @@
     <ItemGroup>
         <ProjectReference Include="..\lib\Lumina\src\Lumina\Lumina.csproj" />
         <ProjectReference Include="..\generators\Dalamud.EnumGenerator\Dalamud.EnumGenerator\Dalamud.EnumGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="..\Dalamud.MCP\**\*.cs" Exclude="..\Dalamud.MCP\bin\**;..\Dalamud.MCP\obj\**" />
     </ItemGroup>
 
     <ItemGroup>

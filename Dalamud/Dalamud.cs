@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Dalamud.Common;
 using Dalamud.Configuration.Internal;
 using Dalamud.Game;
@@ -14,9 +13,7 @@ using Dalamud.Plugin.Internal;
 using Dalamud.Storage;
 using Dalamud.Utility;
 using Dalamud.Utility.Timing;
-
 using Serilog;
-
 using Windows.Win32.Foundation;
 using Windows.Win32.Security;
 
@@ -36,7 +33,7 @@ internal sealed class Dalamud : IServiceType
 {
     #region Internals
 
-    private static int shownServiceError = 0;
+    private static   int              shownServiceError = 0;
     private readonly ManualResetEvent unloadSignal;
 
     #endregion
@@ -48,7 +45,13 @@ internal sealed class Dalamud : IServiceType
     /// <param name="fs">ReliableFileStorage instance.</param>
     /// <param name="configuration">The Dalamud configuration.</param>
     /// <param name="mainThreadContinueEvent">Event used to signal the main thread to continue.</param>
-    public Dalamud(DalamudStartInfo info, ReliableFileStorage fs, DalamudConfiguration configuration, IntPtr mainThreadContinueEvent)
+    public Dalamud
+    (
+        DalamudStartInfo     info,
+        ReliableFileStorage  fs,
+        DalamudConfiguration configuration,
+        IntPtr               mainThreadContinueEvent
+    )
     {
         this.StartInfo = info;
 
@@ -67,15 +70,16 @@ internal sealed class Dalamud : IServiceType
         }
         catch (UnauthorizedAccessException)
         {
-            var configDir = Path.GetDirectoryName(this.StartInfo.ConfigurationPath!)
-                            ?? throw new DirectoryNotFoundException("无法确定配置目录。");
-            var scope = new DirectoryInfo(this.StartInfo.WorkingDirectory!).Name;
+            var configDir   = Path.GetDirectoryName(this.StartInfo.ConfigurationPath!) ?? throw new DirectoryNotFoundException("无法确定配置目录。");
+            var scope       = new DirectoryInfo(this.StartInfo.WorkingDirectory!).Name;
             var fallbackDir = new DirectoryInfo(Path.Combine(configDir, "cachedSigs", scope));
 
-            Log.Information(
+            Log.Information
+            (
                 "签名缓存目录 {Path} 不可写，已回退到 {Fallback}",
                 cacheDir.FullName,
-                fallbackDir.FullName);
+                fallbackDir.FullName
+            );
 
             cacheDir = fallbackDir;
             if (!cacheDir.Exists)
@@ -84,18 +88,24 @@ internal sealed class Dalamud : IServiceType
 
         // Set up the SigScanner for our target module
         TargetSigScanner scanner;
+
         using (Timings.Start("SigScanner Init"))
         {
-            scanner = new TargetSigScanner(
-                true, new FileInfo(Path.Combine(cacheDir.FullName, $"{this.StartInfo.GameVersion}.json")));
+            scanner = new TargetSigScanner
+            (
+                true,
+                new FileInfo(Path.Combine(cacheDir.FullName, $"{this.StartInfo.GameVersion}.json"))
+            );
         }
 
-        ServiceManager.InitializeProvidedServices(
+        ServiceManager.InitializeProvidedServices
+        (
             this,
             fs,
             configuration,
             scanner,
-            Localization.FromAssets(info.AssetDirectory!, configuration.LanguageOverride));
+            Localization.FromAssets(info.AssetDirectory!, configuration.LanguageOverride)
+        );
 
         // Set up FFXIVClientStructs
         this.SetupClientStructsResolver(cacheDir);
@@ -117,7 +127,10 @@ internal sealed class Dalamud : IServiceType
             Windows.Win32.PInvoke.SetEvent(new HANDLE(mainThreadContinueEvent));
         }
 
-        void HandleServiceInitFailure(Task t)
+        void HandleServiceInitFailure
+        (
+            Task t
+        )
         {
             Log.Error(t.Exception!, "Service initialization failure");
 
@@ -125,23 +138,27 @@ internal sealed class Dalamud : IServiceType
                 return;
 
             ErrorHandling.ShowSystemIntegrityPolicyErrorIfApplicable(t.Exception);
-            Util.Fatal(
+            Util.Fatal
+            (
                 $"Dalamud failed to load all necessary services.\nThe game will continue, but you may not be able to use plugins.\n\n{t.Exception}",
-                "Dalamud", false);
+                "Dalamud",
+                false
+            );
         }
 
         ServiceManager.InitializeEarlyLoadableServices()
-                      .ContinueWith(
-                          t =>
+                      .ContinueWith
+                      (t =>
                           {
                               if (t.IsCompletedSuccessfully)
                                   return;
 
                               HandleServiceInitFailure(t);
-                          });
+                          }
+                      );
 
-        ServiceManager.BlockingResolved.ContinueWith(
-            t =>
+        ServiceManager.BlockingResolved.ContinueWith
+        (t =>
             {
                 if (t.IsCompletedSuccessfully)
                 {
@@ -150,7 +167,8 @@ internal sealed class Dalamud : IServiceType
                 }
 
                 HandleServiceInitFailure(t);
-            });
+            }
+        );
 
         this.DefaultExceptionFilter = SetExceptionHandler(nint.Zero);
         SetExceptionHandler(this.DefaultExceptionFilter);
@@ -187,7 +205,13 @@ internal sealed class Dalamud : IServiceType
     {
         [DllImport("kernel32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        static extern void RaiseException(uint dwExceptionCode, uint dwExceptionFlags, uint nNumberOfArguments, IntPtr lpArguments);
+        static extern void RaiseException
+        (
+            uint   dwExceptionCode,
+            uint   dwExceptionFlags,
+            uint   nNumberOfArguments,
+            IntPtr lpArguments
+        );
 
         RaiseException(0x12345678, 0, 0, IntPtr.Zero);
         Process.GetCurrentProcess().Kill();
@@ -200,8 +224,9 @@ internal sealed class Dalamud : IServiceType
     {
         Log.Information("Trigger unload");
 
-        var reportCrashesSetting = Service<DalamudConfiguration>.GetNullable()?.ReportShutdownCrashes ?? true;
-        var pmHasDevPlugins = Service<PluginManager>.GetNullable()?.InstalledPlugins.Any(x => x.IsDev) ?? false;
+        var reportCrashesSetting = Service<DalamudConfiguration>.GetNullable()?.ReportShutdownCrashes       ?? true;
+        var pmHasDevPlugins      = Service<PluginManager>.GetNullable()?.InstalledPlugins.Any(x => x.IsDev) ?? false;
+
         if (!reportCrashesSetting && !pmHasDevPlugins)
         {
             // Leaking on purpose for now
@@ -210,12 +235,14 @@ internal sealed class Dalamud : IServiceType
             Windows.Win32.PInvoke.CreateMutex(attribs, false, "DALAMUD_CRASHES_NO_MORE");
         }
 
-        Task.Run(() =>
-        {
-            ServiceManager.UnloadAllServices();
+        Task.Run
+        (() =>
+            {
+                ServiceManager.UnloadAllServices();
 
-            this.unloadSignal.Set();
-        });
+                this.unloadSignal.Set();
+            }
+        );
     }
 
     /// <summary>
@@ -248,20 +275,28 @@ internal sealed class Dalamud : IServiceType
     /// <summary>
     /// Helper function to set the exception handler.
     /// </summary>
-    private static unsafe nint SetExceptionHandler(nint newFilter)
+    private static unsafe nint SetExceptionHandler
+    (
+        nint newFilter
+    )
     {
         var oldFilter =
-            Windows.Win32.PInvoke.SetUnhandledExceptionFilter((delegate* unmanaged[Stdcall]<global::Windows.Win32.System.Diagnostics.Debug.EXCEPTION_POINTERS*, int>)newFilter);
+            Windows.Win32.PInvoke.SetUnhandledExceptionFilter
+                ((delegate* unmanaged[Stdcall]<global::Windows.Win32.System.Diagnostics.Debug.EXCEPTION_POINTERS*, int>)newFilter);
         Log.Debug("Set ExceptionFilter to {0}, old: {1}", newFilter, (nint)oldFilter);
         return (nint)oldFilter;
     }
 
-    private void SetupClientStructsResolver(DirectoryInfo cacheDir)
+    private void SetupClientStructsResolver
+    (
+        DirectoryInfo cacheDir
+    )
     {
         using (Timings.Start("CS Resolver Init"))
         {
             // the resolver tracks version as a field in the json
-            InteropGenerator.Runtime.Resolver.GetInstance.Setup(Service<TargetSigScanner>.Get().SearchBase, $"{this.StartInfo.GameVersion}", new FileInfo(Path.Combine(cacheDir.FullName, "cs.json")));
+            InteropGenerator.Runtime.Resolver.GetInstance.Setup
+                (Service<TargetSigScanner>.Get().SearchBase, $"{this.StartInfo.GameVersion}", new FileInfo(Path.Combine(cacheDir.FullName, "cs.json")));
             FFXIVClientStructs.Interop.Generated.Addresses.Register();
             InteropGenerator.Runtime.Resolver.GetInstance.Resolve();
         }

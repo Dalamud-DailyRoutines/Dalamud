@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-
 using CheapLoc;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Configuration.Internal;
@@ -8,10 +7,12 @@ using Dalamud.Interface.Internal.Windows.Settings.Widgets;
 
 namespace Dalamud.Interface.Internal.Windows.Settings.Tabs;
 
-[SuppressMessage(
+[SuppressMessage
+(
     "StyleCop.CSharp.DocumentationRules",
     "SA1600:Elements should be documented",
-    Justification = "Internals")]
+    Justification = "Internals"
+)]
 internal sealed class SettingsTabExperimental : SettingsTab
 {
     public override string Title => Loc.Localize("DalamudSettingsExperimental", "Experimental");
@@ -20,19 +21,56 @@ internal sealed class SettingsTabExperimental : SettingsTab
 
     public override SettingsEntry[] Entries { get; } =
     [
-        new SettingsEntry<bool>(
+        new SettingsEntry<bool>
+        (
             Loc.Localize("DalamudSettingEnableDeveloperMode",     "开发者模式"),
-            Loc.Localize("DalamudSettingEnableDeveloperModeHint", "解锁开发者专用的设置"),
+            Loc.Localize("DalamudSettingEnableDeveloperModeHint", "解锁开发者专用的设置。更改后需要重启才能生效。"),
             c => c.DevMode ?? false,
-            (v, c) => c.DevMode = v),
+            (v, c) => c.DevMode = v
+        ),
 
         new GapSettingsEntry(5, true),
 
-        new SettingsEntry<float>(
-            Loc.Localize("DalamudSettingBackgroundBlur", "窗口毛玻璃效果强度系数"),
+        new SettingsEntry<int>
+        (
+            Loc.Localize("DalamudSettingMCPPort", "MCP 调试服务器端口"),
+            Loc.Localize
+            (
+                "DalamudSettingMCPPortHint",
+                "MCP 调试服务器监听的端口。"
+            ),
+            c => c.MCPPort,
+            (v, c) => c.MCPPort = v)
+        {
+            CustomDraw = static e =>
+            {
+                ImGui.TextWrapped(e.Name!);
+
+                var port = e.Value;
+                if (ImGui.InputInt($"###{e}", ref port, 1, 100))
+                    e.Value = Math.Clamp(port, 0, 65535);
+
+                var status = MCPRuntime.IsRunning
+                                 ? $"监听链接：http://127.0.0.1:{MCPRuntime.Port}/mcp/"
+                                 : "未在监听。";
+
+                ImGui.TextUnformatted(status);
+
+                if (MCPRuntime.LastError is { } error)
+                    ImGui.TextUnformatted($"启动失败原因：{error}");
+
+                if (!MCPRuntime.IsRunning && ImGui.Button($"重试启动###{e}"))
+                    Service<MCPHost>.GetNullable()?.RetryStart();
+            },
+        },
+
+        new SettingsEntry<float>
+        (
+            Loc.Localize("DalamudSettingBackgroundBlur",     "窗口毛玻璃效果强度系数"),
             Loc.Localize("DalamudSettingBackgroundBlurHint", "控制插件窗口背景的毛玻璃效果强度。设置为 0 以禁用。\n本效果需要各插件主动适配。"),
             c => c.PluginUiBackgroundBlurStrength,
-            (v, c) => c.PluginUiBackgroundBlurStrength = v)
+            (v, c) => c.PluginUiBackgroundBlurStrength = v
+        )
         {
             CustomDraw = static e =>
             {
@@ -45,12 +83,15 @@ internal sealed class SettingsTabExperimental : SettingsTab
         },
 
         new GapSettingsEntry(5, true),
-        
-        new EnumSettingsEntry<ReShadeHandlingMode>(
+
+        new EnumSettingsEntry<ReShadeHandlingMode>
+        (
             Loc.Localize("DalamudSettingsReShadeHandlingMode", "ReShade 处理模式"),
-            Loc.Localize(
+            Loc.Localize
+            (
                 "DalamudSettingsReShadeHandlingModeHint",
-                "当你遇到与 ReShade 相关的问题时，可以选择以下不同选项来尝试解决问题\n注：所有选项需重启游戏后生效"),
+                "当你遇到与 ReShade 相关的问题时，可以选择以下不同选项来尝试解决问题\n注：所有选项需重启游戏后生效"
+            ),
             c => c.ReShadeHandlingMode,
             (v, c) => c.ReShadeHandlingMode = v,
             fallbackValue: ReShadeHandlingMode.Default,
@@ -65,14 +106,17 @@ internal sealed class SettingsTabExperimental : SettingsTab
                 if (ReShadeAddonInterface.ReShadeIsSignedByReShade)
                 {
                     warning += warning.Length > 0 ? "\n" : string.Empty;
-                    warning += Loc.Localize(
+                    warning += Loc.Localize
+                    (
                         "ReShadeNoAddonSupportNotificationContent",
                         "你安装的 ReShade 版本不支持完整 Addon 功能，可能与 Dalamud 或游戏存在兼容性问题\n" +
-                        "请下载并安装支持完整 Addon 功能的 ReShade 版本");
+                        "请下载并安装支持完整 Addon 功能的 ReShade 版本"
+                    );
                 }
 
                 return warning.Length > 0 ? warning : null;
-            })
+            }
+        )
         {
             FriendlyEnumNameGetter = x => x switch
             {
