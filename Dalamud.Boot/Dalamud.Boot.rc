@@ -42,7 +42,7 @@ BEGIN
     IDS_MSVCRT_DIALOG_MAININSTRUCTION
                             "Microsoft Visual C++ Redistributable 版本过旧"
     IDS_MSVCRT_DIALOG_CONTENT
-                            "当前计算机检测到的 Microsoft Visual C++ Redistributable 版本为 v{0}.{1}.{2}.{3}, 版本过旧, 可能无法正常运行 Dalamud"
+                            "检测到的本机 Microsoft Visual C++ Redistributable 版本过久（v{0}.{1}.{2}.{3}）可能无法正常运行 Dalamud。\n如若出现异常，请及时更新。"
     IDS_MSVCRT_DOWNLOADURL  "https://aka.ms/vc14/vc_redist.x64.exe"
     IDS_INITIALIZEFAIL_ACTION_ABORT "中止\n退出游戏"
     IDS_INITIALIZEFAIL_ACTION_CONTINUE
