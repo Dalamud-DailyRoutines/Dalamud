@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Dalamud;
 
@@ -78,6 +79,9 @@ internal static class ValueFormatter
                 return;
             case Guid identifier:
                 WriteString(builder, identifier.ToString("D"));
+                return;
+            case Task task:
+                WriteString(builder, $"Task:{task.Status}");
                 return;
         }
 

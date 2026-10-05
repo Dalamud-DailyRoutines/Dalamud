@@ -1,166 +1,148 @@
 using System.Linq;
-using System.Text;
 using System.Threading;
 using Dalamud.Game.ClientState.Keys;
+using FFXIVClientStructs.FFXIV.Client.System.Input;
 using ModelContextProtocol;
 
 namespace Dalamud;
 
 /// <summary>
-/// 通过 SendInput 注入键鼠输入。需要游戏窗口在前台。
+/// 向游戏注入键鼠输入。插件界面从窗口过程读取输入，走窗口消息；游戏本体走输入设备接口。
+/// 窗口消息这条始终执行，设备接口失败只作为结果信息返回，不影响界面操作。
 /// </summary>
 internal static unsafe class InputSender
 {
-    private const int KEY_HOLD_MILLISECONDS   = 30;
-    private const int FOCUS_WAIT_MILLISECONDS = 500;
+    private const int KEY_HOLD_MILLISECONDS = 30;
 
     /// <summary>
-    /// 发送一次按键的按下与抬起。
+    /// 发送一次按键。
     /// </summary>
-    /// <param name="key">虚拟键名，例如 A 或 F1。</param>
-    /// <param name="activate">为 true 时先请求把游戏窗口切到前台。</param>
+    /// <param name="key">虚拟键名，取自 VirtualKey 枚举。</param>
     /// <returns>JSON 文本。</returns>
     public static string SendKey
     (
-        string key,
-        bool   activate
+        string key
     )
     {
         var virtualKey = ParseKey(key);
-        var scanCode   = (ushort)NativeApi.MapVirtualKey(virtualKey, NativeApi.MAPVK_VK_TO_VSC);
         var window     = WindowInfo.GetGameWindow();
 
-        EnsureForeground(window, activate);
+        if (window == 0)
+            throw new McpException("取不到游戏窗口句柄。");
 
-        SendKeyboard(virtualKey, scanCode, 0);
+        NativeApi.PostMessage(window, NativeApi.WM_KEYDOWN, virtualKey, 0);
         Thread.Sleep(KEY_HOLD_MILLISECONDS);
-        SendKeyboard(virtualKey, scanCode, NativeApi.KEYEVENTF_KEYUP);
+        NativeApi.PostMessage(window, NativeApi.WM_KEYUP, virtualKey, 0);
 
-        return Describe(window, $"key={key} virtualKey={virtualKey} scanCode={scanCode}");
+        var deviceError = TrySendKeyToGameDevice(virtualKey);
+
+        return "{\"key\":"                             +
+               ValueFormatter.Format(key, 0)           +
+               ",\"virtualKey\":"                      +
+               virtualKey                              +
+               ",\"toWindow\":true"                    +
+               ",\"toGameDevice\":"                    +
+               (deviceError is null ? "true" : "false") +
+               ",\"gameDeviceError\":"                 +
+               ValueFormatter.Format(deviceError, 0)   +
+               "}";
     }
 
     /// <summary>
     /// 发送鼠标动作。
     /// </summary>
     /// <param name="action">动作: move、left、right、middle、wheel。</param>
-    /// <param name="x">客户区 X 坐标，以渲染帧像素为基准，与 capture 一致。</param>
-    /// <param name="y">客户区 Y 坐标，以渲染帧像素为基准，与 capture 一致。</param>
+    /// <param name="x">客户区 X 坐标，以渲染帧像素为基准，与 capture 一致，可带小数。</param>
+    /// <param name="y">客户区 Y 坐标，以渲染帧像素为基准，与 capture 一致，可带小数。</param>
     /// <param name="wheel">滚轮增量。</param>
-    /// <param name="activate">为 true 时先请求把游戏窗口切到前台。</param>
     /// <returns>JSON 文本。</returns>
     public static string SendMouse
     (
         string action,
-        int    x,
-        int    y,
-        int    wheel,
-        bool   activate
+        double x,
+        double y,
+        double wheel
     )
     {
         var window = WindowInfo.GetGameWindow();
-
-        EnsureForeground(window, activate);
-
-        switch (action.ToLowerInvariant())
-        {
-            case "move":
-                SendMouseInput(window, NativeApi.MOUSEEVENTF_MOVE, x, y, 0);
-                break;
-
-            case "left":
-            case "right":
-            case "middle":
-            {
-                var (down, up) = action.ToLowerInvariant() switch
-                {
-                    "left"  => (NativeApi.MOUSEEVENTF_LEFTDOWN, NativeApi.MOUSEEVENTF_LEFTUP),
-                    "right" => (NativeApi.MOUSEEVENTF_RIGHTDOWN, NativeApi.MOUSEEVENTF_RIGHTUP),
-                    _       => (NativeApi.MOUSEEVENTF_MIDDLEDOWN, NativeApi.MOUSEEVENTF_MIDDLEUP)
-                };
-
-                SendMouseInput(window, NativeApi.MOUSEEVENTF_MOVE, x, y, 0);
-                SendMouseInput(window, down,                       x, y, 0);
-                Thread.Sleep(KEY_HOLD_MILLISECONDS);
-                SendMouseInput(window, up, x, y, 0);
-                break;
-            }
-
-            case "wheel":
-                SendMouseInput(window, NativeApi.MOUSEEVENTF_WHEEL, x, y, wheel);
-                break;
-
-            default:
-                throw new McpException($"不支持的鼠标动作 \"{action}\"。");
-        }
-
-        return Describe(window, $"mouse={action} x={x} y={y}");
-    }
-
-    private static void EnsureForeground
-    (
-        nint window,
-        bool activate
-    )
-    {
         if (window == 0)
             throw new McpException("取不到游戏窗口句柄。");
 
-        if (NativeApi.GetForegroundWindow() == window)
-            return;
+        var normalized = action.ToLowerInvariant();
+        var pointX     = (int)Math.Round(x);
+        var pointY     = (int)Math.Round(y);
+        var wheelDelta = (int)Math.Round(wheel);
+        var screen     = ToScreenPoint(window, pointX, pointY);
+        var restored   = NativeApi.GetCursorPos(out var original);
 
-        if (!activate)
-            throw new McpException("游戏窗口不在前台，注入的输入无法送达。要切换前台（会打断当前正在进行的操作）时，显式传 activate=true。");
-
-        NativeApi.ShowWindow(window, NativeApi.SW_RESTORE);
-
-        var targetThread  = NativeApi.GetWindowThreadProcessId(window, out _);
-        var currentThread = NativeApi.GetCurrentThreadId();
-        var attached      = targetThread != currentThread && NativeApi.AttachThreadInput(currentThread, targetThread, true);
+        MCPRuntime.Trace.Write
+        (
+            "input",
+            $"mouse window=0x{window:x} point=({pointX},{pointY}) screen=({screen.X},{screen.Y}) action={normalized}"
+        );
 
         try
         {
-            NativeApi.BringWindowToTop(window);
-            _ = NativeApi.SetForegroundWindow(window);
-            _ = NativeApi.SetFocus(window);
+            NativeApi.SetCursorPos(screen.X, screen.Y);
+
+            switch (normalized)
+            {
+                case "move":
+                    NativeApi.PostMessage(window, NativeApi.WM_MOUSEMOVE, 0, MakeLParam(pointX, pointY));
+                    break;
+
+                case "left":
+                    PostClick(window, NativeApi.WM_LBUTTONDOWN, NativeApi.WM_LBUTTONUP, NativeApi.MK_LBUTTON, pointX, pointY);
+                    break;
+
+                case "right":
+                    PostClick(window, NativeApi.WM_RBUTTONDOWN, NativeApi.WM_RBUTTONUP, NativeApi.MK_RBUTTON, pointX, pointY);
+                    break;
+
+                case "middle":
+                    PostClick(window, NativeApi.WM_MBUTTONDOWN, NativeApi.WM_MBUTTONUP, NativeApi.MK_MBUTTON, pointX, pointY);
+                    break;
+
+                case "wheel":
+                    NativeApi.PostMessage(window, NativeApi.WM_MOUSEWHEEL, wheelDelta << 16, MakeLParam(pointX, pointY));
+                    break;
+
+                default:
+                    throw new McpException($"mouse 参数不接受 \"{action}\"，它只接受 move、left、right、middle、wheel 这五个动作名。动作名要填在 mouse 参数里，action 参数填 mouse；若只做左键单击，mouse 也可以整个省略。");
+            }
         }
         finally
         {
-            if (attached)
-                _ = NativeApi.AttachThreadInput(currentThread, targetThread, false);
+            if (restored)
+                NativeApi.SetCursorPos(original.X, original.Y);
         }
 
-        var deadline = Environment.TickCount64 + FOCUS_WAIT_MILLISECONDS;
-        while (NativeApi.GetForegroundWindow() != window && Environment.TickCount64 < deadline)
-            Thread.Sleep(10);
+        var deviceError = TrySendMouseToGameDevice(normalized, pointX, pointY, wheelDelta);
 
-        if (NativeApi.GetForegroundWindow() != window)
-            throw new McpException("无法把游戏窗口切到前台。");
+        return "{\"detail\":"                                          +
+               ValueFormatter.Format($"mouse={action} x={pointX} y={pointY}", 0) +
+               ",\"toWindow\":true"                                    +
+               ",\"toGameDevice\":"                                    +
+               (deviceError is null ? "true" : "false")                +
+               ",\"gameDeviceError\":"                                 +
+               ValueFormatter.Format(deviceError, 0)                   +
+               "}";
     }
 
-    private static void SendMouseInput
+    private static void PostClick
     (
         nint window,
-        uint flags,
+        uint downMessage,
+        uint upMessage,
+        int  flag,
         int  x,
-        int  y,
-        int  wheel
+        int  y
     )
     {
-        var screen = ToScreenPoint(window, x, y);
-
-        var left   = NativeApi.GetSystemMetrics(NativeApi.SM_XVIRTUALSCREEN);
-        var top    = NativeApi.GetSystemMetrics(NativeApi.SM_YVIRTUALSCREEN);
-        var width  = Math.Max(NativeApi.GetSystemMetrics(NativeApi.SM_CXVIRTUALSCREEN), 1);
-        var height = Math.Max(NativeApi.GetSystemMetrics(NativeApi.SM_CYVIRTUALSCREEN), 1);
-
-        var input = default(NativeApi.Input);
-        input.Type                  = NativeApi.INPUT_MOUSE;
-        input.Union.Mouse.Dx        = (int)((screen.X - left) * 65535L / (width  - 1));
-        input.Union.Mouse.Dy        = (int)((screen.Y - top)  * 65535L / (height - 1));
-        input.Union.Mouse.MouseData = (uint)wheel;
-        input.Union.Mouse.Flags     = flags | NativeApi.MOUSEEVENTF_ABSOLUTE | NativeApi.MOUSEEVENTF_VIRTUALDESK;
-
-        _ = NativeApi.SendInput(1, &input, sizeof(NativeApi.Input));
+        NativeApi.PostMessage(window, NativeApi.WM_MOUSEMOVE, 0, MakeLParam(x, y));
+        NativeApi.PostMessage(window, downMessage, flag, MakeLParam(x, y));
+        Thread.Sleep(KEY_HOLD_MILLISECONDS);
+        NativeApi.PostMessage(window, upMessage, 0, MakeLParam(x, y));
     }
 
     private static NativeApi.Point ToScreenPoint
@@ -192,6 +174,88 @@ internal static unsafe class InputSender
         return point;
     }
 
+    private static string? TrySendKeyToGameDevice
+    (
+        ushort virtualKey
+    )
+    {
+        var manager = InputDeviceManager.Instance();
+        if (manager is null || manager->KeyboardDevice is null)
+            return "键盘设备当前不可用";
+
+        try
+        {
+            ((KeyboardDeviceInterface*)manager->KeyboardDevice)->SendKey((SeVirtualKey)virtualKey);
+            Thread.Sleep(KEY_HOLD_MILLISECONDS);
+            return null;
+        }
+        catch (Exception exception)
+        {
+            return $"{exception.GetType().Name}: {exception.Message}";
+        }
+    }
+
+    private static string? TrySendMouseToGameDevice
+    (
+        string action,
+        int    x,
+        int    y,
+        int    wheel
+    )
+    {
+        if (MouseDevice.MemberFunctionPointers.ScheduleCursorMove is null ||
+            MouseDevice.MemberFunctionPointers.ProcessMouseInputMessage is null)
+        {
+            return "游戏的鼠标函数签名未解析";
+        }
+
+        var window = WindowInfo.GetGameWindow();
+        if (window == 0)
+            return "取不到游戏窗口句柄";
+
+        try
+        {
+            MouseDevice.ScheduleCursorMove(x, y);
+
+            switch (action)
+            {
+                case "left":
+                    MouseDevice.ProcessMouseInputMessage(window, NativeApi.WM_LBUTTONDOWN, NativeApi.MK_LBUTTON);
+                    Thread.Sleep(KEY_HOLD_MILLISECONDS);
+                    MouseDevice.ProcessMouseInputMessage(window, NativeApi.WM_LBUTTONUP, 0);
+                    break;
+
+                case "right":
+                    MouseDevice.ProcessMouseInputMessage(window, NativeApi.WM_RBUTTONDOWN, NativeApi.MK_RBUTTON);
+                    Thread.Sleep(KEY_HOLD_MILLISECONDS);
+                    MouseDevice.ProcessMouseInputMessage(window, NativeApi.WM_RBUTTONUP, 0);
+                    break;
+
+                case "middle":
+                    MouseDevice.ProcessMouseInputMessage(window, NativeApi.WM_MBUTTONDOWN, NativeApi.MK_MBUTTON);
+                    Thread.Sleep(KEY_HOLD_MILLISECONDS);
+                    MouseDevice.ProcessMouseInputMessage(window, NativeApi.WM_MBUTTONUP, 0);
+                    break;
+
+                case "wheel":
+                    MouseDevice.ProcessMouseInputMessage(window, NativeApi.WM_MOUSEWHEEL, wheel << 16);
+                    break;
+            }
+
+            return null;
+        }
+        catch (Exception exception)
+        {
+            return $"{exception.GetType().Name}: {exception.Message}";
+        }
+    }
+
+    private static nint MakeLParam
+    (
+        int x,
+        int y
+    ) => (y << 16) | (x & 0xFFFF);
+
     private static ushort ParseKey
     (
         string key
@@ -210,37 +274,5 @@ internal static unsafe class InputSender
         );
 
         throw new McpException($"无法识别的按键 \"{key}\"。键名取自 VirtualKey 枚举，例如 W、A、S、D、F1、SPACE、RETURN、ESCAPE；一部分可用项: {available}");
-    }
-
-    private static void SendKeyboard
-    (
-        ushort virtualKey,
-        ushort scanCode,
-        uint   flags
-    )
-    {
-        var input = default(NativeApi.Input);
-        input.Type                      = NativeApi.INPUT_KEYBOARD;
-        input.Union.Keyboard.VirtualKey = virtualKey;
-        input.Union.Keyboard.ScanCode   = scanCode;
-        input.Union.Keyboard.Flags      = flags;
-        input.Union.Keyboard.Time       = 0;
-        input.Union.Keyboard.ExtraInfo  = 0;
-
-        _ = NativeApi.SendInput(1, &input, sizeof(NativeApi.Input));
-    }
-
-    private static string Describe
-    (
-        nint   window,
-        string detail
-    )
-    {
-        var builder = new StringBuilder(256);
-        builder.Append("{\"detail\":").Append(ValueFormatter.Format(detail, 0));
-        builder.Append(",\"window\":\"").Append(WindowInfo.Format(window)).Append('"');
-        builder.Append(",\"isForeground\":").Append(NativeApi.GetForegroundWindow() == window ? "true" : "false");
-        builder.Append('}');
-        return builder.ToString();
     }
 }

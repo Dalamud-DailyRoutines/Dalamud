@@ -44,6 +44,22 @@ internal static unsafe partial class NativeApi
 
     internal const uint MAPVK_VK_TO_VSC = 0;
 
+    internal const uint WM_KEYDOWN     = 0x0100;
+    internal const uint WM_KEYUP       = 0x0101;
+    internal const uint WM_CHAR        = 0x0102;
+    internal const uint WM_MOUSEMOVE   = 0x0200;
+    internal const uint WM_LBUTTONDOWN = 0x0201;
+    internal const uint WM_LBUTTONUP   = 0x0202;
+    internal const uint WM_RBUTTONDOWN = 0x0204;
+    internal const uint WM_RBUTTONUP   = 0x0205;
+    internal const uint WM_MBUTTONDOWN = 0x0207;
+    internal const uint WM_MBUTTONUP   = 0x0208;
+    internal const uint WM_MOUSEWHEEL  = 0x020A;
+
+    internal const int MK_LBUTTON = 0x0001;
+    internal const int MK_RBUTTON = 0x0002;
+    internal const int MK_MBUTTON = 0x0010;
+
     internal const uint MEM_COMMIT             = 0x1000;
     internal const uint PAGE_NOACCESS          = 0x01;
     internal const uint PAGE_READONLY          = 0x02;
@@ -339,6 +355,16 @@ internal static unsafe partial class NativeApi
         int    size
     );
 
+    [LibraryImport("user32.dll", EntryPoint = "PostMessageW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool PostMessage
+    (
+        nint  window,
+        uint  message,
+        nint  wParam,
+        nint  lParam
+    );
+
     [LibraryImport("user32.dll")]
     internal static partial nint GetForegroundWindow();
 
@@ -399,6 +425,21 @@ internal static unsafe partial class NativeApi
     (
         nint      window,
         ref Point point
+    );
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetCursorPos
+    (
+        out Point point
+    );
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool SetCursorPos
+    (
+        int x,
+        int y
     );
 
     [LibraryImport("user32.dll")]

@@ -31,7 +31,7 @@ internal static class ToolCatalog
             typeof(ObjectAccessTool),
             nameof(ObjectAccessTool.Run),
             "object_access",
-            "对托管对象做读取、写入、方法调用与成员列举。根可以是 service:类型名、裸服务类型名、服务类型名.成员路径，或引用 id。list 对集合一次铺开全部元素（上限 512 个），对其它对象列出字段与属性及其当前值。",
+            "对托管对象做读取、写入、方法调用与成员列举。根可以是 service:类型名、裸服务类型名、服务类型名.成员路径，或引用 id。list 对集合一次铺开全部元素（上限 512 个），对其它对象列出字段与属性及其当前值。返回值是 Task 时给出任务状态，可据此判断异步操作是否完成。",
             false
         );
         Add
@@ -121,7 +121,7 @@ internal static class ToolCatalog
             typeof(CaptureTool),
             nameof(CaptureTool.Run),
             "capture",
-            "抓取一帧画面并附上坐标基准，可用 region 裁剪出指定区域并等比放大以看清细节。",
+            "抓取一帧画面并附上坐标基准，插件界面会一并包含在内；默认按源分辨率输出，可用 maxDimension 缩放，或配合 region 裁出目标区域放大以辨读细节。",
             true
         );
         Add
@@ -130,7 +130,7 @@ internal static class ToolCatalog
             typeof(InputTool),
             nameof(InputTool.Run),
             "input",
-            "注入键鼠输入，坐标与 capture 的渲染帧像素一致。需要游戏窗口在前台，默认不切换前台，显式传 activate 才会切换。",
+            "向游戏注入键鼠输入或执行游戏内斜杠命令。action 只接受 key、mouse、command 三个值；取 mouse 时动作名填在 mouse 参数里，取值是 move、left、right、middle、wheel，省略 mouse 时按 left 处理。鼠标点击会先把真实光标移到目标位置，离开时放回原处。游戏本体经输入设备接口生效，插件界面经窗口消息生效，两者都不需要游戏窗口在前台，也不会影响其它程序。key 与 mouse 的坐标以渲染帧像素为基准，与 capture 一致；command 直接执行例如 /pdr 这样的命令并在框架线程上跑。",
             false
         );
         Add

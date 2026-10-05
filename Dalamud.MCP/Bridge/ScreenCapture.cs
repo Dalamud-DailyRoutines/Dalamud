@@ -10,10 +10,12 @@ using TerraFX.Interop.Windows;
 namespace Dalamud;
 
 /// <summary>
-/// 从交换链后备缓冲抓取一帧并编码为 PNG，支持按区域裁剪与放大。
+/// 在 ImGui 渲染完成、交换链提交之前抓取后备缓冲，因此画面包含插件界面。
 /// </summary>
 internal static unsafe class ScreenCapture
 {
+    private const int FRAME_WAIT_MILLISECONDS = 5000;
+
     /// <summary>
     /// 抓取一帧。
     /// </summary>
@@ -22,8 +24,45 @@ internal static unsafe class ScreenCapture
     /// <param name="cropY">裁剪区左上角 Y，以渲染帧像素为基准。</param>
     /// <param name="cropWidth">裁剪区宽度，0 表示取到右边界。</param>
     /// <param name="cropHeight">裁剪区高度，0 表示取到下边界。</param>
-    /// <returns>PNG 字节、输出尺寸、源尺寸与后备缓冲格式。</returns>
-    public static (byte[] Png, int Width, int Height, int SourceWidth, int SourceHeight, string Format) Capture
+    /// <returns>PNG 字节、输出尺寸、源尺寸、后备缓冲格式与交换效果。</returns>
+    public static (byte[] Png, int Width, int Height, int SourceWidth, int SourceHeight, string Format, string SwapEffect) Capture
+    (
+        int maxDimension,
+        int cropX,
+        int cropY,
+        int cropWidth,
+        int cropHeight
+    )
+    {
+        MCPRuntime.Trace.Write("capture", "等待界面管理器");
+
+        var manager = Service<InterfaceManager>.GetNullable()
+                      ?? throw new McpException("界面管理器尚未就绪，暂时无法抓帧。");
+
+        MCPRuntime.Trace.Write("capture", "已入队抓帧请求");
+
+        var task = manager.RunAfterImGuiRender(() => CaptureImmediate(maxDimension, cropX, cropY, cropWidth, cropHeight));
+
+        try
+        {
+            if (!task.Wait(FRAME_WAIT_MILLISECONDS))
+            {
+                MCPRuntime.Trace.Write("capture", "等待渲染一帧超时");
+                throw new McpException("等待游戏绘制一帧超时，抓帧回调没有被执行。");
+            }
+        }
+        catch (AggregateException)
+        {
+            // 由下面的 GetResultSafely 重新抛出原始异常。
+        }
+
+        var captured = task.GetResultSafely();
+        MCPRuntime.Trace.Write("capture", $"抓帧完成 out={captured.Width}x{captured.Height}");
+
+        return captured;
+    }
+
+    private static (byte[] Png, int Width, int Height, int SourceWidth, int SourceHeight, string Format, string SwapEffect) CaptureImmediate
     (
         int maxDimension,
         int cropX,
@@ -44,12 +83,14 @@ internal static unsafe class ScreenCapture
         try
         {
             var deviceId = IID.IID_ID3D11Device;
-            swapChain->GetDevice(&deviceId, (void**)&device).ThrowOnError();
+            if (swapChain->GetDevice(&deviceId, (void**)&device).FAILED)
+                throw new McpException("无法从交换链取回 D3D11 设备。");
 
             device->GetImmediateContext(&context);
 
             var textureId = IID.IID_ID3D11Texture2D;
-            swapChain->GetBuffer(0, &textureId, (void**)&backBuffer).ThrowOnError();
+            if (swapChain->GetBuffer(0, &textureId, (void**)&backBuffer).FAILED)
+                throw new McpException("无法取回交换链的第 0 号后备缓冲。");
 
             var desc = default(D3D11_TEXTURE2D_DESC);
             backBuffer->GetDesc(&desc);
@@ -57,22 +98,24 @@ internal static unsafe class ScreenCapture
             var width  = (int)desc.Width;
             var height = (int)desc.Height;
 
-            var left   = Math.Clamp(cropX, 0, width  - 1);
+            var left   = Math.Clamp(cropX, 0, width - 1);
             var top    = Math.Clamp(cropY, 0, height - 1);
-            var right  = cropWidth  <= 0 ? width : Math.Min(left + cropWidth,  width);
-            var bottom = cropHeight <= 0 ? height : Math.Min(top + cropHeight, height);
+            var right  = cropWidth  <= 0 ? width  : Math.Min(left + cropWidth,  width);
+            var bottom = cropHeight <= 0 ? height : Math.Min(top  + cropHeight, height);
 
             desc.Usage          = D3D11_USAGE.D3D11_USAGE_STAGING;
             desc.BindFlags      = 0;
             desc.CPUAccessFlags = (uint)D3D11_CPU_ACCESS_FLAG.D3D11_CPU_ACCESS_READ;
             desc.MiscFlags      = 0;
 
-            device->CreateTexture2D(&desc, null, &staging).ThrowOnError();
+            if (device->CreateTexture2D(&desc, null, &staging).FAILED)
+                throw new McpException($"无法创建 {width}x{height} {desc.Format} 的暂存纹理。");
 
             context->CopyResource((ID3D11Resource*)staging, (ID3D11Resource*)backBuffer);
 
             var mapped = default(D3D11_MAPPED_SUBRESOURCE);
-            context->Map((ID3D11Resource*)staging, 0, D3D11_MAP.D3D11_MAP_READ, 0, &mapped).ThrowOnError();
+            if (context->Map((ID3D11Resource*)staging, 0, D3D11_MAP.D3D11_MAP_READ, 0, &mapped).FAILED)
+                throw new McpException("无法映射暂存纹理以读回像素。");
 
             try
             {
@@ -88,7 +131,12 @@ internal static unsafe class ScreenCapture
                     maxDimension
                 );
 
-                return (png, outWidth, outHeight, width, height, desc.Format.ToString());
+                var swapDesc = default(DXGI_SWAP_CHAIN_DESC);
+                var swapEffect = swapChain->GetDesc(&swapDesc).FAILED
+                                     ? "unknown"
+                                     : swapDesc.SwapEffect.ToString();
+
+                return (png, outWidth, outHeight, width, height, desc.Format.ToString(), swapEffect);
             }
             finally
             {
@@ -180,7 +228,7 @@ internal static unsafe class ScreenCapture
     {
         for (var column = 0; column < targetWidth; column++)
         {
-            var sourceColumn = cropLeft    + (int)((long)column * cropWidth / targetWidth);
+            var sourceColumn = cropLeft + (int)((long)column * cropWidth / targetWidth);
             var target       = destination + ((long)column * 4);
 
             switch (format)
@@ -212,7 +260,7 @@ internal static unsafe class ScreenCapture
                     var packed = *(uint*)(source + ((long)sourceColumn * 4));
                     target[0] = (byte)(((packed >> 20) & 0x3FF) >> 2);
                     target[1] = (byte)(((packed >> 10) & 0x3FF) >> 2);
-                    target[2] = (byte)((packed         & 0x3FF) >> 2);
+                    target[2] = (byte)((packed & 0x3FF) >> 2);
                     target[3] = 0xFF;
                     break;
                 }
