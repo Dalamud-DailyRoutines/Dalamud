@@ -148,6 +148,13 @@ internal sealed class MCPHttpServer : IDisposable
             _ = server.RunAsync(this.cancellation.Token);
 
             await transport.DeliverAsync(message, this.cancellation.Token);
+
+            if (message is JsonRpcNotification)
+            {
+                response.StatusCode = 202;
+                return;
+            }
+
             var reply = await transport.ReadOutboundAsync(REQUEST_TIMEOUT, this.cancellation.Token);
 
             if (reply is null)
