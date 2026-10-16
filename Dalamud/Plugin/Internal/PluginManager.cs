@@ -55,6 +55,7 @@ internal class PluginManager : IInternalDisposableService
     private static readonly ModuleLog Log = ModuleLog.Create<PluginManager>();
 
     private readonly Lock pluginListLock = new();
+    private readonly Lock repoRefreshLock = new();
     private readonly DirectoryInfo pluginDirectory;
     private readonly BannedPlugin[] bannedPlugins = [];
 
@@ -77,6 +78,7 @@ internal class PluginManager : IInternalDisposableService
     private readonly HappyHttpClient happyHttpClient = Service<HappyHttpClient>.Get();
 
     private Task? repoRefreshTask;
+    private DateTimeOffset? lastRepoRefresh;
 
     static PluginManager()
     {
@@ -235,6 +237,11 @@ internal class PluginManager : IInternalDisposableService
     /// Gets a value indicating whether all added repos are not in progress.
     /// </summary>
     public bool ReposReady => this.repoRefreshTask is { IsCompleted: true };
+
+    /// <summary>
+    /// Gets a value indicating whether a repository refresh has produced a plugin list.
+    /// </summary>
+    public bool HasLoadedRepos { get; private set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether the plugin manager started in safe mode.
@@ -448,13 +455,45 @@ internal class PluginManager : IInternalDisposableService
     /// <summary>
     /// Reload all plugin repositories. This is called after setting repos from config, but can also be called manually to refresh repos.
     /// </summary>
+    /// <param name="force">Whether to refresh even if the last refresh finished within ten minutes.</param>
     /// <returns>Task that will resolve once all repos are reloaded.</returns>
-    public async Task ReloadAllReposAsync()
+    public async Task ReloadAllReposAsync(bool force = true)
     {
-        if (this.repoRefreshTask is null or { IsCompleted: true })
-            this.repoRefreshTask = this.ReloadAllReposInternalAsync();
+        Task refreshTask;
+        lock (this.repoRefreshLock)
+        {
+            if (this.repoRefreshTask is null or { IsCompleted: true })
+            {
+                if (!force && this.lastRepoRefresh is { } lastRefresh &&
+                    DateTimeOffset.UtcNow - lastRefresh < TimeSpan.FromMinutes(10))
+                    return;
 
-        await this.repoRefreshTask;
+                this.repoRefreshTask = this.ReloadReposInternalAsync();
+            }
+
+            refreshTask = this.repoRefreshTask;
+        }
+
+        await refreshTask;
+    }
+
+    /// <summary>
+    /// Refreshes a single plugin repository and updates the available plugins.
+    /// </summary>
+    /// <param name="repository">The repository to refresh.</param>
+    /// <returns>A task that completes when the refresh finishes.</returns>
+    public async Task ReloadRepoAsync(PluginRepository repository)
+    {
+        Task refreshTask;
+        lock (this.repoRefreshLock)
+        {
+            if (this.repoRefreshTask is null or { IsCompleted: true })
+                this.repoRefreshTask = this.ReloadReposInternalAsync(repository);
+
+            refreshTask = this.repoRefreshTask;
+        }
+
+        await refreshTask;
     }
 
     /// <summary>
@@ -1797,26 +1836,40 @@ internal class PluginManager : IInternalDisposableService
     /// <summary>
     /// Reload the PluginMaster for each repo, filter, and event that the list has updated.
     /// </summary>
+    /// <param name="repository">The repository to refresh, or null to refresh all repositories.</param>
     /// <param name="notify">Whether to notify that available plugins have changed afterward.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    private async Task ReloadAllReposInternalAsync(bool notify = true)
+    private async Task ReloadReposInternalAsync(PluginRepository? repository = null, bool notify = true)
     {
-        Log.Information("Now reloading all repos...");
+        Log.Information("Reloading plugin repositories: {Repository}", repository?.PluginMasterUrl ?? "all");
 
         try
         {
-            Debug.Assert(!this.Repos.First().IsThirdParty, "First repository should be main repository");
-            await this.Repos.First().ReloadAsync(); // Load official repo first
+            if (repository != null)
+            {
+                await repository.ReloadAsync();
+            }
+            else
+            {
+                Debug.Assert(!this.Repos.First().IsThirdParty, "First repository should be main repository");
+                await this.Repos.First().ReloadAsync(); // Load official repo first
 
-            await Task.WhenAll(this.Repos.Skip(1).Select(repo => repo.ReloadAsync()));
+                await Task.WhenAll(this.Repos.Skip(1).Select(repo => repo.ReloadAsync()));
+            }
 
             Log.Information("Repos reloaded, now refiltering...");
 
             this.RefilterAvailablePlugins(notify);
+            this.HasLoadedRepos = true;
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Could not reload plugin repositories");
+        }
+        finally
+        {
+            if (repository == null)
+                this.lastRepoRefresh = DateTimeOffset.UtcNow;
         }
     }
 

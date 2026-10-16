@@ -52,9 +52,13 @@ internal class PluginInstallerWindow : Window, IDisposable
     private readonly PluginImageCache      imageCache;
     private readonly PluginCategoryManager categoryManager = new();
 
-    private readonly List<int> openPluginCollapsibles = [];
+    private readonly HashSet<string> openPluginCollapsibles = [];
 
     private readonly HashSet<string> collapsedRepoGroups = [];
+    private readonly Dictionary<string, float> pluginItemHeights = [];
+
+    private (float Width, float FontSize, float Scale, Vector2 ItemSpacing, PluginCategoryManager.CategoryKind Category, List<PluginUpdateStatus>? Updates) pluginListLayout;
+    private PluginRepository? retryingRepo;
 
     private readonly DateTime timeLoaded;
 
@@ -120,9 +124,10 @@ internal class PluginInstallerWindow : Window, IDisposable
 
     [SuppressMessage("StyleCop.CSharp.OrderingRules", "SA1201:Elements should appear in the correct order", Justification = "Makes sense like this")]
     private List<RemotePluginManifest> pluginListAvailable = [];
-    private List<RemotePluginManifest> pluginListAvailableLastResort = [];
     private List<LocalPlugin> pluginListInstalled = [];
     private List<AvailablePluginUpdate> pluginListUpdatable = [];
+    private int availablePluginsChanged;
+    private bool hasAvailablePluginList;
     private bool hasDevPlugins = false;
     private bool hasHiddenPlugins = false;
 
@@ -182,6 +187,8 @@ internal class PluginInstallerWindow : Window, IDisposable
 
             pluginManager.OnAvailablePluginsChanged += this.OnAvailablePluginsChanged;
             pluginManager.OnInstalledPluginsChanged += this.OnInstalledPluginsChanged;
+
+            this.OnAvailablePluginsChanged();
 
             for (var i = 0; i < this.testerImagePaths.Length; i++)
             {
@@ -295,7 +302,7 @@ internal class PluginInstallerWindow : Window, IDisposable
     {
         var pluginManager = Service<PluginManager>.Get();
 
-        _ = pluginManager.ReloadAllReposAsync();
+        _ = pluginManager.ReloadAllReposAsync(false);
         _ = pluginManager.ScanDevPluginsAsync();
 
         this.adaptiveSort = true;
@@ -346,6 +353,11 @@ internal class PluginInstallerWindow : Window, IDisposable
     public override void Draw()
     {
         using var scope = this.listLock.EnterScope();
+
+        var pluginManager = Service<PluginManager>.Get();
+        if ((pluginManager.ReposReady || (!this.hasAvailablePluginList && pluginManager.HasLoadedRepos)) &&
+            Interlocked.Exchange(ref this.availablePluginsChanged, 0) != 0)
+            this.ApplyAvailablePluginsChanges();
 
         this.DrawHeader();
         this.DrawPluginCategories();
@@ -400,7 +412,15 @@ internal class PluginInstallerWindow : Window, IDisposable
         this.installStatus = OperationStatus.InProgress;
         this.loadingIndicatorKind = LoadingIndicatorKind.Installing;
 
-        Task.Run(() => pluginManager.InstallPluginAsync(manifest, useTesting || manifest.IsTestingExclusive, PluginLoadReason.Installer))
+        Task.Run(async () =>
+            {
+                await pluginManager.WaitForReposAsync();
+                var currentManifest = pluginManager.AvailablePlugins.FirstOrDefault(candidate =>
+                    candidate.InternalName == manifest.InternalName &&
+                    candidate.SourceRepo.PluginMasterUrl == manifest.SourceRepo.PluginMasterUrl)
+                    ?? throw new InvalidOperationException("刷新后已找不到此插件，请重新选择。");
+                return await pluginManager.InstallPluginAsync(currentManifest, useTesting || currentManifest.IsTestingExclusive, PluginLoadReason.Installer);
+            })
             .ContinueWith(task =>
             {
                 // There is no need to set as Complete for an individual plugin installation
@@ -520,7 +540,6 @@ internal class PluginInstallerWindow : Window, IDisposable
     /// </summary>
     private void ClearSearch()
     {
-        var prevSearchText = this.searchText;
         this.searchText = string.Empty;
 
         if (this.adaptiveSort || this.sortKind == PluginSortKind.SearchScore)
@@ -531,7 +550,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         this.ResortPlugins();
 
-        this.UpdateCategoriesOnSearchChange(prevSearchText);
+        this.UpdateCategoriesOnSearchChange();
     }
 
     private void SetOpenPage(PluginInstallerOpenKind kind)
@@ -579,7 +598,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         var profileManager = Service<ProfileManager>.Get();
 
         var isWaitingManager = !pluginManager.PluginsReady ||
-                               !pluginManager.ReposReady;
+                               !pluginManager.HasLoadedRepos;
         var isWaitingProfiles = profileManager.IsBusy;
 
         var isLoading = this.AnyOperationInProgress ||
@@ -775,7 +794,6 @@ internal class PluginInstallerWindow : Window, IDisposable
         using (ImRaii.Disabled(isProfileManager))
         {
             var searchTextChanged = false;
-            var prevSearchText = this.searchText;
             ImGui.SetNextItemWidth(searchInputWidth);
             searchTextChanged |= ImGui.InputTextWithHint(
                 "###XlPluginInstaller_Search"u8,
@@ -815,7 +833,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                     this.ResortPlugins();
                 }
 
-                this.UpdateCategoriesOnSearchChange(prevSearchText);
+                this.UpdateCategoriesOnSearchChange();
             }
         }
 
@@ -844,6 +862,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
                             // Positions of plugins within the list is likely to change
                             this.openPluginCollapsibles.Clear();
+                            this.pluginItemHeights.Clear();
                         }
                     }
                 }
@@ -899,6 +918,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         if (filtersChanged)
             this.openPluginCollapsibles.Clear();
+            this.pluginItemHeights.Clear();
     }
 
     private void DrawFooter()
@@ -920,8 +940,11 @@ internal class PluginInstallerWindow : Window, IDisposable
             _ = pluginManager.ScanDevPluginsAsync();
         
         ImGui.SameLine();
-        if (ImGui.Button("刷新插件列表"))
-            _ = pluginManager.ReloadAllReposAsync();
+        using (ImRaii.Disabled(!pluginManager.ReposReady || this.AnyOperationInProgress))
+        {
+            if (ImGui.Button(pluginManager.ReposReady ? "刷新插件列表" : "正在刷新插件列表……"))
+                _ = pluginManager.ReloadAllReposAsync();
+        }
 
         ImGui.SameLine();
         if (ImGui.Button(Locs.FooterButton_Settings))
@@ -949,9 +972,9 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             ImGuiComponents.DisabledButton(Locs.FooterButton_UpdateSafeMode);
         }
-        else if (!ready || this.updateStatus == OperationStatus.InProgress || this.installStatus == OperationStatus.InProgress)
+        else if (!ready || this.availablePluginsChanged != 0 || this.updateStatus == OperationStatus.InProgress || this.installStatus == OperationStatus.InProgress)
         {
-            ImGuiComponents.DisabledButton(Locs.FooterButton_UpdatePlugins);
+            ImGuiComponents.DisabledButton(ready ? Locs.FooterButton_UpdatePlugins : "等待刷新后更新");
         }
         else if (this.updateStatus == OperationStatus.Complete)
         {
@@ -1080,10 +1103,13 @@ internal class PluginInstallerWindow : Window, IDisposable
             var buttonWidth = 120f;
             ImGui.SetCursorPosX((ImGui.GetWindowWidth() - ((buttonWidth * 2) - (ImGui.GetStyle().ItemSpacing.Y * 2))) / 2);
 
-            if (ImGui.Button(Locs.UpdateModal_Yes, new Vector2(buttonWidth, 40)))
+            using (ImRaii.Disabled(!Service<PluginManager>.Get().ReposReady || this.availablePluginsChanged != 0))
             {
-                ImGui.CloseCurrentPopup();
-                this.updateModalTaskCompletionSource?.SetResult(true);
+                if (ImGui.Button(Locs.UpdateModal_Yes, new Vector2(buttonWidth, 40)))
+                {
+                    ImGui.CloseCurrentPopup();
+                    this.updateModalTaskCompletionSource?.SetResult(true);
+                }
             }
 
             ImGui.SameLine();
@@ -1745,7 +1771,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                 var updatable = this.pluginListUpdatable
                     .Where(u => repoPlugins.Contains(u.InstalledPlugin))
                     .ToList();
-                if (ImGui.MenuItem($"更新全部已安装插件 ({updatable.Count})", false, canOperate && updatable.Count > 0))
+                if (ImGui.MenuItem($"更新全部已安装插件 ({updatable.Count})", false, canOperate && pluginManager.ReposReady && this.availablePluginsChanged == 0 && updatable.Count > 0))
                 {
                     this.updateStatus = OperationStatus.InProgress;
                     this.loadingIndicatorKind = LoadingIndicatorKind.UpdatingAll;
@@ -2380,12 +2406,21 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             // reset opened list of collapsibles when switching between categories
             this.openPluginCollapsibles.Clear();
+            this.pluginItemHeights.Clear();
 
             // do NOT reset dirty flag when Available group is selected, it will be handled by DrawAvailablePluginList()
             if (groupInfo.GroupKind != PluginCategoryManager.GroupKind.Available)
             {
                 this.categoryManager.ResetContentDirty();
             }
+        }
+
+        var layout = (ImGui.GetContentRegionAvail().X, ImGui.GetFontSize(), ImGuiHelpers.GlobalScale,
+                      ImGui.GetStyle().ItemSpacing, this.categoryManager.CurrentCategoryKind, this.updatedPlugins);
+        if (this.pluginListLayout != layout)
+        {
+            this.pluginItemHeights.Clear();
+            this.pluginListLayout = layout;
         }
 
         switch (groupInfo.GroupKind)
@@ -2763,25 +2798,39 @@ internal class PluginInstallerWindow : Window, IDisposable
     {
         var pluginManager = Service<PluginManager>.Get();
 
-        var ready = pluginManager.PluginsReady && pluginManager.ReposReady;
+        var ready = pluginManager.PluginsReady && pluginManager.HasLoadedRepos;
 
         if (!ready)
         {
             ImGui.TextColored(ImGuiColors.DalamudGrey, Locs.TabBody_LoadingPlugins);
         }
 
-        var failedRepos = pluginManager.Repos
-                                       .Where(repo => repo.State == PluginRepositoryState.Fail)
-                                       .ToArray();
+        if (pluginManager.ReposReady)
+            this.retryingRepo = null;
 
-        if (failedRepos.Length > 0)
+        foreach (var repo in pluginManager.Repos)
         {
-            var failText = Locs.TabBody_DownloadFailed;
-            var aggFailText = failedRepos
-                              .Select(repo => $"{failText} ({repo.PluginMasterUrl})")
-                              .Aggregate((s1, s2) => $"{s1}\n{s2}");
+            if (repo.State != PluginRepositoryState.Fail && repo != this.retryingRepo)
+                continue;
 
-            ImGui.TextColored(ImGuiColors.ErrorForeground, aggFailText);
+            using var id = ImRaii.PushId(repo.PluginMasterUrl);
+            using (ImRaii.Disabled(!pluginManager.ReposReady || this.AnyOperationInProgress))
+            {
+                if (ImGui.SmallButton(repo == this.retryingRepo ? "重试中……" : "重试"))
+                {
+                    this.retryingRepo = repo;
+                    _ = pluginManager.ReloadRepoAsync(repo);
+                }
+            }
+
+            ImGui.SameLine();
+            ImGui.TextColored(ImGuiColors.ErrorForeground, $"{Locs.TabBody_DownloadFailed} ({repo.PluginMasterUrl})");
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(repo.LastSuccessfulRefresh is { } lastRefresh
+                                     ? $"正在使用上次结果，最后成功刷新：{lastRefresh.ToLocalTime():yyyy-MM-dd HH:mm:ss}"
+                                     : "此仓库尚未成功加载。");
+            }
         }
 
         return ready;
@@ -2789,7 +2838,10 @@ internal class PluginInstallerWindow : Window, IDisposable
 
     private bool DrawPluginCollapsingHeader(string label, LocalPlugin? plugin, IPluginManifest manifest, PluginHeaderFlags flags, Action drawContextMenuAction, int index)
     {
-        var isOpen = this.openPluginCollapsibles.Contains(index);
+        var pluginKey = plugin != null
+                            ? $"installed:{plugin.EffectiveWorkingPluginId}"
+                            : $"{((RemotePluginManifest)manifest).SourceRepo.PluginMasterUrl}:{manifest.InternalName}";
+        var isOpen = this.openPluginCollapsibles.Contains(pluginKey);
 
         var sectionSize = ImGuiHelpers.GlobalScale * 66;
 
@@ -2854,11 +2906,11 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             if (isOpen)
             {
-                this.openPluginCollapsibles.Remove(index);
+                this.openPluginCollapsibles.Remove(pluginKey);
             }
             else
             {
-                this.openPluginCollapsibles.Add(index);
+                this.openPluginCollapsibles.Add(pluginKey);
             }
 
             isOpen = !isOpen;
@@ -3205,8 +3257,23 @@ internal class PluginInstallerWindow : Window, IDisposable
         ImGui.SetCursorPos(startCursor);
     }
 
+    private bool ClipPluginItem(string pluginKey)
+    {
+        if (!this.pluginItemHeights.TryGetValue(pluginKey, out var height) ||
+            ImGui.IsRectVisible(new Vector2(this.pluginListLayout.Width, height)))
+            return false;
+
+        ImGui.Dummy(new Vector2(0, MathF.Max(0, height - this.pluginListLayout.ItemSpacing.Y)));
+        return true;
+    }
+
     private void DrawAvailablePlugin(RemotePluginManifest manifest, int index)
     {
+        var pluginKey = $"available:{manifest.SourceRepo.PluginMasterUrl}:{manifest.InternalName}";
+        if (this.ClipPluginItem(pluginKey))
+            return;
+
+        var startY = ImGui.GetCursorPosY();
         var configuration = Service<DalamudConfiguration>.Get();
         var pluginManager = Service<PluginManager>.Get();
 
@@ -3219,6 +3286,8 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         var enableInstallButton = this.updateStatus != OperationStatus.InProgress &&
                                   this.installStatus != OperationStatus.InProgress &&
+                                  pluginManager.ReposReady &&
+                                  this.availablePluginsChanged == 0 &&
                                   !isOutdated &&
                                   !isIncompatible;
 
@@ -3307,7 +3376,7 @@ internal class PluginInstallerWindow : Window, IDisposable
             }
             else if (!enableInstallButton)
             {
-                ImGuiComponents.DisabledButton(Locs.PluginButton_InstallVersion(versionString));
+                ImGuiComponents.DisabledButton(pluginManager.ReposReady ? Locs.PluginButton_InstallVersion(versionString) : "等待刷新后安装");
             }
             else
             {
@@ -3344,6 +3413,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         }
 
         ImGui.PopID();
+        this.pluginItemHeights[pluginKey] = ImGui.GetCursorPosY() - startY;
     }
 
     private void DrawAvailablePluginContextMenu(RemotePluginManifest manifest)
@@ -3357,6 +3427,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             if (hasTestingVersionAvailable)
             {
+                using var disabled = ImRaii.Disabled(!pluginManager.ReposReady || this.availablePluginsChanged != 0 || pluginManager.SafeMode || this.AnyOperationInProgress);
                 if (ImGui.Selectable(Locs.PluginContext_InstallTestingVersion))
                 {
                     EnsureHaveTestingOptIn(manifest);
@@ -3421,6 +3492,11 @@ internal class PluginInstallerWindow : Window, IDisposable
 
     private void DrawInstalledPlugin(LocalPlugin plugin, int index, RemotePluginManifest? remoteManifest, AvailablePluginUpdate? availablePluginUpdate, bool showInstalled)
     {
+        var pluginKey = $"installed:{plugin.EffectiveWorkingPluginId}:{showInstalled}";
+        if (this.ClipPluginItem(pluginKey))
+            return;
+
+        var startY = ImGui.GetCursorPosY();
         var configuration = Service<DalamudConfiguration>.Get();
         var commandManager = Service<CommandManager>.Get();
 
@@ -3713,6 +3789,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         }
 
         ImGui.PopID();
+        this.pluginItemHeights[pluginKey] = ImGui.GetCursorPosY() - startY;
     }
 
     private void DrawInstalledPluginChangelog(string changelog)
@@ -4030,7 +4107,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                         this.DisplayErrorContinuation(t, Locs.ErrorModal_LoadFail(plugin.Name));
                     };
 
-                    if (availableUpdate != default && !availableUpdate.InstalledPlugin.IsDev)
+                    if (pluginManager.ReposReady && this.availablePluginsChanged == 0 && availableUpdate != default && !availableUpdate.InstalledPlugin.IsDev)
                     {
                         this.ShowUpdateModal(plugin).ContinueWith(async t =>
                         {
@@ -4101,7 +4178,13 @@ internal class PluginInstallerWindow : Window, IDisposable
         this.installStatus = OperationStatus.InProgress;
         this.loadingIndicatorKind = LoadingIndicatorKind.UpdatingSingle;
 
-        return await Task.Run(async () => await pluginManager.UpdateSinglePluginAsync(update, true, false))
+        return await Task.Run(async () =>
+                         {
+                             await pluginManager.WaitForReposAsync();
+                             var currentUpdate = pluginManager.UpdatablePlugins.FirstOrDefault(candidate => candidate.InstalledPlugin == update.InstalledPlugin)
+                                                 ?? throw new InvalidOperationException("刷新后已找不到此更新，请重新选择。");
+                             return await pluginManager.UpdateSinglePluginAsync(currentUpdate, true, false);
+                         })
                          .ContinueWith(task =>
                          {
                              // There is no need to set as Complete for an individual plugin installation
@@ -4121,17 +4204,19 @@ internal class PluginInstallerWindow : Window, IDisposable
 
     private void DrawUpdateSinglePluginButton(AvailablePluginUpdate update)
     {
+        var waitingForRefresh = !Service<PluginManager>.Get().ReposReady || this.availablePluginsChanged != 0;
+        using var disabled = ImRaii.Disabled(waitingForRefresh);
         if (ImGuiComponents.IconButton(FontAwesomeIcon.Download))
         {
             Task.Run(() => this.UpdateSinglePlugin(update));
         }
 
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {
             var updateVersion = update.UseTesting
                                     ? update.UpdateManifest.TestingAssemblyVersion
                                     : update.UpdateManifest.AssemblyVersion;
-            ImGui.SetTooltip(Locs.PluginButtonToolTip_UpdateSingle(updateVersion.ToString()));
+            ImGui.SetTooltip(waitingForRefresh ? "等待插件列表刷新完成后更新" : Locs.PluginButtonToolTip_UpdateSingle(updateVersion.ToString()));
         }
     }
 
@@ -4420,13 +4505,7 @@ internal class PluginInstallerWindow : Window, IDisposable
                     {
                         pluginManager.RemovePlugin(plugin);
 
-                        // Plugin is gone now, shift down modals behind us
-                        this.openPluginCollapsibles.Remove(index);
-                        for (var i = 0; i < this.openPluginCollapsibles.Count; i++)
-                        {
-                            if (this.openPluginCollapsibles[i] > index)
-                                this.openPluginCollapsibles[i]--;
-                        }
+                        this.openPluginCollapsibles.Remove($"installed:{plugin.EffectiveWorkingPluginId}");
                     }
                 }
                 catch (Exception ex)
@@ -4738,21 +4817,51 @@ internal class PluginInstallerWindow : Window, IDisposable
 
     private void OnAvailablePluginsChanged()
     {
+        Interlocked.Exchange(ref this.availablePluginsChanged, 1);
+    }
+
+    private void ApplyAvailablePluginsChanges()
+    {
         var pluginManager = Service<PluginManager>.Get();
         var configuration = Service<DalamudConfiguration>.Get();
 
-        using (this.listLock.EnterScope())
+        var availablePlugins = pluginManager.AvailablePlugins.ToList();
+        var preserveOrder = this.IsOpen && this.hasAvailablePluginList;
+        if (preserveOrder)
         {
-            // By removing installed plugins only when the available plugin list changes (basically when the window is
-            // opened), plugins that have been newly installed remain in the available plugin list as installed.
-            this.pluginListAvailable = pluginManager.AvailablePlugins.ToList();
-            this.pluginListUpdatable = pluginManager.UpdatablePlugins.ToList();
-            this.ResortPlugins();
+            var previousOrder = new Dictionary<(string RepoUrl, string InternalName), int>();
+            for (var i = 0; i < this.pluginListAvailable.Count; i++)
+            {
+                var manifest = this.pluginListAvailable[i];
+                previousOrder.TryAdd((manifest.SourceRepo.PluginMasterUrl, manifest.InternalName), i);
+            }
+
+            availablePlugins = availablePlugins.OrderBy(manifest =>
+                previousOrder.TryGetValue((manifest.SourceRepo.PluginMasterUrl, manifest.InternalName), out var position)
+                    ? position
+                    : int.MaxValue).ToList();
         }
+
+        this.pluginItemHeights.Clear();
+        this.pluginListAvailable = availablePlugins;
+        this.pluginListUpdatable = pluginManager.UpdatablePlugins.ToList();
+        this.hasAvailablePluginList = true;
+        if (!preserveOrder)
+            this.ResortPlugins();
 
         this.hasHiddenPlugins = this.pluginListAvailable.Any(x => configuration.HiddenPluginInternalName.Contains(x.InternalName));
 
+        var wasContentDirty = this.categoryManager.IsContentDirty;
         this.UpdateCategoriesOnPluginsChange();
+        if (!wasContentDirty && preserveOrder)
+            this.categoryManager.ResetContentDirty();
+
+        if (this.updateStatus != OperationStatus.InProgress)
+        {
+            this.updateStatus = OperationStatus.Idle;
+            this.updatePluginCount = 0;
+            this.updatedPlugins = null;
+        }
     }
 
     private void OnInstalledPluginsChanged()
@@ -4762,6 +4871,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
         using (this.listLock.EnterScope())
         {
+            this.pluginItemHeights.Clear();
             this.pluginListInstalled = pluginManager.InstalledPlugins.ToList();
             this.pluginListUpdatable = pluginManager.UpdatablePlugins.ToList();
             this.hasDevPlugins = this.pluginListInstalled.Any(plugin => plugin.IsDev);
@@ -4773,7 +4883,7 @@ internal class PluginInstallerWindow : Window, IDisposable
 
     private void ResortPlugins()
     {
-        this.pluginListAvailableLastResort = this.pluginListAvailable;
+        this.pluginItemHeights.Clear();
 
         switch (this.sortKind)
         {
@@ -4865,7 +4975,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         return this.updateModalTaskCompletionSource.Task;
     }
 
-    private void UpdateCategoriesOnSearchChange(string? previousSearchText)
+    private void UpdateCategoriesOnSearchChange()
     {
         if (string.IsNullOrEmpty(this.searchText))
         {
@@ -4875,19 +4985,6 @@ internal class PluginInstallerWindow : Window, IDisposable
         {
             var pluginsMatchingSearch = this.pluginListAvailable.Where(rm => !this.IsManifestFiltered(rm)).ToArray();
 
-            // Check if the search results are different, and close collapsibles whose slot now contains a different plugin
-            if (previousSearchText != null)
-            {
-                var previousSearchResults = this.pluginListAvailableLastResort.Where(rm => !this.IsManifestFiltered(rm)).ToArray();
-                if (!previousSearchResults.SequenceEqual(pluginsMatchingSearch))
-                {
-                    this.openPluginCollapsibles.RemoveAll(
-                        i => i >= pluginsMatchingSearch.Length ||
-                             i >= previousSearchResults.Length ||
-                             pluginsMatchingSearch[i].InternalName != previousSearchResults[i].InternalName);
-                }
-            }
-
             this.categoryManager.SetCategoryHighlightsForPlugins(pluginsMatchingSearch);
         }
     }
@@ -4895,7 +4992,7 @@ internal class PluginInstallerWindow : Window, IDisposable
     private void UpdateCategoriesOnPluginsChange()
     {
         this.categoryManager.BuildCategories(this.pluginListAvailable);
-        this.UpdateCategoriesOnSearchChange(null);
+        this.UpdateCategoriesOnSearchChange();
     }
 
     private void DrawFontawesomeIconOutlined(FontAwesomeIcon icon, Vector4 outline, Vector4 iconColor)

@@ -108,12 +108,17 @@ internal class PluginRepository
     /// <summary>
     ///     可用插件列表
     /// </summary>
-    public ReadOnlyCollection<RemotePluginManifest>? PluginMaster { get; private set; }
+    public ReadOnlyCollection<RemotePluginManifest> PluginMaster { get; private set; } = new List<RemotePluginManifest>().AsReadOnly();
 
     /// <summary>
     ///     仓库初始化状态
     /// </summary>
     public PluginRepositoryState State { get; private set; }
+
+    /// <summary>
+    /// Gets the time of the last successful repository refresh.
+    /// </summary>
+    public DateTimeOffset? LastSuccessfulRefresh { get; private set; }
 
     /// <summary>
     ///     创建主仓库实例
@@ -139,8 +144,7 @@ internal class PluginRepository
     /// <returns>The new state.</returns>
     public async Task ReloadAsync()
     {
-        this.State        = PluginRepositoryState.InProgress;
-        this.PluginMaster = new List<RemotePluginManifest>().AsReadOnly();
+        this.State = PluginRepositoryState.InProgress;
 
         try
         {
@@ -153,16 +157,24 @@ internal class PluginRepository
             pluginMaster.Sort((pm1, pm2) => string.Compare(pm1.Name, pm2.Name, StringComparison.Ordinal));
 
             // Set the source for each remote manifest. Allows for checking if is 3rd party.
-            foreach (var manifest in pluginMaster) { manifest.SourceRepo = this; }
+            foreach (var manifest in pluginMaster)
+            {
+                manifest.SourceRepo = this;
+            }
 
-            this.PluginMaster = pluginMaster.Where(this.IsValidManifest).ToList().AsReadOnly();
+            var validManifests = pluginMaster.Where(this.IsValidManifest).ToList().AsReadOnly();
 
             // API9 HACK: Force IsHide to false, we should remove that
             if (!this.IsThirdParty)
             {
-                foreach (var manifest in this.PluginMaster) { manifest.IsHide = false; }
+                foreach (var manifest in validManifests)
+                {
+                    manifest.IsHide = false;
+                }
             }
 
+            this.PluginMaster = validManifests;
+            this.LastSuccessfulRefresh = DateTimeOffset.UtcNow;
             this.State = PluginRepositoryState.Success;
         }
         catch (Exception ex)
