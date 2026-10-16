@@ -150,11 +150,11 @@ internal partial class ChatHandlers : IServiceType
                 (_, _) => dalamudInterface.OpenSettingsTo(SettingsOpenKind.Experimental));
 
             var devModeWarningMessage = new SeStringBuilder()
-                .AddText(Loc.Localize("DeveloperModeEnabledWarning", "Developer Mode is enabled."))
+                .AddText("开发者模式已启用。")
                 .AddUiForeground(500)
                 .AddText("  [ ")
                 .Add(linkPayload)
-                .AddText(Loc.Localize("DeveloperModeMoreInfoLink", "Learn more here"))
+                .AddText("配置")
                 .Add(RawPayload.LinkTerminator)
                 .AddText(" ]")
                 .AddUiForegroundOff();
