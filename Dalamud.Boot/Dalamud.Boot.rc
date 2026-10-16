@@ -34,7 +34,7 @@ RT_MANIFEST_THEMES      RT_MANIFEST             "themes.manifest"
 
 STRINGTABLE
 BEGIN
-    IDS_APPNAME             "Dalamud 启动器"
+    IDS_APPNAME             "Dalamud"
     IDS_INITIALIZEFAIL_ACTION_ABORT "中止\n退出游戏"
     IDS_INITIALIZEFAIL_ACTION_CONTINUE
                             "不加载 Dalamud 启动游戏\n游戏将以未启用 Dalamud 的状态启动"

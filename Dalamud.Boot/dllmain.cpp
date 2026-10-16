@@ -25,41 +25,6 @@
 HMODULE g_hModule;
 HINSTANCE g_hGameInstance = GetModuleHandleW(nullptr);
 
-static void LogMsvcrtVersions() {
-    if (utils::is_running_on_wine())
-        return;
-
-    constexpr const wchar_t* RuntimeDllNames[] = {
-#ifdef _DEBUG
-        L"msvcp140d.dll",
-        L"vcruntime140d.dll",
-        L"vcruntime140_1d.dll",
-#else
-        L"msvcp140.dll",
-        L"vcruntime140.dll",
-        L"vcruntime140_1.dll",
-#endif
-    };
-
-    for (const auto& runtimeDllName : RuntimeDllNames) {
-        const utils::loaded_module mod(GetModuleHandleW(runtimeDllName));
-        if (!mod) {
-            logging::D("当前进程未加载 MSVCRT DLL: {}", runtimeDllName);
-            continue;
-        }
-
-        const auto path = mod.path()
-            .transform([](const auto& p) { return p.wstring(); })
-            .value_or(runtimeDllName);
-
-        if (const auto versionResult = mod.get_file_version()) {
-            logging::I("当前进程已加载的 MSVCRT DLL {} 的版本为 {}", path, utils::format_file_version(versionResult->get()));
-        } else {
-            logging::W("无法读取当前进程已加载的 MSVCRT DLL {} 的版本: {}", path, versionResult.error().describe());
-        }
-    }
-}
-
 static void PrintCpuGpuInfo() {
     for (const auto& line : hardware_info::collect_lines())
         logging::I(line);
@@ -150,7 +115,6 @@ HRESULT WINAPI InitializeImpl(LPVOID lpParam, HANDLE hMainThreadContinue) {
         MessageBoxW(nullptr, L"点击确定以继续 (初始化前)", L"Dalamud 启动器", MB_OK);
 
     PrintCpuGpuInfo();
-    LogMsvcrtVersions();
 
     if (g_startInfo.BootDebugDirectX) {
         logging::I("正在启用 DirectX 调试");
