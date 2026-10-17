@@ -221,12 +221,12 @@ internal sealed class LocalDevPlugin : LocalPlugin
                     }
 
                     await this.ReloadAsync();
-                    notificationManager.AddNotification($"The DevPlugin '{this.Name}' was reloaded successfully.", "Plugin reloaded!", NotificationType.Success);
+                    notificationManager.AddNotification($"成功重载了开发版插件“{Name}”。", "插件重载", NotificationType.Success);
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "DevPlugin reload failed.");
-                    notificationManager.AddNotification($"The DevPlugin '{this.Name} could not be reloaded.", "Plugin reload failed!", NotificationType.Error);
+                    Log.Error(ex, "开发版插件重载失败。");
+                    notificationManager.AddNotification($"开发版插件“{Name}”重载失败。", "插件重载", NotificationType.Error);
                 }
             },
             this.fileWatcherTokenSource.Token);

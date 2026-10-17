@@ -809,22 +809,22 @@ public sealed class UiBuilder : IDisposable, IUiBuilder
         ImGui.SetNextWindowPos(ImGuiHelpers.MainViewport.GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f));
         ImGui.SetNextWindowSizeConstraints(new Vector2(800 * ImGuiHelpers.GlobalScale, 0), new Vector2(float.MaxValue));
         ImGuiHelpers.ForceNextWindowMainViewport();
-        if (!ImGui.Begin($"{this.namespaceName} Error", ref this.hasErrorWindow, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize))
+        if (!ImGui.Begin($"{this.namespaceName} 错误", ref this.hasErrorWindow, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize))
         {
             ImGui.End();
             return;
         }
 
         DalamudComponents.DrawErrorDisplay(
-            Loc.Localize("UiBuilderErrorOccurred", "An error occurred while rendering this plugin. Please contact the developer for details."),
+            "窗口渲染异常，请咨询插件开发者获悉详情。",
             this.lastError,
             [
-                (Loc.Localize("UiBuilderErrorRecoverButton", "Attempt to retry"), () =>
+                ("重新渲染", () =>
                     {
                         this.hasErrorWindow = false;
                         this.lastError = null;
                     }),
-                (Loc.Localize("UiBuilderErrorReloadButton", "Reload Plugin"), () =>
+                ("重载插件", () =>
                 {
                     var pluginName = this.plugin.Name;
                     this.hasErrorWindow = false;
@@ -836,19 +836,15 @@ public sealed class UiBuilder : IDisposable, IUiBuilder
                             if (t.IsCompletedSuccessfully)
                             {
                                 notificationManager.AddNotification(
-                                    string.Format(
-                                        Loc.Localize("UiBuilderReloadSuccess", "The plugin '{0}' was reloaded successfully."),
-                                        pluginName),
-                                    Loc.Localize("UiBuilderReloadSuccessTitle", "Plugin reloaded!"),
+                                    $"成功重载了插件“{pluginName}”。",
+                                    "插件重载",
                                     NotificationType.Success);
                             }
                             else
                             {
                                 notificationManager.AddNotification(
-                                    string.Format(
-                                        Loc.Localize("UiBuilderReloadFailure", "The plugin '{0}' could not be reloaded."),
-                                        pluginName),
-                                    Loc.Localize("UiBuilderReloadFailureTitle", "Plugin reload failed!"),
+                                    $"插件“{pluginName}”重载失败。",
+                                    "插件重载",
                                     NotificationType.Error);
                             }
                         });
