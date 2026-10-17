@@ -27,14 +27,14 @@ internal sealed class SettingsTabGeneral : SettingsTab
 
         new EnumSettingsEntry<XivChatType>(
             "Dalamud 聊天频道",
-            "选择用于 Dalamud 常规消息的聊天频道",
+            "选择用于输出 Dalamud 常规消息的聊天频道。",
             c => c.GeneralChatType,
             (v, c) => c.GeneralChatType = v,
             warning: v =>
             {
                 // TODO: Maybe actually implement UI for the validity check...
                 if (v == XivChatType.None)
-                    return "请勿选择 \"None\"";
+                    return "请勿选择“None”";
 
                 return null;
             },
@@ -44,37 +44,37 @@ internal sealed class SettingsTabGeneral : SettingsTab
 
         new SettingsEntry<bool>(
             "游戏加载前等待插件",
-            "在插件加载完成前阻止游戏继续加载",
+            "在插件加载完成前阻止游戏继续加载。",
             c => c.IsResumeGameAfterPluginLoad,
             (v, c) => c.IsResumeGameAfterPluginLoad = v),
 
         new SettingsEntry<bool>(
-            "匹配副本成功时, 使游戏任务栏图标闪烁",
-            "匹配副本成功时, 在任务栏闪烁游戏窗口图标以提醒",
+            "匹配副本成功时，使游戏任务栏图标闪烁",
+            "匹配副本成功时，在任务栏闪烁游戏窗口图标以提醒。",
             c => c.DutyFinderTaskbarFlash,
             (v, c) => c.DutyFinderTaskbarFlash = v),
 
         new SettingsEntry<bool>(
-            "进入副本时, 发送聊天栏消息",
-            "进入副本时, 发送一条聊天消息说明当前进入的副本",
+            "进入副本时，发送聊天栏消息",
+            "进入副本时，发送一条聊天消息说明当前进入的副本。",
             c => c.DutyFinderChatMessage,
             (v, c) => c.DutyFinderChatMessage = v),
 
         new SettingsEntry<bool>(
             "发送 Dalamud 欢迎消息",
-            "登录时, 发送一条来自 Dalamud 的登录欢迎消息",
+            "登录时，发送一条来自 Dalamud 的登录欢迎消息。",
             c => c.PrintDalamudWelcomeMsg,
             (v, c) => c.PrintDalamudWelcomeMsg = v),
 
         new SettingsEntry<bool>(
             "在欢迎消息中显示已加载插件",
-            "登录时, 发送一条聊天消息, 列出已加载的插件",
+            "登录时，发送一条列出已加载的插件的聊天消息。",
             c => c.PrintPluginsWelcomeMsg,
             (v, c) => c.PrintPluginsWelcomeMsg = v),
 
         new SettingsEntry<bool>(
             "在系统菜单中添加 Dalamud 条目",
-            "在系统菜单中添加用于打开 Dalamud 插件和设置的条目",
+            "在系统菜单中添加用于打开 Dalamud 插件和设置的条目。",
             c => c.DoButtonsSystemMenu,
             (v, c) => c.DoButtonsSystemMenu = v),
 
@@ -82,7 +82,7 @@ internal sealed class SettingsTabGeneral : SettingsTab
 
         new SettingsEntry<bool>(
             "匿名上传市场数据",
-            "浏览市场时匿名向 Universalis 提供游戏内市场板数据, 数据无法关联到个人",
+            "浏览市场时匿名向 Universalis 提供游戏内市场板数据，数据无法关联到个人。",
             c => c.IsMbCollect,
             (v, c) => c.IsMbCollect = v),
 

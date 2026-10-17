@@ -5,6 +5,7 @@ using CheapLoc;
 
 using Dalamud.Bindings.ImGui;
 using Dalamud.Configuration.Internal;
+using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Internal.DesignSystem;
 using Dalamud.Interface.Internal.Windows.Settings.Tabs;
@@ -252,7 +253,7 @@ internal sealed class SettingsWindow : Window
 
         foreach (var settingsTab in this.tabs)
         {
-            var eligible = settingsTab.Entries.Where(x => !x.Name.Key.IsNullOrEmpty() && x.Name.ToString().Contains(this.searchInput, StringComparison.InvariantCultureIgnoreCase));
+            var eligible = settingsTab.Entries.Where(x => x.MatchesSearch(this.searchInput));
 
             if (!eligible.Any())
                 continue;
@@ -302,8 +303,7 @@ internal sealed class SettingsWindow : Window
             ImGui.GetIO().BackendFlags &= ~ImGuiBackendFlags.HasGamepad;
             ImGui.GetIO().ConfigFlags &= ~ImGuiConfigFlags.NavEnableSetMousePos;
 
-            var di = Service<DalamudInterface>.Get();
-            di.CloseGamepadModeNotifierWindow();
+            Service<GamepadState>.Get().EnableGamepadNav = false;
         }
         else
         {

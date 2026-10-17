@@ -17,6 +17,8 @@ using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Agent;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.GamePad;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Gui;
 using Dalamud.Hooking;
 using Dalamud.Interface.Animation.EasingFunctions;
@@ -69,7 +71,7 @@ internal class DalamudInterface : IInternalDisposableService
     private readonly ColorDemoWindow colorDemoWindow;
     private readonly ComponentDemoWindow componentDemoWindow;
     private readonly DataWindow dataWindow;
-    private readonly GamepadModeNotifierWindow gamepadModeNotifierWindow;
+    private readonly GamepadModeNotifier gamepadModeNotifier;
     private readonly ConsoleWindow consoleWindow;
     private readonly PluginStatWindow pluginStatWindow;
     private readonly PluginInstallerWindow pluginWindow;
@@ -127,7 +129,7 @@ internal class DalamudInterface : IInternalDisposableService
         this.colorDemoWindow = new ColorDemoWindow { IsOpen = false };
         this.componentDemoWindow = new ComponentDemoWindow { IsOpen = false };
         this.dataWindow = new DataWindow(this.WindowSystem) { IsOpen = false };
-        this.gamepadModeNotifierWindow = new GamepadModeNotifierWindow { IsOpen = false };
+        this.gamepadModeNotifier = new GamepadModeNotifier(fontAtlasFactory);
         this.consoleWindow = new ConsoleWindow(configuration) { IsOpen = configuration.LogOpenAtStartup };
         this.pluginStatWindow = new PluginStatWindow { IsOpen = false };
         this.pluginWindow = new PluginInstallerWindow(pluginImageCache, configuration) { IsOpen = false };
@@ -154,7 +156,6 @@ internal class DalamudInterface : IInternalDisposableService
         this.WindowSystem.AddWindow(this.colorDemoWindow);
         this.WindowSystem.AddWindow(this.componentDemoWindow);
         this.WindowSystem.AddWindow(this.dataWindow);
-        this.WindowSystem.AddWindow(this.gamepadModeNotifierWindow);
         this.WindowSystem.AddWindow(this.consoleWindow);
         this.WindowSystem.AddWindow(this.pluginStatWindow);
         this.WindowSystem.AddWindow(this.pluginWindow);
@@ -253,6 +254,7 @@ internal class DalamudInterface : IInternalDisposableService
         this.WindowSystem.RemoveAllWindows();
 
         this.consoleWindow.Dispose();
+        this.gamepadModeNotifier.Dispose();
         this.pluginWindow.Dispose();
         this.titleScreenMenuWindow.Dispose();
     }
@@ -286,11 +288,6 @@ internal class DalamudInterface : IInternalDisposableService
     /// Opens the dev menu bar.
     /// </summary>
     public void OpenDevMenu() => this.isImGuiDrawDevMenu = true;
-
-    /// <summary>
-    /// Opens the <see cref="GamepadModeNotifierWindow"/>.
-    /// </summary>
-    public void OpenGamepadModeNotifierWindow() => this.gamepadModeNotifierWindow.IsOpen = true;
 
     /// <summary>
     /// Opens the <see cref="ConsoleWindow"/>.
@@ -392,15 +389,6 @@ internal class DalamudInterface : IInternalDisposableService
 
     #endregion
 
-    #region Close
-
-    /// <summary>
-    /// Closes the <see cref="GamepadModeNotifierWindow"/>.
-    /// </summary>
-    public void CloseGamepadModeNotifierWindow() => this.gamepadModeNotifierWindow.IsOpen = false;
-
-    #endregion
-
     #region Toggle
 
     /// <summary>
@@ -430,11 +418,6 @@ internal class DalamudInterface : IInternalDisposableService
     /// Toggles the dev menu bar.
     /// </summary>
     public void ToggleDevMenu() => this.isImGuiDrawDevMenu ^= true;
-
-    /// <summary>
-    /// Toggles the <see cref="GamepadModeNotifierWindow"/>.
-    /// </summary>
-    public void ToggleGamepadModeNotifierWindow() => this.gamepadModeNotifierWindow.Toggle();
 
     /// <summary>
     /// Toggles the <see cref="ConsoleWindow"/>.
@@ -547,6 +530,8 @@ internal class DalamudInterface : IInternalDisposableService
             }
 #endif
 
+        this.DrawGamepadNotifier();
+
         if (!this.hasDrawError && !this.isDrawSuppressed)
         {
             try
@@ -588,6 +573,28 @@ internal class DalamudInterface : IInternalDisposableService
 
         if (this.hasDrawError)
             this.DrawInternalErrorWindow();
+    }
+
+    /// <summary>
+    /// Draws the gamepad mode notifier while inputs are caught.
+    /// </summary>
+    private void DrawGamepadNotifier()
+    {
+        var gamepadState = Service<GamepadState>.GetNullable();
+        if (gamepadState?.EnableGamepadNav != true)
+        {
+            return;
+        }
+
+        try
+        {
+            this.gamepadModeNotifier.Draw();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error drawing gamepad mode notifier, disabling gamepad mode");
+            gamepadState.EnableGamepadNav = false;
+        }
     }
 
     private void DrawInternalErrorWindow()
