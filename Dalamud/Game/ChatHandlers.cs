@@ -106,17 +106,12 @@ internal partial class ChatHandlers : IServiceType
         }
 
         if (this.configuration.PrintDalamudWelcomeMsg)
-        {
-            chatGui.Print(string.Format(Loc.Localize("DalamudWelcome", "Dalamud {0} loaded."), Versioning.GetScmVersion())
-                          + string.Format(Loc.Localize("PluginsWelcome", " {0} plugin(s) loaded."), pluginManager.InstalledPlugins.Count(x => x.IsLoaded)));
-        }
+            chatGui.Print($"欢迎使用 Dalamud {Versioning.GetScmVersion()}，当前加载了{pluginManager.InstalledPlugins.Count(x => x.IsLoaded)}个插件。");
 
         if (this.configuration.PrintPluginsWelcomeMsg)
         {
             foreach (var plugin in pluginManager.InstalledPlugins.OrderBy(plugin => plugin.Name).Where(x => x.IsLoaded))
-            {
-                chatGui.Print(string.Format(Loc.Localize("DalamudPluginLoaded", "    》 {0} v{1} loaded."), plugin.Name, plugin.EffectiveVersion));
-            }
+                chatGui.Print($"  \ue06f {plugin.Name}（版本{plugin.EffectiveVersion}）");
         }
 
         if (string.IsNullOrEmpty(this.configuration.LastVersion) || !Versioning.GetAssemblyVersion().StartsWith(this.configuration.LastVersion))
@@ -125,13 +120,13 @@ internal partial class ChatHandlers : IServiceType
                 (_, _) => dalamudInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.Changelogs));
 
             var updateMessage = new SeStringBuilder()
-                .AddText(Loc.Localize("DalamudUpdated", "Dalamud has been updated successfully!"))
+                .AddText("成功更新了 Dalamud。")
                 .AddUiForeground(500)
-                .AddText("  [ ")
+                .AddText("  [")
                 .Add(linkPayload)
-                .AddText(Loc.Localize("DalamudClickToViewChangelogs", "Click here to view the changelog"))
+                .AddText("更新日志")
                 .Add(RawPayload.LinkTerminator)
-                .AddText(" ]")
+                .AddText("]")
                 .AddUiForegroundOff();
 
             chatGui.Print(new XivChatEntry
@@ -150,13 +145,13 @@ internal partial class ChatHandlers : IServiceType
                 (_, _) => dalamudInterface.OpenSettingsTo(SettingsOpenKind.Experimental));
 
             var devModeWarningMessage = new SeStringBuilder()
-                .AddText("开发者模式已启用。")
+                .AddText("启用了开发者模式。若非刻意为之，请及时关闭，避免蒙受损失。")
                 .AddUiForeground(500)
-                .AddText("  [ ")
+                .AddText("  [")
                 .Add(linkPayload)
                 .AddText("配置")
                 .Add(RawPayload.LinkTerminator)
-                .AddText(" ]")
+                .AddText("]")
                 .AddUiForegroundOff();
 
             chatGui.Print(new XivChatEntry

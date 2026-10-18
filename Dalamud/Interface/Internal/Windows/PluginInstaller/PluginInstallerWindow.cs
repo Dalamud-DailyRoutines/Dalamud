@@ -5383,7 +5383,7 @@ internal class PluginInstallerWindow : Window, IDisposable
         #endregion
 
         #region Plugin Update chatbox
-        public static string PluginUpdateHeader_Chatbox => "更新:";
+        public static string PluginUpdateHeader_Chatbox => "更新了插件。";
         #endregion
 
         #region Error modal buttons

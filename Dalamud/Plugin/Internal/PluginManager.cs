@@ -341,10 +341,8 @@ internal class PluginManager : IInternalDisposableService
     /// </summary>
     /// <param name="manifest">Manifest to check.</param>
     /// <returns>A value indicating whether testing should be used.</returns>
-    public bool HasTestingOptIn(IPluginManifest manifest)
-    {
-        return this.configuration.PluginTestingOptIns!.Any(x => x.InternalName == manifest.InternalName);
-    }
+    public bool HasTestingOptIn(IPluginManifest manifest) => 
+        this.configuration.PluginTestingOptIns!.Any(x => x.InternalName == manifest.InternalName);
 
     /// <summary>
     /// For a given manifest, determine if the testing version can be used over the normal version.
@@ -2019,8 +2017,14 @@ internal class PluginManager : IInternalDisposableService
 
     private static class Locs
     {
-        public static string DalamudPluginUpdateSuccessful(string name, Version version) => Loc.Localize("DalamudPluginUpdateSuccessful", "    》 {0} updated to v{1}.").Format(name, version);
+        public static string DalamudPluginUpdateSuccessful
+        (
+            string  name,
+            Version version
+        ) =>
+            $"  \ue06f “{name}”更新到了版本{version}。";
 
-        public static string DalamudPluginUpdateFailed(string name, Version version, string why) => Loc.Localize("DalamudPluginUpdateFailed", "    》 {0} update to v{1} failed ({2}).").Format(name, version, why);
+        public static string DalamudPluginUpdateFailed(string name, Version version, string why) => 
+            $"  \ue06f 尝试更新“{name}”到版本{version}时发生错误（{why}）。";
     }
 }

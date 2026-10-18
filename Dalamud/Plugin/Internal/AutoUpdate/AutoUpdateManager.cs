@@ -337,7 +337,7 @@ internal class AutoUpdateManager : IServiceType
         };
 
         var pluginStates = (await this.pluginManager.UpdatePluginsAsync(updatablePlugins, this.isDryRun.Value, true, progress)).ToList();
-        this.pluginManager.PrintUpdatedPlugins(pluginStates, Loc.Localize("DalamudPluginAutoUpdate", "The following plugins were auto-updated:"));
+        this.pluginManager.PrintUpdatedPlugins(pluginStates, "自动更新了插件。");
 
         notification.Progress = 1;
         notification.UserDismissable = true;
