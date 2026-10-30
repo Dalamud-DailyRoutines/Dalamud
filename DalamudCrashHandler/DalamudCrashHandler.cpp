@@ -2516,7 +2516,7 @@ int main()
             L"向他人求助时，请同时提供信息包和故障发生前的操作，也可前往我们的 <a href=\"discord\">Discord</a> 寻求帮助。\n";
         if (!logSaveError.empty())
             content += std::format(L"{}\n仍可使用下方按钮尝试保存故障信息包。\n\n", logSaveError);
-        content += L"故障详情：\n";
+        content += L"\n故障详情：\n";
         content += window_log_str;
         content += L"\n请选择重启方式，再点击“重启游戏”：";
         config.pszContent = content.c_str();
