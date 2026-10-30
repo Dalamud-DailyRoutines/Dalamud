@@ -1,9 +1,6 @@
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-
-using CheapLoc;
-
 using Dalamud.Bindings.ImGui;
 using Dalamud.Configuration.Internal;
 using Dalamud.Game.Player;
@@ -17,8 +14,6 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Plugin.Internal;
 using Dalamud.Plugin.Internal.Profiles;
-using Dalamud.Utility;
-
 using Serilog;
 
 namespace Dalamud.Interface.Internal.Windows.PluginInstaller;
@@ -29,26 +24,26 @@ namespace Dalamud.Interface.Internal.Windows.PluginInstaller;
 internal class ProfileManagerWidget
 {
     private readonly PluginInstallerWindow installer;
-    private Mode mode = Mode.Overview;
-    private Guid? editingProfileGuid;
-    private bool lastWasPickingPlugin;
+    private          Mode                  mode = Mode.Overview;
+    private          Guid?                 editingProfileGuid;
+    private          bool                  lastWasPickingPlugin;
 
-    private string pickerSearch = string.Empty;
+    private string pickerSearch    = string.Empty;
     private string profileNameEdit = string.Empty;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProfileManagerWidget"/> class.
     /// </summary>
     /// <param name="installer">The plugin installer.</param>
-    public ProfileManagerWidget(PluginInstallerWindow installer)
-    {
-        this.installer = installer;
-    }
+    public ProfileManagerWidget
+    (
+        PluginInstallerWindow installer
+    ) => this.installer = installer;
 
     private enum Mode
     {
         Overview,
-        EditSingleProfile,
+        EditSingleProfile
     }
 
     /// <summary>
@@ -58,13 +53,13 @@ internal class ProfileManagerWidget
     {
         if (!Service<DalamudConfiguration>.Get().ProfilesEnabled)
         {
-            this.DrawChoice();
+            DrawChoice();
             return;
         }
 
-        var tutorialTitle = Locs.TutorialTitle + "###collectionsTutorWindow";
-        var tutorialId = ImGui.GetID(tutorialTitle);
-        this.DrawTutorial(tutorialTitle);
+        const string TUTORIAL_TITLE = "关于插件合集" + "###collectionsTutorWindow";
+        var          tutorialId     = ImGui.GetID(TUTORIAL_TITLE);
+        DrawTutorial(TUTORIAL_TITLE);
 
         switch (this.mode)
         {
@@ -83,21 +78,22 @@ internal class ProfileManagerWidget
     /// </summary>
     public void Reset()
     {
-        this.mode = Mode.Overview;
+        this.mode               = Mode.Overview;
         this.editingProfileGuid = null;
-        this.pickerSearch = string.Empty;
+        this.pickerSearch       = string.Empty;
     }
 
-    private void DrawChoice()
+    private static void DrawChoice()
     {
         ImGuiHelpers.ScaledDummy(60);
-        ImGuiHelpers.CenteredText(Locs.Choice1);
-        ImGuiHelpers.CenteredText(Locs.Choice2);
+        ImGuiHelpers.CenteredText("插件合集可将多个插件分组，以便统一启用、禁用和分享。");
+        ImGuiHelpers.CenteredText("此功能仍处于试验阶段，可能存在问题。是否启用？");
         ImGuiHelpers.ScaledDummy(20);
 
         var buttonWidth = ImGui.GetWindowWidth() / 3;
         ImGuiHelpers.CenterCursorFor((int)buttonWidth);
-        if (ImGui.Button(Locs.ChoiceConfirmation, new Vector2(buttonWidth, 40 * ImGuiHelpers.GlobalScale)))
+
+        if (ImGui.Button("启用插件合集", new Vector2(buttonWidth, 40 * ImGuiHelpers.GlobalScale)))
         {
             var config = Service<DalamudConfiguration>.Get();
             config.ProfilesEnabled = true;
@@ -105,49 +101,55 @@ internal class ProfileManagerWidget
         }
     }
 
-    private void DrawTutorial(string modalTitle)
+    private static void DrawTutorial
+    (
+        string modalTitle
+    )
     {
         var open = true;
         ImGui.SetNextWindowSize(new Vector2(650, 550), ImGuiCond.Appearing);
+
         using (var popup = ImRaii.PopupModal(modalTitle, ref open))
         {
             if (popup)
             {
-                var buttonHeight = ImGui.GetFrameHeight() + (ImGui.GetStyle().ItemSpacing.Y * 2);
-                using var scrolling = ImRaii.Child("###scrolling"u8, new Vector2(-1, ImGui.GetContentRegionAvail().Y - buttonHeight));
+                var       buttonHeight = ImGui.GetFrameHeight() + (ImGui.GetStyle().ItemSpacing.Y * 2);
+                using var scrolling    = ImRaii.Child("###scrolling"u8, new Vector2(-1, ImGui.GetContentRegionAvail().Y - buttonHeight));
+
                 if (scrolling)
                 {
-                    ImGui.TextWrapped(Locs.TutorialParagraphOne);
+                    ImGui.TextWrapped("合集是可分享的插件列表，可通过插件安装器或聊天指令启用、禁用。\n合集启用时，其中处于激活状态的插件也会启用。插件若属于多个合集，只要任一合集需要它，它就会保持启用。");
                     ImGuiHelpers.ScaledDummy(5);
-                    ImGui.TextWrapped(Locs.TutorialParagraphTwo);
+                    ImGui.TextWrapped("编辑合集时，可点击加号添加插件；也可在“已安装插件”页面点击工具箱图标，将插件加入合集。");
                     ImGuiHelpers.ScaledDummy(5);
-                    ImGui.TextWrapped(Locs.TutorialParagraphThree);
+                    ImGui.TextWrapped("若将合集的启动行为设为“启动时始终启用”，每次启动游戏时都会启用此合集及其中的插件，即使上次游戏期间曾手动禁用。");
                     ImGuiHelpers.ScaledDummy(5);
-                    ImGui.TextWrapped(Locs.TutorialParagraphFour);
+                    ImGui.TextWrapped("合集内每个插件旁的复选框表示该插件是否在此合集中激活。未勾选时，此合集不会启用该插件；但其他合集仍可能将其启用。");
                     ImGuiHelpers.ScaledDummy(5);
-                    ImGui.TextWrapped(Locs.TutorialParagraphFive);
+                    ImGui.TextWrapped("勾选“仅对指定角色启用”后，合集只会在指定角色上激活。可点击加号选择角色，或点击人物图标添加当前角色，以便为不同角色使用不同合集。");
                     ImGuiHelpers.ScaledDummy(5);
-                    ImGui.TextWrapped(Locs.TutorialCommands);
+                    ImGui.TextWrapped("可在聊天窗口或宏中使用以下指令管理合集：");
 
                     ImGui.Bullet();
                     ImGui.SameLine();
-                    ImGui.TextWrapped(Locs.TutorialCommandsEnable);
+                    ImGui.TextWrapped($"{PluginManagementCommandHandler.CommandEnableProfile} \"合集名称\" —— 启用合集");
 
                     ImGui.Bullet();
                     ImGui.SameLine();
-                    ImGui.TextWrapped(Locs.TutorialCommandsDisable);
+                    ImGui.TextWrapped($"{PluginManagementCommandHandler.CommandDisableProfile} \"合集名称\" —— 禁用合集");
 
                     ImGui.Bullet();
                     ImGui.SameLine();
-                    ImGui.TextWrapped(Locs.TutorialCommandsToggle);
+                    ImGui.TextWrapped($"{PluginManagementCommandHandler.CommandToggleProfile} \"合集名称\" —— 切换合集状态");
 
-                    ImGui.TextWrapped(Locs.TutorialCommandsEnd);
+                    ImGui.TextWrapped("执行多条指令时，将按顺序处理。");
                 }
 
                 ImGuiHelpers.ScaledDummy(4);
-                var buttonWidth = 120f;
-                ImGui.SetCursorPosX((ImGui.GetWindowWidth() - buttonWidth) / 2);
-                if (ImGui.Button("OK"u8, new Vector2(buttonWidth, 0)))
+                const float BUTTON_WIDTH = 120f;
+                ImGui.SetCursorPosX((ImGui.GetWindowWidth() - BUTTON_WIDTH) / 2);
+
+                if (ImGui.Button("OK"u8, new Vector2(BUTTON_WIDTH, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                 }
@@ -155,6 +157,7 @@ internal class ProfileManagerWidget
         }
 
         var config = Service<DalamudConfiguration>.Get();
+
         if (!config.ProfilesHasSeenTutorial)
         {
             ImGui.OpenPopup(modalTitle);
@@ -163,16 +166,19 @@ internal class ProfileManagerWidget
         }
     }
 
-    private void DrawOverview(uint tutorialId)
+    private void DrawOverview
+    (
+        uint tutorialId
+    )
     {
-        var didAny = false;
+        var didAny  = false;
         var profman = Service<ProfileManager>.Get();
 
         if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus))
             profman.AddNewProfile();
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(Locs.AddProfile);
+            ImGui.SetTooltip("添加合集");
 
         ImGui.SameLine();
         ImGuiHelpers.ScaledDummy(5);
@@ -183,17 +189,17 @@ internal class ProfileManagerWidget
             try
             {
                 profman.ImportProfile(ImGui.GetClipboardText());
-                Service<NotificationManager>.Get().AddNotification(Locs.NotificationImportSuccess, type: NotificationType.Success);
+                Service<NotificationManager>.Get().AddNotification("合集导入成功", type: NotificationType.Success);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Could not import profile");
-                Service<NotificationManager>.Get().AddNotification(Locs.NotificationImportError, type: NotificationType.Error);
+                Service<NotificationManager>.Get().AddNotification("无法导入合集", type: NotificationType.Error);
             }
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(Locs.ImportProfileHint);
+            ImGui.SetTooltip("从剪贴板导入分享的合集");
 
         ImGui.SameLine();
         ImGuiHelpers.ScaledDummy(5);
@@ -203,28 +209,31 @@ internal class ProfileManagerWidget
             ImGui.OpenPopup(tutorialId);
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(Locs.TutorialHint);
+            ImGui.SetTooltip("了解插件合集");
 
         ImGui.Separator();
         ImGuiHelpers.ScaledDummy(5);
 
         using var profileChooserChild = ImRaii.Child("###profileChooserScrolling"u8);
+
         if (profileChooserChild)
         {
-            var contentRegionMaxX = ImGui.GetWindowContentRegionMax().X;
-            Guid? toCloneGuid = null;
+            var   contentRegionMaxX = ImGui.GetWindowContentRegionMax().X;
+            Guid? toCloneGuid       = null;
 
             using var syncScope = profman.GetSyncScope();
+
             foreach (var profile in profman.Profiles)
             {
                 if (profile.IsDefaultProfile)
                     continue;
 
                 var isEnabled = profile.IsEnabled;
+
                 if (ImGuiComponents.ToggleButton($"###toggleButton{profile.Guid}", ref isEnabled))
                 {
                     Task.Run(() => profile.SetStateAsync(isEnabled))
-                        .ContinueWith(this.installer.DisplayErrorContinuation, Locs.ErrorCouldNotChangeState);
+                        .ContinueWith(this.installer.DisplayErrorContinuation, "无法更改插件状态");
                 }
 
                 ImGui.SameLine();
@@ -241,13 +250,13 @@ internal class ProfileManagerWidget
 
                 if (ImGuiComponents.IconButton($"###editButton{profile.Guid}", FontAwesomeIcon.PencilAlt))
                 {
-                    this.mode = Mode.EditSingleProfile;
+                    this.mode               = Mode.EditSingleProfile;
                     this.editingProfileGuid = profile.Guid;
-                    this.profileNameEdit = profile.Name;
+                    this.profileNameEdit    = profile.Name;
                 }
 
                 if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip(Locs.EditProfileHint);
+                    ImGui.SetTooltip("编辑此合集");
 
                 ImGui.SameLine();
                 ImGui.SetCursorPosX(contentRegionMaxX - (ImGuiHelpers.GlobalScale * 30 * 2) - 5);
@@ -256,7 +265,7 @@ internal class ProfileManagerWidget
                     toCloneGuid = profile.Guid;
 
                 if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip(Locs.CloneProfileHint);
+                    ImGui.SetTooltip("复制此合集");
 
                 ImGui.SameLine();
                 ImGui.SetCursorPosX(contentRegionMaxX - (ImGuiHelpers.GlobalScale * 30 * 3) - 5);
@@ -264,11 +273,11 @@ internal class ProfileManagerWidget
                 if (ImGuiComponents.IconButton($"###exportButton{profile.Guid}", FontAwesomeIcon.FileExport))
                 {
                     ImGui.SetClipboardText(profile.Model.SerializeForShare());
-                    Service<NotificationManager>.Get().AddNotification(Locs.CopyToClipboardNotification, type: NotificationType.Success);
+                    Service<NotificationManager>.Get().AddNotification("合集已复制到剪贴板", type: NotificationType.Success);
                 }
 
                 if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip(Locs.CopyToClipboardHint);
+                    ImGui.SetTooltip("将合集复制到剪贴板以便分享");
 
                 didAny = true;
 
@@ -294,7 +303,7 @@ internal class ProfileManagerWidget
             if (!didAny)
             {
                 ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudGrey);
-                ImGuiHelpers.CenteredText(Locs.AddProfileHint);
+                ImGuiHelpers.CenteredText("尚无合集，点击添加");
                 ImGui.PopStyleColor();
             }
         }
@@ -310,8 +319,8 @@ internal class ProfileManagerWidget
         }
 
         var profman = Service<ProfileManager>.Get();
-        var pm = Service<PluginManager>.Get();
-        var pic = Service<PluginImageCache>.Get();
+        var pm      = Service<PluginManager>.Get();
+        var pic     = Service<PluginImageCache>.Get();
         var profile = profman.Profiles.FirstOrDefault(x => x.Guid == this.editingProfileGuid);
 
         if (profile == null)
@@ -321,46 +330,44 @@ internal class ProfileManagerWidget
             return;
         }
 
-        var addPluginToProfilePopupId = DalamudComponents.DrawPluginPicker(
+        var addPluginToProfilePopupId = DalamudComponents.DrawPluginPicker
+        (
             "###addPluginToProfilePicker",
             ref this.pickerSearch,
             plugin =>
             {
                 Task.Run(() => profile.AddOrUpdateAsync(plugin.EffectiveWorkingPluginId, plugin.Manifest.InternalName, true, false))
-                    .ContinueWith(this.installer.DisplayErrorContinuation, Locs.ErrorCouldNotChangeState);
+                    .ContinueWith(this.installer.DisplayErrorContinuation, "无法更改插件状态");
             },
             plugin => !plugin.Manifest.SupportsProfiles ||
                       profile.Plugins.Any(x => x.WorkingPluginId == plugin.EffectiveWorkingPluginId),
             getAnnotation: plugin =>
             {
-                var count = profman.Profiles.Count(
-                    p => !p.IsDefaultProfile &&
-                         p.Guid != this.editingProfileGuid &&
-                         p.Plugins.Any(x => x.WorkingPluginId == plugin.EffectiveWorkingPluginId));
+                var count = profman.Profiles.Count
+                (p => !p.IsDefaultProfile               &&
+                      p.Guid != this.editingProfileGuid &&
+                      p.Plugins.Any(x => x.WorkingPluginId == plugin.EffectiveWorkingPluginId)
+                );
                 return count switch
                 {
                     0 => null,
-                    1 => Locs.InOneCollection,
-                    _ => Locs.InNCollections(count),
+                    1 => "（另属 1 个合集）",
+                    _ => $"（另属 {count} 个合集）"
                 };
-            });
+            }
+        );
 
         // Reapply states when closing plugin picker, as we might have changed want states for some plugins. Only do this when closing, to avoid doing it multiple times while picking.
         var isPickingPlugin = ImGui.IsPopupOpen("###addPluginToProfilePicker");
+
         switch (isPickingPlugin)
         {
             case false when this.lastWasPickingPlugin:
                 // Clear search after closing
                 this.pickerSearch = string.Empty;
 
-                Task.Run(async () =>
-                    {
-                        await profman.ApplyAllWantStatesAsync("Finish adding plugins");
-                    })
-                    .ContinueWith(t =>
-                    {
-                        this.installer.DisplayErrorContinuation(t, Locs.ErrorCouldNotChangeState);
-                    });
+                Task.Run(async () => { await profman.ApplyAllWantStatesAsync("Finish adding plugins"); })
+                    .ContinueWith(t => { this.installer.DisplayErrorContinuation(t, "无法更改插件状态"); });
 
                 this.lastWasPickingPlugin = false;
                 break;
@@ -379,7 +386,7 @@ internal class ProfileManagerWidget
             this.Reset();
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(Locs.BackToOverview);
+            ImGui.SetTooltip("返回总览");
 
         ImGui.SameLine();
         ImGuiHelpers.ScaledDummy(5);
@@ -388,11 +395,11 @@ internal class ProfileManagerWidget
         if (ImGuiComponents.IconButton(FontAwesomeIcon.FileExport))
         {
             ImGui.SetClipboardText(profile.Model.SerializeForShare());
-            Service<NotificationManager>.Get().AddNotification(Locs.CopyToClipboardNotification, type: NotificationType.Success);
+            Service<NotificationManager>.Get().AddNotification("合集已复制到剪贴板", type: NotificationType.Success);
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(Locs.CopyToClipboardHint);
+            ImGui.SetTooltip("将合集复制到剪贴板以便分享");
 
         ImGui.SameLine();
         ImGuiHelpers.ScaledDummy(5);
@@ -404,25 +411,25 @@ internal class ProfileManagerWidget
 
             // DeleteProfile() is sync, it doesn't apply and we are modifying the plugins collection. Will throw below when iterating
             // TODO: DeleteProfileAsync should probably apply as well
-            Task.Run(async () =>
-                {
-                    await profman.DeleteProfileAsync(profile);
-                    await profman.ApplyAllWantStatesAsync("Delete profile");
-                })
-                .ContinueWith(t =>
-                {
-                    this.installer.DisplayErrorContinuation(t, Locs.ErrorCouldNotChangeState);
-                });
+            Task.Run
+                (async () =>
+                    {
+                        await profman.DeleteProfileAsync(profile);
+                        await profman.ApplyAllWantStatesAsync("Delete profile");
+                    }
+                )
+                .ContinueWith(t => { this.installer.DisplayErrorContinuation(t, "无法更改插件状态"); });
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(Locs.DeleteProfileHint);
+            ImGui.SetTooltip("删除此合集");
 
         ImGui.SameLine();
         ImGuiHelpers.ScaledDummy(5);
         ImGui.SameLine();
 
         ImGui.SetNextItemWidth(windowSize.X / 3);
+
         if (ImGui.InputText("###profileNameInput"u8, ref this.profileNameEdit, 255))
         {
             profile.Name = this.profileNameEdit;
@@ -432,25 +439,44 @@ internal class ProfileManagerWidget
         ImGui.SetCursorPosX(windowSize.X - (ImGui.GetFrameHeight() * 1.55f * ImGuiHelpers.GlobalScale));
 
         var isEnabled = profile.IsEnabled;
+
         if (ImGuiComponents.ToggleButton($"###toggleButton{profile.Guid}", ref isEnabled))
         {
             Task.Run(() => profile.SetStateAsync(isEnabled))
-                .ContinueWith(this.installer.DisplayErrorContinuation, Locs.ErrorCouldNotChangeState);
+                .ContinueWith(this.installer.DisplayErrorContinuation, "无法更改插件状态");
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(Locs.TooltipEnableDisable);
+            ImGui.SetTooltip("启用或禁用此合集");
 
         ImGui.Separator();
 
         ImGuiHelpers.ScaledDummy(5);
 
-        ImGui.Text(Locs.StartupBehavior);
-        if (ImGui.BeginCombo("##startupBehaviorPicker"u8, Locs.PolicyToLocalisedName(profile.StartupPolicy)))
+        ImGui.Text("启动行为");
+
+        if (ImGui.BeginCombo
+            (
+                "##startupBehaviorPicker"u8,
+                profile.StartupPolicy switch
+                {
+                    ProfileModelV1.ProfileStartupPolicy.RememberState => "记住上次状态",
+                    ProfileModelV1.ProfileStartupPolicy.AlwaysEnable => "启动时始终启用",
+                    ProfileModelV1.ProfileStartupPolicy.AlwaysDisable => "启动时始终禁用",
+                    _ => throw new ArgumentOutOfRangeException(nameof(profile.StartupPolicy), profile.StartupPolicy, null)
+                }
+            ))
         {
             foreach (var policy in Enum.GetValues<ProfileModelV1.ProfileStartupPolicy>())
             {
-                var name = Locs.PolicyToLocalisedName(policy);
+                var name = policy switch
+                {
+                    ProfileModelV1.ProfileStartupPolicy.RememberState => "记住上次状态",
+                    ProfileModelV1.ProfileStartupPolicy.AlwaysEnable  => "启动时始终启用",
+                    ProfileModelV1.ProfileStartupPolicy.AlwaysDisable => "启动时始终禁用",
+                    _                                                 => throw new ArgumentOutOfRangeException(nameof(policy), policy, null)
+                };
+
                 if (ImGui.Selectable(name, profile.StartupPolicy == policy))
                 {
                     profile.StartupPolicy = policy;
@@ -465,9 +491,11 @@ internal class ProfileManagerWidget
         var model = (ProfileModelV1)profile.Model;
 
         var enableForCharacters = model.EnableForCharacters;
-        ImGui.Checkbox(
-            Locs.EnableForSpecificCharacters,
-            ref enableForCharacters);
+        ImGui.Checkbox
+        (
+            "仅对指定角色启用",
+            ref enableForCharacters
+        );
 
         if (enableForCharacters != model.EnableForCharacters)
         {
@@ -475,14 +503,8 @@ internal class ProfileManagerWidget
             Service<DalamudConfiguration>.Get().QueueSave();
 
             // Profile might now no longer want active
-            Task.Run(async () =>
-                {
-                    await profman.ApplyAllWantStatesAsync("Toggle enable for characters");
-                })
-                .ContinueWith(t =>
-                {
-                    this.installer.DisplayErrorContinuation(t, Locs.ErrorCouldNotChangeState);
-                });
+            Task.Run(async () => { await profman.ApplyAllWantStatesAsync("Toggle enable for characters"); })
+                .ContinueWith(t => { this.installer.DisplayErrorContinuation(t, "无法更改插件状态"); });
         }
 
         // If the profile is configured to enable by specific characters, show the character list and controls
@@ -492,18 +514,20 @@ internal class ProfileManagerWidget
 
             if (model.EnabledCharacters.Count == 0)
             {
-                ImGui.TextColoredWrapped(
+                ImGui.TextColoredWrapped
+                (
                     ImGuiColors.DalamudGrey,
-                    Loc.Localize(
-                        "ProfileManagerNoCharactersAdded",
-                        "This collection will not be active for any characters until you add some with the button below."));
+                    "尚未指定角色。请使用下方按钮添加，否则此合集不会对任何角色启用。"
+                );
             }
-            else if (ImGui.BeginTable(
+            else if (ImGui.BeginTable
+                     (
                          "###charFilterTable",
                          2,
-                         ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
+                         ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit
+                     ))
             {
-                ImGui.TableSetupColumn("###remove"u8, ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("###remove"u8,   ImGuiTableColumnFlags.WidthFixed);
                 ImGui.TableSetupColumn("###charname"u8, ImGuiTableColumnFlags.WidthStretch);
 
                 foreach (var entry in model.EnabledCharacters.ToArray())
@@ -515,7 +539,7 @@ internal class ProfileManagerWidget
                         wantRemoveContentId = entry.ContentId;
 
                     if (ImGui.IsItemHovered())
-                        ImGui.SetTooltip(Loc.Localize("ProfileManagerRemoveCharacter", "Remove character"));
+                        ImGui.SetTooltip("移除角色");
 
                     ImGui.TableSetColumnIndex(1);
                     string characterDisplay;
@@ -534,6 +558,7 @@ internal class ProfileManagerWidget
             if (wantRemoveContentId != null)
             {
                 var toRem = model.EnabledCharacters.FirstOrDefault(x => x.ContentId == wantRemoveContentId.Value);
+
                 if (toRem != null)
                 {
                     model.EnabledCharacters.Remove(toRem);
@@ -542,15 +567,17 @@ internal class ProfileManagerWidget
 
                 // Profile might now no longer want active
                 Task.Run(async () => { await profman.ApplyAllWantStatesAsync("Remove character"); })
-                    .ContinueWith(t => { this.installer.DisplayErrorContinuation(t, Locs.ErrorCouldNotChangeState); });
+                    .ContinueWith(t => { this.installer.DisplayErrorContinuation(t, "无法更改插件状态"); });
             }
 
             ImGuiHelpers.ScaledDummy(5);
 
             var player = Service<PlayerState>.Get();
+
             if (player.IsLoaded)
             {
                 using var disabled = ImRaii.Disabled(model.EnabledCharacters.Any(x => x.ContentId == player.ContentId));
+
                 if (ImGuiComponents.IconButtonWithText(FontAwesomeIcon.Plus, $"Add current character: {player.CharacterName}"))
                 {
                     var serverName = player.HomeWorld.Value.Name.ExtractText();
@@ -558,19 +585,13 @@ internal class ProfileManagerWidget
                     Service<DalamudConfiguration>.Get().QueueSave();
 
                     // Profile might now want active
-                    Task.Run(async () =>
-                        {
-                            await profman.ApplyAllWantStatesAsync("Add character");
-                        })
-                        .ContinueWith(t =>
-                        {
-                            this.installer.DisplayErrorContinuation(t, Locs.ErrorCouldNotChangeState);
-                        });
+                    Task.Run(async () => { await profman.ApplyAllWantStatesAsync("Add character"); })
+                        .ContinueWith(t => { this.installer.DisplayErrorContinuation(t, "无法更改插件状态"); });
                 }
             }
             else
             {
-                ImGui.TextColored(ImGuiColors.DalamudGrey, Loc.Localize("ProfileManagerCharacterNotLoaded", "You must be logged in to add your current character."));
+                ImGui.TextColored(ImGuiColors.DalamudGrey, "请先登录角色，再添加当前角色。");
             }
 
             ImGuiHelpers.ScaledDummy(5);
@@ -580,17 +601,19 @@ internal class ProfileManagerWidget
         var wantPluginAddPopup = false;
 
         using var pluginListChild = ImRaii.Child("###profileEditorPluginList"u8);
+
         if (pluginListChild)
         {
-            var contentRegionMaxX = ImGui.GetWindowContentRegionMax().X;
-            var pluginLineHeight = 32 * ImGuiHelpers.GlobalScale;
+            var   contentRegionMaxX    = ImGui.GetWindowContentRegionMax().X;
+            var   pluginLineHeight     = 32 * ImGuiHelpers.GlobalScale;
             Guid? wantRemovePluginGuid = null;
 
             using var syncScope = profile.GetSyncScope();
+
             foreach (var profileEntry in profile.Plugins.ToArray())
             {
                 didAny = true;
-                var pmPlugin = pm.InstalledPlugins.FirstOrDefault(x => x.EffectiveWorkingPluginId == profileEntry.WorkingPluginId);
+                var pmPlugin  = pm.InstalledPlugins.FirstOrDefault(x => x.EffectiveWorkingPluginId == profileEntry.WorkingPluginId);
                 var btnOffset = 2;
 
                 if (pmPlugin != null)
@@ -612,9 +635,9 @@ internal class ProfileManagerWidget
                     ImGui.SameLine();
                     ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (5 * ImGuiHelpers.GlobalScale));
 
-                    var text = $"{pmPlugin.Name}{(pmPlugin.IsDev ? " (dev plugin" : string.Empty)}";
+                    var text       = $"{pmPlugin.Name}{(pmPlugin.IsDev ? " (dev plugin" : string.Empty)}";
                     var textHeight = ImGui.CalcTextSize(text);
-                    var before = ImGui.GetCursorPos();
+                    var before     = ImGui.GetCursorPos();
 
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (pluginLineHeight / 2) - (textHeight.Y / 2));
                     ImGui.Text(text);
@@ -626,42 +649,38 @@ internal class ProfileManagerWidget
                     ImGui.Image(pic.DefaultIcon.Handle, new Vector2(pluginLineHeight));
                     ImGui.SameLine();
 
-                    var text = Locs.NotInstalled(profileEntry.InternalName);
+                    var text       = $"{profileEntry.InternalName}（未安装）";
                     var textHeight = ImGui.CalcTextSize(text);
-                    var before = ImGui.GetCursorPos();
+                    var before     = ImGui.GetCursorPos();
 
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (pluginLineHeight / 2) - (textHeight.Y / 2));
                     ImGui.Text(text);
 
                     var firstAvailableInstalled = pm.InstalledPlugins.FirstOrDefault(x => x.InternalName == profileEntry.InternalName);
                     var installable =
-                        pm.AvailablePlugins.FirstOrDefault(
-                            x => x.InternalName == profileEntry.InternalName && !x.SourceRepo.IsThirdParty);
+                        pm.AvailablePlugins.FirstOrDefault(x => x.InternalName == profileEntry.InternalName && !x.SourceRepo.IsThirdParty);
 
                     if (firstAvailableInstalled != null)
                     {
                         ImGui.Text($"Match to plugin '{firstAvailableInstalled.Name}'?");
                         ImGui.SameLine();
-                        if (ImGuiComponents.IconButtonWithText(
+
+                        if (ImGuiComponents.IconButtonWithText
+                            (
                                 FontAwesomeIcon.Check,
-                                "Yes, use this one"))
+                                "Yes, use this one"
+                            ))
                         {
                             profileEntry.WorkingPluginId = firstAvailableInstalled.EffectiveWorkingPluginId;
-                            Task.Run(async () =>
-                                {
-                                    await profman.ApplyAllWantStatesAsync("Match plugin");
-                                })
-                                .ContinueWith(t =>
-                                {
-                                    this.installer.DisplayErrorContinuation(t, Locs.ErrorCouldNotChangeState);
-                                });
+                            Task.Run(async () => { await profman.ApplyAllWantStatesAsync("Match plugin"); })
+                                .ContinueWith(t => { this.installer.DisplayErrorContinuation(t, "无法更改插件状态"); });
                         }
                     }
                     else if (installable != null)
                     {
                         ImGui.SameLine();
-                        ImGui.SetCursorPosX(contentRegionMaxX - (ImGuiHelpers.GlobalScale * 30 * 2) - 2);
-                        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (pluginLineHeight / 2) - (ImGui.GetFrameHeight() / 2));
+                        ImGui.SetCursorPosX(contentRegionMaxX                              - (ImGuiHelpers.GlobalScale * 30 * 2) - 2);
+                        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (pluginLineHeight / 2) - (ImGui.GetFrameHeight()   / 2));
                         btnOffset = 3;
 
                         if (ImGuiComponents.IconButton($"###installMissingPlugin{installable.InternalName}", FontAwesomeIcon.Download))
@@ -670,26 +689,27 @@ internal class ProfileManagerWidget
                         }
 
                         if (ImGui.IsItemHovered())
-                            ImGui.SetTooltip(Locs.InstallPlugin);
+                            ImGui.SetTooltip("安装此插件");
                     }
 
                     ImGui.SetCursorPos(before);
                 }
 
                 ImGui.SameLine();
-                ImGui.SetCursorPosX(contentRegionMaxX - (ImGuiHelpers.GlobalScale * 30));
-                ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (pluginLineHeight / 2) - (ImGui.GetFrameHeight() / 2));
+                ImGui.SetCursorPosX(contentRegionMaxX                              - (ImGuiHelpers.GlobalScale * 30));
+                ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (pluginLineHeight / 2) - (ImGui.GetFrameHeight()   / 2));
 
                 var enabled = profileEntry.IsEnabled;
+
                 if (ImGui.Checkbox($"###{this.editingProfileGuid}-{profileEntry.InternalName}", ref enabled))
                 {
                     Task.Run(() => profile.AddOrUpdateAsync(profileEntry.WorkingPluginId, profileEntry.InternalName, enabled))
-                        .ContinueWith(this.installer.DisplayErrorContinuation, Locs.ErrorCouldNotChangeState);
+                        .ContinueWith(this.installer.DisplayErrorContinuation, "无法更改插件状态");
                 }
 
                 ImGui.SameLine();
-                ImGui.SetCursorPosX(contentRegionMaxX - (ImGuiHelpers.GlobalScale * 30 * btnOffset) - 5);
-                ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (pluginLineHeight / 2) - (ImGui.GetFrameHeight() / 2));
+                ImGui.SetCursorPosX(contentRegionMaxX                              - (ImGuiHelpers.GlobalScale * 30 * btnOffset) - 5);
+                ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (pluginLineHeight / 2) - (ImGui.GetFrameHeight()   / 2));
 
                 if (ImGuiComponents.IconButton($"###removePlugin{profileEntry.InternalName}", FontAwesomeIcon.Trash))
                 {
@@ -697,7 +717,7 @@ internal class ProfileManagerWidget
                 }
 
                 if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip(Locs.RemovePlugin);
+                    ImGui.SetTooltip("从此合集中移除插件");
 
                 // Separator if not the last item
                 if (profileEntry != profile.Plugins.Last())
@@ -713,18 +733,18 @@ internal class ProfileManagerWidget
             {
                 // TODO: handle error
                 Task.Run(() => profile.RemoveAsync(wantRemovePluginGuid.Value))
-                                .ContinueWith(this.installer.DisplayErrorContinuation, Locs.ErrorCouldNotRemove);
+                    .ContinueWith(this.installer.DisplayErrorContinuation, "无法移除插件");
             }
 
             if (!didAny)
             {
-                ImGui.TextColored(ImGuiColors.DalamudGrey, Locs.NoPluginsInProfile);
+                ImGui.TextColored(ImGuiColors.DalamudGrey, "此合集尚无插件");
             }
 
             ImGuiHelpers.ScaledDummy(10);
 
-            var addPluginsText = Locs.AddPlugin;
-            ImGuiHelpers.CenterCursorFor((int)(ImGui.CalcTextSize(addPluginsText).X + 30 + (ImGuiHelpers.GlobalScale * 5)));
+            const string ADD_PLUGINS_TEXT = "添加插件";
+            ImGuiHelpers.CenterCursorFor((int)(ImGui.CalcTextSize(ADD_PLUGINS_TEXT).X + 30 + (ImGuiHelpers.GlobalScale * 5)));
 
             if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus))
                 wantPluginAddPopup = true;
@@ -733,7 +753,7 @@ internal class ProfileManagerWidget
             ImGuiHelpers.ScaledDummy(5);
             ImGui.SameLine();
 
-            ImGui.Text(addPluginsText);
+            ImGui.Text(ADD_PLUGINS_TEXT);
 
             ImGuiHelpers.ScaledDummy(10);
         }
@@ -742,134 +762,6 @@ internal class ProfileManagerWidget
         {
             this.pickerSearch = string.Empty;
             ImGui.OpenPopup(addPluginToProfilePopupId);
-        }
-    }
-
-    private static class Locs
-    {
-        public static string StartupBehavior =>
-            Loc.Localize("ProfileManagerStartupBehavior", "Startup behavior");
-
-        public static string EnableForSpecificCharacters => Loc.Localize(
-            "ProfileManagerEnableForCharacters",
-            "Only enable for specific characters");
-
-        public static string TooltipEnableDisable =>
-            Loc.Localize("ProfileManagerEnableDisableHint", "Enable/Disable this collection");
-
-        public static string InstallPlugin => Loc.Localize("ProfileManagerInstall", "Install this plugin");
-
-        public static string RemovePlugin =>
-            Loc.Localize("ProfileManagerRemoveFromProfile", "Remove plugin from this collection");
-
-        public static string AddPlugin => Loc.Localize("ProfileManagerAddPlugin", "Add a plugin!");
-
-        public static string NoPluginsInProfile =>
-            Loc.Localize("ProfileManagerNoPluginsInProfile", "Collection has no plugins!");
-
-        public static string DeleteProfileHint => Loc.Localize("ProfileManagerDeleteProfile", "Delete this collection");
-
-        public static string CopyToClipboardHint =>
-            Loc.Localize("ProfileManagerCopyToClipboard", "Copy collection to clipboard for sharing");
-
-        public static string CopyToClipboardNotification =>
-            Loc.Localize("ProfileManagerCopyToClipboardHint", "Copied to clipboard!");
-
-        public static string BackToOverview => Loc.Localize("ProfileManagerBackToOverview", "Back to overview");
-
-        public static string AddProfileHint => Loc.Localize("ProfileManagerAddProfileHint", "No collections! Add one!");
-
-        public static string CloneProfileHint => Loc.Localize("ProfileManagerCloneProfile", "Clone this collection");
-
-        public static string EditProfileHint => Loc.Localize("ProfileManagerEditProfile", "Edit this collection");
-
-        public static string ImportProfileHint =>
-            Loc.Localize("ProfileManagerImportProfile", "Import a shared collection from your clipboard");
-
-        public static string TutorialHint =>
-            Loc.Localize("ProfileManagerTutorialHint", "Learn more about collections");
-
-        public static string AddProfile => Loc.Localize("ProfileManagerAddProfile", "Add a new collection");
-
-        public static string NotificationImportSuccess =>
-            Loc.Localize("ProfileManagerNotificationImportSuccess", "Collection successfully imported!");
-
-        public static string NotificationImportError =>
-            Loc.Localize("ProfileManagerNotificationImportError", "Could not import collection.");
-
-        public static string ErrorCouldNotRemove =>
-            Loc.Localize("ProfileManagerCouldNotRemove", "Could not remove plugin.");
-
-        public static string ErrorCouldNotChangeState =>
-            Loc.Localize("ProfileManagerCouldNotChangeState", "Could not change plugin state.");
-
-        public static string TutorialTitle =>
-            Loc.Localize("ProfileManagerTutorial", "About Collections");
-
-        public static string TutorialParagraphOne =>
-            Loc.Localize("ProfileManagerTutorialParagraphOne", "Collections are shareable lists of plugins that can be enabled or disabled in the plugin installer or via chat commands.\nWhen a plugin is part of a collection, it will be enabled if the collection is enabled. If a plugin is part of multiple collections, it will be enabled if one or more collections it is a part of are enabled.");
-
-        public static string TutorialParagraphTwo =>
-            Loc.Localize("ProfileManagerTutorialParagraphTwo", "You can add plugins to collections by clicking the plus button when editing a collection on this screen, or by using the button with the toolbox icon on the \"Installed Plugins\" screen.");
-
-        public static string TutorialParagraphThree =>
-            Loc.Localize("ProfileManagerTutorialParagraphThree", "If a collection's \"Start on boot\" checkbox is ticked, the collection and the plugins within will be enabled every time the game starts up, even if it has been manually disabled in a prior session.");
-
-        public static string TutorialParagraphFour =>
-            Loc.Localize("ProfileManagerTutorialParagraphFour", "Individual plugins inside a collection also have a checkbox next to them. This indicates if a plugin is active within that collection - if the checkbox is not ticked, the plugin will not be enabled if that collection is active. Mind that it will still be enabled if the plugin is an active part of any other collection.");
-
-        public static string TutorialParagraphFive =>
-            Loc.Localize("ProfileManagerTutorialParagraphFive", "When ticking the \"{0}\" checkbox, the collection will only be active for specific characters. You can add characters to the list by clicking the plus button and selecting a character, or by clicking the button with the person icon to add your current character. This is useful if you want different collections active on different characters.")
-               .Format(EnableForSpecificCharacters);
-
-        public static string TutorialCommands =>
-            Loc.Localize("ProfileManagerTutorialCommands", "You can use the following commands in chat or in macros to manage active collections:");
-
-        public static string TutorialCommandsEnable =>
-            Loc.Localize("ProfileManagerTutorialCommandsEnable", "{0} \"Collection Name\" - Enable a collection").Format(PluginManagementCommandHandler.CommandEnableProfile);
-
-        public static string TutorialCommandsDisable =>
-            Loc.Localize("ProfileManagerTutorialCommandsDisable", "{0} \"Collection Name\" - Disable a collection").Format(PluginManagementCommandHandler.CommandDisableProfile);
-
-        public static string TutorialCommandsToggle =>
-            Loc.Localize("ProfileManagerTutorialCommandsToggle", "{0} \"Collection Name\" - Toggle a collection's state").Format(PluginManagementCommandHandler.CommandToggleProfile);
-
-        public static string TutorialCommandsEnd =>
-            Loc.Localize("ProfileManagerTutorialCommandsEnd", "If you run multiple of these commands, they will be executed in order.");
-
-        public static string Choice1 =>
-            Loc.Localize("ProfileManagerChoice1", "Plugin collections are a new feature that allow you to group plugins into collections which can be toggled and shared.");
-
-        public static string Choice2 =>
-            Loc.Localize("ProfileManagerChoice2", "They are experimental and may still contain bugs. Do you want to enable them now?");
-
-        public static string ChoiceConfirmation =>
-            Loc.Localize("ProfileManagerChoiceConfirmation", "Yes, enable Plugin Collections");
-
-        public static string InOneCollection =>
-            Loc.Localize("ProfileManagerPickerInOneCollection", "(in 1 other collection)");
-
-        public static string NotInstalled(string name) =>
-            Loc.Localize("ProfileManagerNotInstalled", "{0} (Not Installed)").Format(name);
-
-        public static string InNCollections(int count) =>
-            Loc.Localize("ProfileManagerPickerInNCollections", "(in {0} other collections)").Format(count);
-
-        public static string PolicyToLocalisedName(ProfileModelV1.ProfileStartupPolicy policy)
-        {
-            return policy switch
-            {
-                ProfileModelV1.ProfileStartupPolicy.RememberState => Loc.Localize(
-                    "ProfileManagerRememberState",
-                    "Remember state"),
-                ProfileModelV1.ProfileStartupPolicy.AlwaysEnable => Loc.Localize(
-                    "ProfileManagerAlwaysEnableAtBoot",
-                    "Always enable at boot"),
-                ProfileModelV1.ProfileStartupPolicy.AlwaysDisable => Loc.Localize(
-                    "ProfileManagerAlwaysDisableAtBoot",
-                    "Always disable at boot"),
-                _ => throw new ArgumentOutOfRangeException(nameof(policy), policy, null),
-            };
         }
     }
 }

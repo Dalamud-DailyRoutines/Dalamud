@@ -1,7 +1,4 @@
-using CheapLoc;
-
 using Dalamud.Plugin.Internal.Types;
-
 using Serilog;
 
 namespace Dalamud.Interface.Internal.Windows.PluginInstaller;
@@ -16,27 +13,34 @@ internal class PluginChangelogEntry : IChangelogEntry
     /// </summary>
     /// <param name="plugin">The plugin manifest.</param>
     /// <param name="history">The changelog history entry.</param>
-    public PluginChangelogEntry(LocalPlugin plugin, DalamudChangelogManager.PluginHistory.PluginVersion history)
+    public PluginChangelogEntry
+    (
+        LocalPlugin                                         plugin,
+        DalamudChangelogManager.PluginHistory.PluginVersion history
+    )
     {
         this.Plugin = plugin;
 
         this.Version = history.Version;
-        this.Text = history.Changelog ?? Loc.Localize("ChangelogNoText", "No changelog for this version.");
-        this.Author = history.PublishedBy;
-        this.Date = history.PublishedAt;
+        this.Text    = history.Changelog ?? "此版本未提供更新日志。";
+        this.Author  = history.PublishedBy;
+        this.Date    = history.PublishedAt;
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PluginChangelogEntry"/> class.
     /// </summary>
     /// <param name="plugin">The plugin manifest.</param>
-    public PluginChangelogEntry(LocalPlugin plugin)
+    public PluginChangelogEntry
+    (
+        LocalPlugin plugin
+    )
     {
         this.Plugin = plugin;
 
         this.Version = plugin.EffectiveVersion.ToString();
-        this.Text = plugin.Manifest.Changelog ?? Loc.Localize("ChangelogNoText", "No changelog for this version.");
-        this.Author = plugin.Manifest.Author;
+        this.Text    = plugin.Manifest.Changelog ?? "此版本未提供更新日志。";
+        this.Author  = plugin.Manifest.Author;
 
         try
         {
@@ -44,8 +48,12 @@ internal class PluginChangelogEntry : IChangelogEntry
         }
         catch (ArgumentOutOfRangeException ex)
         {
-            Log.Warning(ex, "Manifest included improper timestamp, e.g. wrong unit: {PluginName}",
-                        plugin.Manifest.Name);
+            Log.Warning
+            (
+                ex,
+                "Manifest included improper timestamp, e.g. wrong unit: {PluginName}",
+                plugin.Manifest.Name
+            );
             // Create a Date from 0 as with a manifest that does not include a LastUpdate field
             this.Date = DateTimeOffset.FromUnixTimeSeconds(0).DateTime;
         }
