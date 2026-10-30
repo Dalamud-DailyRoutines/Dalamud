@@ -2216,9 +2216,9 @@ int main() {
         };
 
         const TASKDIALOG_BUTTON buttons[]{
-            {IdButtonRestart, L"重启\n使用上面所选的选项重启游戏"},
-            {IdButtonSaveTsPack, L"保存报错信息文件\n保存包含本次游戏崩溃相关信息的 .tspack 文件以待进一步分析"},
-            {IdButtonExit, L"退出游戏\n仅退出游戏, 不执行任何其他操作"},
+            {IdButtonRestart, L"重启\n使用上方选项重启游戏。"},
+            {IdButtonSaveTsPack, L"保存报错信息文件\n保存包含本次游戏崩溃相关信息的 .tspack 文件（该文件也可以使用解压缩软件打开）。"},
+            {IdButtonExit, L"退出游戏\n仅退出游戏，不执行任何其他操作。"},
         };
 
         config.cbSize = sizeof(config);
@@ -2227,11 +2227,9 @@ int main() {
         config.pszMainIcon = MAKEINTRESOURCE(IDI_ICON1);
         config.pszMainInstruction = L"游戏崩溃";
         std::wstring content =
-            L"相关原因可能为: 插件故障、模组损坏、其他第三方工具、游戏本身问题等\n"
-            L"\n"
-            L"请暂时禁用你不需要的插件, 并使用 XIVLauncher 检测游戏文件完整性\n"
-            L"\n"
-            L"如果你想在我们的 <a href=\"discord\">Discord</a> 中寻求帮助，请保存 <a href=\"exporttspack\">报错信息文件 (点击此处)</a> 并发送给我们\n"
+            L"原因可能为：插件故障、模组损坏、其他第三方工具或游戏本身的问题。\n"
+            L"请暂时禁用不需要的插件，并使用 XIVLauncher 检查游戏文件完整性。\n"
+            L"可以在我们的 <a href=\"discord\">Discord</a> 中寻求帮助，但请保存 <a href=\"exporttspack\">报错信息文件（点击此处）</a> 并发送。\n"
             L"\n"
             L"堆栈跟踪:\n";
         content += window_log_str;
@@ -2278,7 +2276,7 @@ int main() {
                     } else if (link == L"exporttspack") {
                         export_tspack(hwnd, logDir, ws_to_u8(log.str()), troubleshootingPackData);
                     } else if (link == L"discord") {
-                        ShellExecuteW(hwnd, nullptr, L"https://discord.gg/dailyroutines", nullptr, nullptr, SW_SHOW);
+                        ShellExecuteW(hwnd, nullptr, L"https://discord.gg/MDvv8Ejntw", nullptr, nullptr, SW_SHOW);
                     } else if (link == L"resume") {
                         attemptResume = true;
                         DestroyWindow(hwnd);
