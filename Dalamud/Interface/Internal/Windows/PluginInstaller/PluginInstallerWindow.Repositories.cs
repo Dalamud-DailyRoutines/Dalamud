@@ -56,13 +56,13 @@ internal partial class PluginInstallerWindow
         return
         [
             .. groups.OrderBy
-                     (group =>
+                     (group => group.Key switch
                          {
-                             if (bottomOrder.ContainsKey(group.Key))
-                                 return 2;
-                             return pinnedOrder.ContainsKey(group.Key) ?
-                                        0 :
-                                        1;
+                             SpecialPluginSource.DevPlugin or "开发版插件"  => -2,
+                             SpecialPluginSource.MainRepo or "主库"      => -1,
+                             _ when bottomOrder.ContainsKey(group.Key) => 2,
+                             _ when pinnedOrder.ContainsKey(group.Key) => 0,
+                             _                                         => 1
                          }
                      ).ThenBy(group => bottomOrder.GetValueOrDefault(group.Key, pinnedOrder.GetValueOrDefault(group.Key)))
                      .ThenBy(group => group.Key, StringComparer.Ordinal)
