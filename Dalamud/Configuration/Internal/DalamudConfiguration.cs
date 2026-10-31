@@ -356,7 +356,7 @@ internal sealed class DalamudConfiguration : IInternalDisposableService
     /// <summary>
     /// Gets or sets the name of the currently chosen style.
     /// </summary>
-    public string ChosenStyle { get; set; } = "Dalamud Standard";
+    public string ChosenStyle { get; set; } = "Tropical Sanctuary";
 
     /// <summary>
     /// Gets or sets per-character style assignments.
