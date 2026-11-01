@@ -1,11 +1,10 @@
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
-
 using Dalamud.Bindings.ImGui;
 using Dalamud.Data;
+using Dalamud.Excel.Sheets;
 using Dalamud.Game.Gui;
-using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface.ImGuiSeStringRenderer;
 using Dalamud.Interface.ImGuiSeStringRenderer.Internal;
 using Dalamud.Interface.Textures.Internal;
@@ -14,10 +13,7 @@ using Dalamud.Interface.Utility.Internal;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Storage.Assets;
 using Dalamud.Utility;
-
 using FFXIVClientStructs.FFXIV.Component.GUI;
-
-using Lumina.Excel.Sheets;
 using Lumina.Text;
 using Lumina.Text.Parse;
 using Lumina.Text.Payloads;
@@ -30,14 +26,14 @@ namespace Dalamud.Interface.Internal.Windows.Data.Widgets;
 /// </summary>
 internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
 {
-    private static readonly string[] ThemeNames = ["深色", "浅色", "经典 FF", "透明蓝", "透明白", "透明绿"];
-    private ImVectorWrapper<byte> testStringBuffer;
-    private string testString = string.Empty;
-    private ReadOnlySeString? logkind;
-    private SeStringDrawParams style;
-    private bool interactable;
-    private bool useEntity;
-    private bool alignToFramePadding;
+    private static readonly string[]              ThemeNames = ["深色", "浅色", "经典 FF", "透明蓝", "透明白", "透明绿"];
+    private                 ImVectorWrapper<byte> testStringBuffer;
+    private                 string                testString = string.Empty;
+    private                 ReadOnlySeString?     logkind;
+    private                 SeStringDrawParams    style;
+    private                 bool                  interactable;
+    private                 bool                  useEntity;
+    private                 bool                  alignToFramePadding;
 
     /// <inheritdoc/>
     public string DisplayName { get; init; } = "SeStringRenderer 测试";
@@ -51,12 +47,12 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
     /// <inheritdoc/>
     public void Load()
     {
-        this.style = new() { GetEntity = this.GetEntity };
-        this.logkind = null;
-        this.testString = string.Empty;
-        this.interactable = this.useEntity = true;
+        this.style               = new() { GetEntity = this.GetEntity };
+        this.logkind             = null;
+        this.testString          = string.Empty;
+        this.interactable        = this.useEntity = true;
         this.alignToFramePadding = false;
-        this.Ready = true;
+        this.Ready               = true;
     }
 
     /// <inheritdoc/>
@@ -120,6 +116,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
 
         ImGui.SameLine();
         var t4 = this.style.ThemeIndex ?? AtkStage.Instance()->AtkUIColorHolder->ActiveColorThemeType;
+
         using (ImRaii.ItemWidth(ImGui.CalcTextSize("WWWWWWWWWWWWWW"u8).X))
         {
             if (ImGui.Combo("##theme", ref t4, ThemeNames))
@@ -129,12 +126,16 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
         ImGui.SameLine();
         t = this.style.LinkUnderlineThickness > 0f;
         if (ImGui.Checkbox("链接下划线"u8, ref t))
-            this.style.LinkUnderlineThickness = t ? 1f : 0f;
+            this.style.LinkUnderlineThickness = t ?
+                                                    1f :
+                                                    0f;
 
         ImGui.SameLine();
         t = this.style.WrapWidth is null;
         if (ImGui.Checkbox("自动换行"u8, ref t))
-            this.style.WrapWidth = t ? null : float.PositiveInfinity;
+            this.style.WrapWidth = t ?
+                                       null :
+                                       float.PositiveInfinity;
 
         t = this.interactable;
         if (ImGui.Checkbox("可交互"u8, ref t))
@@ -155,6 +156,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
             if (this.logkind is null)
             {
                 var tt = new SeStringBuilder();
+
                 foreach (var uc in Service<DataManager>.Get().GetExcelSheet<LogKind>())
                 {
                     var ucsp = uc.Format.AsSpan();
@@ -162,6 +164,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
                         continue;
 
                     tt.Append($"#{uc.RowId}: ");
+
                     foreach (var p in ucsp.GetOffsetEnumerator())
                     {
                         if (p.Payload.Type == ReadOnlySePayloadType.Macro && p.Payload.MacroCode == MacroCode.String)
@@ -186,28 +189,31 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
         {
             ImGuiHelpers.ScaledDummy(100);
             ImGui.SetCursorScreenPos(ImGui.GetItemRectMin() + ImGui.GetStyle().FramePadding);
-            var clipMin = ImGui.GetItemRectMin() + ImGui.GetStyle().FramePadding;
-            var clipMax = ImGui.GetItemRectMax() - ImGui.GetStyle().FramePadding;
+            var clipMin = ImGui.GetItemRectMin()            + ImGui.GetStyle().FramePadding;
+            var clipMax = ImGui.GetItemRectMax()            - ImGui.GetStyle().FramePadding;
             clipMin.Y = MathF.Max(clipMin.Y, ImGui.GetWindowPos().Y);
             clipMax.Y = MathF.Min(clipMax.Y, ImGui.GetWindowPos().Y + ImGui.GetWindowHeight());
 
             var dl = ImGui.GetWindowDrawList();
             dl.PushClipRect(clipMin, clipMax);
-            ImGuiHelpers.CompileSeStringWrapped(
+            ImGuiHelpers.CompileSeStringWrapped
+            (
                 "<icon(1)>测试文本<icon(1)>",
-                new SeStringDrawParams { Color = 0xFFFFFFFF, WrapWidth = float.MaxValue, TargetDrawList = dl });
+                new SeStringDrawParams { Color = 0xFFFFFFFF, WrapWidth = float.MaxValue, TargetDrawList = dl }
+            );
             dl.PopClipRect();
         }
 
         if (ImGui.CollapsingHeader("Addon 表"u8))
         {
             using var table = ImRaii.Table("Addon Sheet"u8, 3);
+
             if (table.Success)
             {
                 ImGui.TableSetupScrollFreeze(0, 1);
                 ImGui.TableSetupColumn("行 ID"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("0000000"u8).X);
-                ImGui.TableSetupColumn("文本"u8, ImGuiTableColumnFlags.WidthStretch);
-                ImGui.TableSetupColumn("其他"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("AAAAAAAAAAAAAAAAA"u8).X);
+                ImGui.TableSetupColumn("文本"u8,   ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn("其他"u8,   ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("AAAAAAAAAAAAAAAAA"u8).X);
                 ImGui.TableHeadersRow();
 
                 var addon = Service<DataManager>.GetNullable()?.GetExcelSheet<Addon>() ??
@@ -215,6 +221,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
 
                 var clipper = ImGui.ImGuiListClipper();
                 clipper.Begin(addon.Count);
+
                 while (clipper.Step())
                 {
                     for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
@@ -245,9 +252,11 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
         if (ImGui.Button("重置文本"u8) || this.testStringBuffer.IsDisposed)
         {
             this.testStringBuffer.Dispose();
-            this.testStringBuffer = ImVectorWrapper.CreateFromSpan(
+            this.testStringBuffer = ImVectorWrapper.CreateFromSpan
+            (
                 "<icon(1)><icon(2)><icon(3)><icon(4)><icon(5)><icon(6)><icon(7)><icon(8)><icon(9)><icon(10)><icon(11)><icon(12)><icon(13)><icon(14)><icon(15)><icon(16)><icon(17)><icon(18)><icon(19)><icon(20)><icon(21)><icon(22)><icon(23)><icon(24)><icon(25)>\n\n<icon(56)>Lorem ipsum dolor <colortype(504)><edgecolortype(505)>sit<colortype(0)><edgecolortype(0)> <italic(1)>amet,<italic(0)> <colortype(500)><edgecolortype(501)>conse<->ctetur<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)><italic(1)>adipi<-><colortype(504)><edgecolortype(505)>scing<colortype(0)><edgecolortype(0)><italic(0)><colortype(0)><edgecolortype(0)> elit. <colortype(502)><edgecolortype(503)>Maece<->nas<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>digni<-><colortype(504)><edgecolortype(505)>ssim<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> <colortype(504)><edgecolortype(505)>sem<colortype(0)><edgecolortype(0)> <italic(1)>at<italic(0)> inter<->dum <colortype(500)><edgecolortype(501)>ferme<->ntum.<colortype(0)><edgecolortype(0)> Praes<->ent <colortype(500)><edgecolortype(501)>ferme<->ntum<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>conva<->llis<colortype(0)><edgecolortype(0)> velit <colortype(504)><edgecolortype(505)>sit<colortype(0)><edgecolortype(0)> <italic(1)>amet<italic(0)> <colortype(500)><edgecolortype(501)>hendr<->erit.<colortype(0)><edgecolortype(0)> <colortype(504)><edgecolortype(505)>Sed<colortype(0)><edgecolortype(0)> eu nibh <colortype(502)><edgecolortype(503)>magna.<colortype(0)><edgecolortype(0)> Integ<->er nec lacus in velit porta euism<->od <colortype(504)><edgecolortype(505)>sed<colortype(0)><edgecolortype(0)> et lacus. <colortype(504)><edgecolortype(505)>Sed<colortype(0)><edgecolortype(0)> non <colortype(502)><edgecolortype(503)>mauri<->s<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>venen<-><italic(1)>atis,<colortype(0)><edgecolortype(0)><italic(0)> <colortype(502)><edgecolortype(503)>matti<->s<colortype(0)><edgecolortype(0)> <colortype(502)><edgecolortype(503)>metus<colortype(0)><edgecolortype(0)> in, <italic(1)>aliqu<->et<italic(0)> dolor. <italic(1)>Aliqu<->am<italic(0)> erat <colortype(500)><edgecolortype(501)>volut<->pat.<colortype(0)><edgecolortype(0)> Nulla <colortype(500)><edgecolortype(501)>venen<-><italic(1)>atis<colortype(0)><edgecolortype(0)><italic(0)> velit <italic(1)>ac<italic(0)> <colortype(504)><edgecolortype(505)><colortype(516)><edgecolortype(517)>sus<colortype(0)><edgecolortype(0)>ci<->pit<colortype(0)><edgecolortype(0)> euism<->od. <colortype(500)><edgecolortype(501)><colortype(504)><edgecolortype(505)><colortype(516)><edgecolortype(517)>sus<colortype(0)><edgecolortype(0)>pe<->ndisse<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> <colortype(502)><edgecolortype(503)>maxim<->us<colortype(0)><edgecolortype(0)> viver<->ra dui id dapib<->us. Nam torto<->r dolor, <colortype(500)><edgecolortype(501)>eleme<->ntum<colortype(0)><edgecolortype(0)> quis orci id, pulvi<->nar <colortype(500)><edgecolortype(501)>fring<->illa<colortype(0)><edgecolortype(0)> quam. <colortype(500)><edgecolortype(501)>Pelle<->ntesque<colortype(0)><edgecolortype(0)> laore<->et viver<->ra torto<->r eget <colortype(502)><edgecolortype(503)>matti<-><colortype(504)><edgecolortype(505)>s.<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>Vesti<-><bold(1)>bulum<colortype(0)><edgecolortype(0)><bold(0)> eget porta <italic(1)>ante,<italic(0)> a <colortype(502)><edgecolortype(503)>molli<->s<colortype(0)><edgecolortype(0)> nulla. <colortype(500)><edgecolortype(501)>Curab<->itur<colortype(0)><edgecolortype(0)> a ligul<->a leo. <italic(1)>Aliqu<->am<italic(0)> volut<->pat <colortype(504)><edgecolortype(505)>sagit<->tis<colortype(0)><edgecolortype(0)> dapib<->us.\n\n<icon(57)>Fusce iacul<->is <italic(1)>aliqu<->am<italic(0)> <colortype(502)><edgecolortype(503)>mi,<colortype(0)><edgecolortype(0)> eget <colortype(500)><edgecolortype(501)>portt<->itor<colortype(0)><edgecolortype(0)> <italic(1)>arcu<italic(0)> <colortype(500)><edgecolortype(501)><colortype(504)><edgecolortype(505)>solli<->citudin<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>conse<->ctetur.<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)><colortype(504)><edgecolortype(505)><colortype(516)><edgecolortype(517)>sus<colortype(0)><edgecolortype(0)>pe<->ndisse<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> <italic(1)>aliqu<->am<italic(0)> commo<->do <colortype(500)><edgecolortype(501)>tinci<->dunt.<colortype(0)><edgecolortype(0)> Duis <colortype(504)><edgecolortype(505)>sed<colortype(0)><edgecolortype(0)> posue<->re tellu<-><colortype(504)><edgecolortype(505)>s.<colortype(0)><edgecolortype(0)> <colortype(504)><edgecolortype(505)>Sed<colortype(0)><edgecolortype(0)> phare<->tra ex vel torto<->r <colortype(500)><edgecolortype(501)>pelle<->ntesque,<colortype(0)><edgecolortype(0)> inter<->dum porta <colortype(504)><edgecolortype(505)>sapie<->n<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>digni<-><colortype(504)><edgecolortype(505)>ssim.<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> Queue Dun <colortype(504)><edgecolortype(505)>Scait<->h.<colortype(0)><edgecolortype(0)> Cras <italic(1)>aliqu<->et<italic(0)> <italic(1)>at<italic(0)> nulla quis <colortype(500)><edgecolortype(501)><colortype(502)><edgecolortype(503)>moles<->tie.<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>Vesti<-><bold(1)>bulum<colortype(0)><edgecolortype(0)><bold(0)> eu ligul<->a <colortype(504)><edgecolortype(505)>sapie<->n.<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>Curab<->itur<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>digni<-><colortype(504)><edgecolortype(505)>ssim<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> feugi<-><italic(1)>at<italic(0)> <colortype(500)><edgecolortype(501)>volut<->pat.<colortype(0)><edgecolortype(0)>\n\n<icon(58)><colortype(500)><edgecolortype(501)>Vesti<-><bold(1)>bulum<colortype(0)><edgecolortype(0)><bold(0)> <colortype(500)><edgecolortype(501)>condi<-><colortype(502)><edgecolortype(503)>mentum<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> laore<->et rhonc<->us. Vivam<->us et <italic(1)>accum<-><colortype(504)><edgecolortype(505)>san<italic(0)><colortype(0)><edgecolortype(0)> purus. <colortype(500)><edgecolortype(501)>Curab<->itur<colortype(0)><edgecolortype(0)> inter<->dum vel ligul<->a <italic(1)>ac<italic(0)> euism<->od. Donec <colortype(504)><edgecolortype(505)>sed<colortype(0)><edgecolortype(0)> nisl <colortype(500)><edgecolortype(501)>digni<-><colortype(504)><edgecolortype(505)>ssim<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> est <colortype(500)><edgecolortype(501)>tinci<->dunt<colortype(0)><edgecolortype(0)> iacul<->is. Praes<->ent <colortype(500)><edgecolortype(501)>hendr<->erit<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>pelle<->ntesque<colortype(0)><edgecolortype(0)> nisl, quis lacin<->ia <italic(1)>arcu<italic(0)> dictu<->m <colortype(504)><edgecolortype(505)>sit<colortype(0)><edgecolortype(0)> <italic(1)>amet.<italic(0)> <italic(1)>Aliqu<->am<italic(0)> variu<->s lectu<->s vel <colortype(502)><edgecolortype(503)>mauri<->s<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>imper<->diet<colortype(0)><edgecolortype(0)> posue<->re. Ut gravi<->da non <colortype(504)><edgecolortype(505)>sapie<->n<colortype(0)><edgecolortype(0)> <colortype(504)><edgecolortype(505)>sed<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>hendr<->erit.<colortype(0)><edgecolortype(0)>\n\n<icon(59)>Proin quis dapib<->us odio. Cras <colortype(504)><edgecolortype(505)>sagit<->tis<colortype(0)><edgecolortype(0)> non <colortype(504)><edgecolortype(505)>sem<colortype(0)><edgecolortype(0)> <colortype(504)><edgecolortype(505)>sed<colortype(0)><edgecolortype(0)> porta. Donec iacul<->is est ligul<-><italic(1)>a,<italic(0)> <colortype(500)><edgecolortype(501)>digni<-><colortype(504)><edgecolortype(505)>ssim<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> <italic(1)>aliqu<->et<italic(0)> <italic(1)>augue<italic(0)> <colortype(502)><edgecolortype(503)>matti<->s<colortype(0)><edgecolortype(0)> vitae. Duis <colortype(500)><edgecolortype(501)>ullam<->corper<colortype(0)><edgecolortype(0)> tempu<->s odio, non <colortype(500)><edgecolortype(501)>vesti<-><bold(1)>bulum<colortype(0)><edgecolortype(0)><bold(0)> est <bold(1)>biben<->dum<bold(0)> quis. In purus elit, vehic<->ula <colortype(500)><edgecolortype(501)>tinci<->dunt<colortype(0)><edgecolortype(0)> dictu<->m in, <italic(1)>aucto<->r<italic(0)> nec enim. <colortype(500)><edgecolortype(501)>Curab<->itur<colortype(0)><edgecolortype(0)> a nisi in leo <colortype(502)><edgecolortype(503)>matti<->s<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>pelle<->ntesque<colortype(0)><edgecolortype(0)> id nec <colortype(504)><edgecolortype(505)>sem.<colortype(0)><edgecolortype(0)> Nunc vel ultri<->ces nisl. Nam congu<->e <colortype(500)><edgecolortype(501)>vulpu<->tate<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)><colortype(502)><edgecolortype(503)>males<->uada.<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> <italic(1)>Aenea<->n<italic(0)> <colortype(500)><edgecolortype(501)>vesti<-><bold(1)>bulum<colortype(0)><edgecolortype(0)><bold(0)> <colortype(502)><edgecolortype(503)>mauri<->s<colortype(0)><edgecolortype(0)> leo, <colortype(504)><edgecolortype(505)>sit<colortype(0)><edgecolortype(0)> <italic(1)>amet<italic(0)> iacul<->is est <colortype(500)><edgecolortype(501)>imper<->diet<colortype(0)><edgecolortype(0)> ut. <colortype(500)><edgecolortype(501)>Phase<->llus<colortype(0)><edgecolortype(0)> nec lobor<->tis lacus, <colortype(504)><edgecolortype(505)>sit<colortype(0)><edgecolortype(0)> <italic(1)>amet<italic(0)> <colortype(500)><edgecolortype(501)><colortype(504)><edgecolortype(505)>scele<->risque<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> purus. Nam id lacin<->ia velit, euism<->od feugi<-><italic(1)>at<italic(0)> dui. Nulla <colortype(504)><edgecolortype(505)>sodal<->es<colortype(0)><edgecolortype(0)> odio ligul<-><italic(1)>a,<italic(0)> et <colortype(500)><edgecolortype(501)>hendr<->erit<colortype(0)><edgecolortype(0)> torto<->r <colortype(502)><edgecolortype(503)>maxim<->us<colortype(0)><edgecolortype(0)> eu. Donec et <colortype(504)><edgecolortype(505)>sem<colortype(0)><edgecolortype(0)> eu <colortype(502)><edgecolortype(503)>magna<colortype(0)><edgecolortype(0)> volut<->pat <italic(1)>accum<-><colortype(504)><edgecolortype(505)>san<italic(0)><colortype(0)><edgecolortype(0)> non ut lectu<-><colortype(504)><edgecolortype(505)>s.<colortype(0)><edgecolortype(0)>\n\n<icon(60)>Vivam<->us <colortype(504)><edgecolortype(505)><colortype(516)><edgecolortype(517)>sus<colortype(0)><edgecolortype(0)>ci<->pit<colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>ferme<->ntum<colortype(0)><edgecolortype(0)> gravi<->da. Cras nec <colortype(500)><edgecolortype(501)>conse<->ctetur<colortype(0)><edgecolortype(0)> <colortype(502)><edgecolortype(503)>magna.<colortype(0)><edgecolortype(0)> Vivam<->us <italic(1)>ante<italic(0)> <colortype(502)><edgecolortype(503)>massa,<colortype(0)><edgecolortype(0)> <italic(1)>accum<-><colortype(504)><edgecolortype(505)>san<italic(0)><colortype(0)><edgecolortype(0)> <colortype(504)><edgecolortype(505)>sit<colortype(0)><edgecolortype(0)> <italic(1)>amet<italic(0)> felis et, tempu<->s iacul<->is ipsum. <colortype(500)><edgecolortype(501)>Pelle<->ntesque<colortype(0)><edgecolortype(0)> vitae nisi <colortype(500)><edgecolortype(501)><italic(1)>accum<-><colortype(504)><edgecolortype(505)>san,<colortype(0)><edgecolortype(0)><italic(0)><colortype(0)><edgecolortype(0)> <colortype(500)><edgecolortype(501)>venen<-><italic(1)>atis<colortype(0)><edgecolortype(0)><italic(0)> lectu<->s <italic(1)>aucto<->r,<italic(0)> <italic(1)>aliqu<->et<italic(0)> liber<->o. Nam nec <colortype(500)><edgecolortype(501)>imper<->diet<colortype(0)><edgecolortype(0)> justo. Vivam<->us ut vehic<->ula turpi<-><colortype(504)><edgecolortype(505)>s.<colortype(0)><edgecolortype(0)> Nunc lobor<->tis <colortype(500)><edgecolortype(501)>pelle<->ntesque<colortype(0)><edgecolortype(0)> urna, <colortype(504)><edgecolortype(505)>sit<colortype(0)><edgecolortype(0)> <italic(1)>amet<italic(0)> <colortype(500)><edgecolortype(501)><colortype(504)><edgecolortype(505)>solli<->citudin<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> nibh fauci<-><bold(1)>bus<bold(0)> in. <colortype(500)><edgecolortype(501)>Curab<->itur<colortype(0)><edgecolortype(0)> eu lobor<->tis lacus. Donec eu <colortype(500)><edgecolortype(501)>hendr<->erit<colortype(0)><edgecolortype(0)> diam, vitae cursu<->s odio. Cras eget <colortype(500)><edgecolortype(501)><colortype(504)><edgecolortype(505)>scele<->risque<colortype(0)><edgecolortype(0)><colortype(0)><edgecolortype(0)> <colortype(502)><edgecolortype(503)>mi.<colortype(0)><edgecolortype(0)>\n\n· Testing aaaaa<link(0x0E,1,2,3,testlink)>link <icon(61)> aaaaa<link(0xCE)>bbbb.\n· Open <link(0x0E,0,0,0,\\[\"test\"\\, \"https://example.com/\"\\])><colortype(502)><edgecolortype(503)>example.com<colortype(0)><edgecolortype(0)><link(0xCE)>\n· Open <link(0x0E,2,2,2,\\[\"test\"\\, \"https://example.org/\"\\])><colortype(502)><edgecolortype(503)>example.org<colortype(0)><edgecolortype(0)><link(0xCE)>\n\n<icon2(1)><icon2(2)><icon2(3)><icon2(4)><icon2(5)><icon2(6)><icon2(7)><icon2(8)><icon2(9)><icon2(10)><icon2(11)><icon2(12)><icon2(13)><icon2(14)><icon2(15)><icon2(16)><icon2(17)><icon2(18)><icon2(19)><icon2(20)><icon2(21)><icon2(22)><icon2(23)><icon2(24)><icon2(25)>\n\n<edge(1)><colortype(502)><edgecolortype(503)><icon(1)>colortype502,edgecolortype503<edgecolortype(0)><colortype(0)>\n\nOpacity values are ignored:\n<color(0xFFFF0000)><edgecolor(0xFF0000FF)><icon(2)>opacity FF<edgecolor(stackcolor)><color(stackcolor)>\n<color(0x80FF0000)><edgecolor(0x800000FF)><icon(3)>opacity 80<edgecolor(stackcolor)><color(stackcolor)>\n<color(0xFF0000)><edgecolor(0xFF)><icon(4)>opacity 00<edgecolor(stackcolor)><color(stackcolor)>\n<color(0xFF0000)><edgecolor(0xFF)><colortype(502)><edgecolortype(503)><icon(6)>Test 1<edgecolortype(0)><colortype(0)><edgecolor(stackcolor)><color(stackcolor)>\n<colortype(502)><edgecolortype(503)><color(0xFF0000)><edgecolor(0xFF)><icon(6)>Test 2<edgecolortype(0)><colortype(0)><edgecolor(stackcolor)><color(stackcolor)>\n<edge(0)>Without edge<shadow(1)>Shadow<shadow(0)><edge(1)>With edge"u8,
-                minCapacity: 65536);
+                minCapacity: 65536
+            );
             this.testString = string.Empty;
         }
 
@@ -262,50 +271,62 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
 
         if (ImGui.Button("复制为图像"))
         {
-            _ = Service<DevTextureSaveMenu>.Get().ShowTextureSaveMenuAsync(
+            _ = Service<DevTextureSaveMenu>.Get().ShowTextureSaveMenuAsync
+            (
                 this.DisplayName,
                 $"来自 {nameof(SeStringRendererTestWidget)}",
-                Task.FromResult(
-                    Service<TextureManager>.Get().CreateTextureFromSeString(
-                        ReadOnlySeString.FromMacroString(
+                Task.FromResult
+                (
+                    Service<TextureManager>.Get().CreateTextureFromSeString
+                    (
+                        ReadOnlySeString.FromMacroString
+                        (
                             this.testString,
-                            new(ExceptionMode: MacroStringParseExceptionMode.EmbedError)),
+                            new(ExceptionMode: MacroStringParseExceptionMode.EmbedError)
+                        ),
                         this.style with
                         {
                             Font = ImGui.GetFont(),
                             FontSize = ImGui.GetFontSize(),
                             WrapWidth = ImGui.GetContentRegionAvail().X,
-                            ThemeIndex = AtkStage.Instance()->AtkUIColorHolder->ActiveColorThemeType,
-                        })));
+                            ThemeIndex = AtkStage.Instance()->AtkUIColorHolder->ActiveColorThemeType
+                        }
+                    )
+                )
+            );
         }
 
         ImGuiHelpers.ScaledDummy(3);
-        ImGuiHelpers.CompileSeStringWrapped(
-            "以下测试输入实现了可选功能：<br>" +
-            "· <colortype(710)>换行符<colortype(0)>会自动替换为 <colortype(710)>\\<br><colortype(0)>。<br>" +
-            "· <colortype(710)>D<link(0xCE)>alamud<colortype(0)> 将显示 Dalamud。<br>" +
-            "· <colortype(710)>W<link(0xCE)>hite<colortype(0)> 将显示 White。<br>" +
-            "· <colortype(710)>D<link(0xCE)>efaultIcon<colortype(0)> 将显示 DefaultIcon。<br>" +
-            "· <colortype(710)>D<link(0xCE)>isabledIcon<colortype(0)> 将显示 DisabledIcon。<br>" +
-            "· <colortype(710)>O<link(0xCE)>utdatedInstallableIcon<colortype(0)> 将显示 OutdatedInstallableIcon。<br>" +
-            "· <colortype(710)>T<link(0xCE)>roubleIcon<colortype(0)> 将显示 TroubleIcon。<br>" +
-            "· <colortype(710)>D<link(0xCE)>evPluginIcon<colortype(0)> 将显示 DevPluginIcon。<br>" +
-            "· <colortype(710)>U<link(0xCE)>pdateIcon<colortype(0)> 将显示 UpdateIcon。<br>" +
-            "· <colortype(710)>I<link(0xCE)>nstalledIcon<colortype(0)> 将显示 InstalledIcon。<br>" +
-            "· <colortype(710)>T<link(0xCE)>hirdIcon<colortype(0)> 将显示 ThirdIcon。<br>" +
+        ImGuiHelpers.CompileSeStringWrapped
+        (
+            "以下测试输入实现了可选功能：<br>"                                                                                     +
+            "· <colortype(710)>换行符<colortype(0)>会自动替换为 <colortype(710)>\\<br><colortype(0)>。<br>"                    +
+            "· <colortype(710)>D<link(0xCE)>alamud<colortype(0)> 将显示 Dalamud。<br>"                                   +
+            "· <colortype(710)>W<link(0xCE)>hite<colortype(0)> 将显示 White。<br>"                                       +
+            "· <colortype(710)>D<link(0xCE)>efaultIcon<colortype(0)> 将显示 DefaultIcon。<br>"                           +
+            "· <colortype(710)>D<link(0xCE)>isabledIcon<colortype(0)> 将显示 DisabledIcon。<br>"                         +
+            "· <colortype(710)>O<link(0xCE)>utdatedInstallableIcon<colortype(0)> 将显示 OutdatedInstallableIcon。<br>"   +
+            "· <colortype(710)>T<link(0xCE)>roubleIcon<colortype(0)> 将显示 TroubleIcon。<br>"                           +
+            "· <colortype(710)>D<link(0xCE)>evPluginIcon<colortype(0)> 将显示 DevPluginIcon。<br>"                       +
+            "· <colortype(710)>U<link(0xCE)>pdateIcon<colortype(0)> 将显示 UpdateIcon。<br>"                             +
+            "· <colortype(710)>I<link(0xCE)>nstalledIcon<colortype(0)> 将显示 InstalledIcon。<br>"                       +
+            "· <colortype(710)>T<link(0xCE)>hirdIcon<colortype(0)> 将显示 ThirdIcon。<br>"                               +
             "· <colortype(710)>T<link(0xCE)>hirdInst<link(0xCE)>alledIcon<colortype(0)> 将显示 ThirdInstalledIcon。<br>" +
-            "· <colortype(710)>C<link(0xCE)>hangelogApiBumpIcon<colortype(0)> 将显示 ChangelogApiBumpIcon。<br>" +
-            "· <colortype(710)>icon<link(0xCE)>(5)<colortype(0)> 将显示 icon(5)，效果与 \\<icon<link(0xCE)>(5)> 不同。<br>" +
+            "· <colortype(710)>C<link(0xCE)>hangelogApiBumpIcon<colortype(0)> 将显示 ChangelogApiBumpIcon。<br>"         +
+            "· <colortype(710)>icon<link(0xCE)>(5)<colortype(0)> 将显示 icon(5)，效果与 \\<icon<link(0xCE)>(5)> 不同。<br>"    +
             "· <colortype(710)>tex<link(0xCE)>(ui/loadingimage/-nowloading_base25_hr1.tex)<colortype(0)> 将显示 tex(ui/loadingimage/-nowloading_base25_hr1.tex)。",
-            this.style);
+            this.style
+        );
         ImGuiHelpers.ScaledDummy(3);
 
         fixed (byte* labelPtr = "测试输入"u8)
         {
-            if (ImGui.InputTextMultiline(
+            if (ImGui.InputTextMultiline
+                (
                     labelPtr,
                     this.testStringBuffer.StorageSpan,
-                    new(ImGui.GetContentRegionAvail().X, ImGui.GetTextLineHeight() * 3)))
+                    new(ImGui.GetContentRegionAvail().X, ImGui.GetTextLineHeight() * 3)
+                ))
             {
                 var len = this.testStringBuffer.StorageSpan.IndexOf((byte)0);
                 if (len + 4 >= this.testStringBuffer.Capacity)
@@ -313,7 +334,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
 
                 if (len < this.testStringBuffer.Capacity)
                 {
-                    this.testStringBuffer.LengthUnsafe = len;
+                    this.testStringBuffer.LengthUnsafe     = len;
                     this.testStringBuffer.StorageSpan[len] = 0;
                 }
 
@@ -331,7 +352,8 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
         {
             if (ImGuiHelpers.CompileSeStringWrapped(this.testString, this.style, new("this is an ImGui id")) is
                 {
-                    InteractedPayload: { } payload, InteractedPayloadOffset: var offset,
+                    InteractedPayload: { } payload,
+                    InteractedPayloadOffset: var offset,
                     InteractedPayloadEnvelope: var envelope,
                     Clicked: var clicked
                 })
@@ -340,8 +362,8 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
                 if (this.alignToFramePadding)
                     ImGui.AlignTextToFramePadding();
                 ImGui.Text($"悬停内容[{offset}]：{new ReadOnlySeStringSpan(envelope).ToString()}；{payload}");
-                if (clicked && payload is DalamudLinkPayload { Plugin: "test" } dlp)
-                    Util.OpenLink(dlp.ExtraString);
+                if (clicked && payload.TryReadDalamudLink(out var dalamudLinkPayload) && dalamudLinkPayload.PluginName == "test")
+                    Util.OpenLink(dalamudLinkPayload.ExtraString);
             }
             else
             {
@@ -390,6 +412,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
             return new(20, new(state.FontSize, state.FontSize), DrawChangelogApiBumpIcon);
         if (state.Span[byteOffset..].StartsWith("InstalledIcon"u8))
             return new(13, new(state.FontSize, state.FontSize), DrawInstalledIcon);
+
         if (state.Span[byteOffset..].StartsWith("tex("u8))
         {
             var off = state.Span[byteOffset..].IndexOf((byte)')');
@@ -404,6 +427,7 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
         if (state.Span[byteOffset..].StartsWith("icon("u8))
         {
             var off = state.Span[byteOffset..].IndexOf((byte)')');
+
             if (int.TryParse(state.Span[(byteOffset + 5)..(byteOffset + off)], out var parsed))
             {
                 var tex = Service<TextureManager>
@@ -425,12 +449,14 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
                       .Shared
                       .GetFromGame(Encoding.UTF8.GetString(state.Span[(byteOffset + 4)..(byteOffset + off)]))
                       .GetWrapOrEmpty();
-            state.Draw(
+            state.Draw
+            (
                 tex.Handle,
                 offset + new Vector2(0, (state.LineHeight - state.FontSize) / 2),
                 tex.Size * (state.FontSize / tex.Size.Y),
                 Vector2.Zero,
-                Vector2.One);
+                Vector2.One
+            );
         }
 
         static void DrawIcon(scoped in SeStringDrawState state, int byteOffset, Vector2 offset)
@@ -443,21 +469,25 @@ internal unsafe class SeStringRendererTestWidget : IDataWindowWidget
                       .Shared
                       .GetFromGameIcon(parsed)
                       .GetWrapOrEmpty();
-            state.Draw(
+            state.Draw
+            (
                 tex.Handle,
                 offset + new Vector2(0, (state.LineHeight - state.FontSize) / 2),
                 tex.Size * (state.FontSize / tex.Size.Y),
                 Vector2.Zero,
-                Vector2.One);
+                Vector2.One
+            );
         }
 
         static void DrawAsset(scoped in SeStringDrawState state, Vector2 offset, DalamudAsset asset) =>
-            state.Draw(
+            state.Draw
+            (
                 Service<DalamudAssetManager>.Get().GetDalamudTextureWrap(asset).Handle,
                 offset + new Vector2(0, (state.LineHeight - state.FontSize) / 2),
                 new(state.FontSize, state.FontSize),
                 Vector2.Zero,
-                Vector2.One);
+                Vector2.One
+            );
 
         static void DrawDalamud(scoped in SeStringDrawState state, int byteOffset, Vector2 offset) =>
             DrawAsset(state, offset, DalamudAsset.LogoSmall);

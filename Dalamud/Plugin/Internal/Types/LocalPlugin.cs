@@ -680,7 +680,6 @@ internal class LocalPlugin : IAsyncDisposable
         // 对 Lumina 的更改应该尽可能地上游，如果有人想重新添加未固定的 Lumina，
         // 我们需要将其置于某种功能标志之后。
         config.SharedAssemblies.Add((typeof(Lumina.GameData).Assembly.GetName(), true));
-        config.SharedAssemblies.Add((typeof(Lumina.Excel.Sheets.Addon).Assembly.GetName(), true));
     }
 
     private void EnsureLoader()

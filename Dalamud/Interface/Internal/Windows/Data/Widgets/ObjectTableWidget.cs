@@ -1,5 +1,4 @@
 using System.Numerics;
-
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Objects;
@@ -14,13 +13,17 @@ namespace Dalamud.Interface.Internal.Windows.Data.Widgets;
 /// </summary>
 internal class ObjectTableWidget : IDataWindowWidget
 {
-    private const ImGuiWindowFlags CharacterWindowFlags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.AlwaysAutoResize |
-                                                          ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove |
-                                                          ImGuiWindowFlags.NoMouseInputs | ImGuiWindowFlags.NoDocking |
-                                                          ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav;
+    private const ImGuiWindowFlags CharacterWindowFlags = ImGuiWindowFlags.NoDecoration       |
+                                                          ImGuiWindowFlags.AlwaysAutoResize   |
+                                                          ImGuiWindowFlags.NoSavedSettings    |
+                                                          ImGuiWindowFlags.NoMove             |
+                                                          ImGuiWindowFlags.NoMouseInputs      |
+                                                          ImGuiWindowFlags.NoDocking          |
+                                                          ImGuiWindowFlags.NoFocusOnAppearing |
+                                                          ImGuiWindowFlags.NoNav;
 
-    private bool resolveGameData;
-    private bool drawCharacters;
+    private bool  resolveGameData;
+    private bool  drawCharacters;
     private float maxCharaDrawDistance = 20.0f;
 
     /// <inheritdoc/>
@@ -43,10 +46,10 @@ internal class ObjectTableWidget : IDataWindowWidget
     {
         ImGui.Checkbox("解析游戏数据"u8, ref this.resolveGameData);
 
-        var chatGui = Service<ChatGui>.Get();
+        var chatGui     = Service<ChatGui>.Get();
         var clientState = Service<ClientState>.Get();
         var playerState = Service<PlayerState>.Get();
-        var gameGui = Service<GameGui>.Get();
+        var gameGui     = Service<GameGui>.Get();
         var objectTable = Service<ObjectTable>.Get();
 
         var stateString = string.Empty;
@@ -69,7 +72,7 @@ internal class ObjectTableWidget : IDataWindowWidget
         stateString += $"所属世界名称：{(this.resolveGameData ? playerState.HomeWorld.ValueNullable?.Name : playerState.HomeWorld.RowId.ToString())}\n";
         stateString += $"本地 CID：{playerState.ContentId:X}\n";
         stateString += $"上次链接的物品：{chatGui.LastLinkedItemId}\n";
-        stateString += $"区域类型：{clientState.TerritoryType}\n\n";
+        stateString += $"区域类型：{clientState.TerritoryType.RowId}\n\n";
 
         ImGui.Text(stateString);
 
@@ -90,9 +93,9 @@ internal class ObjectTableWidget : IDataWindowWidget
                 // So, while WorldToScreen will return false if the point is off of game client screen, to
                 // to avoid performance issues, we have to manually determine if creating a window would
                 // produce a new viewport, and skip rendering it if so
-                var objectText = $"{obj.Address:X}:{obj.GameObjectId:X}[{i}] - {obj.ObjectKind} - {obj.Name}";
+                var objectText = $"{obj.Address:X}:{obj.GameObjectId:X}[{i}] - {obj.ObjectKind} - {obj.Name.ToString()}";
 
-                var screenPos = ImGui.GetMainViewport().Pos;
+                var screenPos  = ImGui.GetMainViewport().Pos;
                 var screenSize = ImGui.GetMainViewport().Size;
 
                 var windowSize = ImGui.CalcTextSize(objectText);

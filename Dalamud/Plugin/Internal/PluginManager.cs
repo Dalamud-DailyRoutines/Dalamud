@@ -9,16 +9,12 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-
-using CheapLoc;
-
 using Dalamud.Configuration;
 using Dalamud.Configuration.Internal;
 using Dalamud.Game;
+using Dalamud.Game.Chat;
 using Dalamud.Game.Gui;
 using Dalamud.Game.Text;
-using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
 using Dalamud.Interface.Internal;
 using Dalamud.IoC;
@@ -32,8 +28,6 @@ using Dalamud.Plugin.Ipc.Internal;
 using Dalamud.Support;
 using Dalamud.Utility;
 using Dalamud.Utility.Timing;
-
-using Newtonsoft.Json;
 
 namespace Dalamud.Plugin.Internal;
 
@@ -54,13 +48,13 @@ internal class PluginManager : IInternalDisposableService
 
     private static readonly ModuleLog Log = ModuleLog.Create<PluginManager>();
 
-    private readonly Lock pluginListLock = new();
-    private readonly Lock repoRefreshLock = new();
-    private readonly DirectoryInfo pluginDirectory;
+    private readonly Lock           pluginListLock  = new();
+    private readonly Lock           repoRefreshLock = new();
+    private readonly DirectoryInfo  pluginDirectory;
     private readonly BannedPlugin[] bannedPlugins = [];
 
-    private readonly List<LocalPlugin> installedPluginsList = [];
-    private readonly List<RemotePluginManifest> availablePluginsList = [];
+    private readonly List<LocalPlugin>           installedPluginsList = [];
+    private readonly List<RemotePluginManifest>  availablePluginsList = [];
     private readonly List<AvailablePluginUpdate> updatablePluginsList = [];
 
     private readonly Task<DalamudLinkPayload> openInstallerWindowPluginChangelogsLink;
@@ -77,7 +71,7 @@ internal class PluginManager : IInternalDisposableService
     [ServiceManager.ServiceDependency]
     private readonly HappyHttpClient happyHttpClient = Service<HappyHttpClient>.Get();
 
-    private Task? repoRefreshTask;
+    private Task?           repoRefreshTask;
     private DateTimeOffset? lastRepoRefresh;
 
     static PluginManager()
@@ -86,9 +80,11 @@ internal class PluginManager : IInternalDisposableService
     }
 
     [ServiceManager.ServiceConstructor]
-    private PluginManager(
+    private PluginManager
+    (
         ServiceManager.RegisterStartupBlockerDelegate registerStartupBlocker,
-        ServiceManager.RegisterUnloadAfterDelegate registerUnloadAfter)
+        ServiceManager.RegisterUnloadAfterDelegate    registerUnloadAfter
+    )
     {
         this.pluginDirectory = new DirectoryInfo(this.dalamud.StartInfo.PluginDirectory!);
 
@@ -99,7 +95,7 @@ internal class PluginManager : IInternalDisposableService
 
         try
         {
-            var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var appdata      = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var safeModeFile = Path.Combine(appdata, "XIVLauncherCN", ".dalamud_safemode");
 
             if (File.Exists(safeModeFile))
@@ -119,41 +115,50 @@ internal class PluginManager : IInternalDisposableService
             this.configuration.QueueSave();
         }
 
-        this.PluginConfigs = new PluginConfigurations(Path.Combine(Path.GetDirectoryName(this.dalamud.StartInfo.ConfigurationPath) ?? string.Empty, "pluginConfigs"));
+        this.PluginConfigs = new PluginConfigurations
+            (Path.Combine(Path.GetDirectoryName(this.dalamud.StartInfo.ConfigurationPath) ?? string.Empty, "pluginConfigs"));
 
 
         this.bannedPlugins = [];
 
         this.openInstallerWindowPluginChangelogsLink =
-            Service<ChatGui>.GetAsync().ContinueWith(
-                chatGuiTask => chatGuiTask.Result.AddChatLinkHandler(
-                    (_, _) =>
-                    {
-                        Service<DalamudInterface>.GetNullable()?.OpenPluginInstallerTo(
-                            PluginInstallerOpenKind.Changelogs);
-                    }));
+            Service<ChatGui>.GetAsync().ContinueWith
+            (chatGuiTask => chatGuiTask.Result.AddChatLinkHandler
+             (_ =>
+                 {
+                     Service<DalamudInterface>.GetNullable()?.OpenPluginInstallerTo
+                     (
+                         PluginInstallerOpenKind.Changelogs
+                     );
+                 }
+             )
+            );
 
         this.configuration.PluginTestingOptIns ??= [];
-        this.MainRepo = PluginRepository.CreateMainRepo(this.happyHttpClient);
+        this.MainRepo                          =   PluginRepository.CreateMainRepo(this.happyHttpClient);
 
-        registerStartupBlocker(
+        registerStartupBlocker
+        (
             Task.Run(this.LoadAndStartLoadSyncPlugins),
-            "Waiting for plugins that asked to be loaded before the game.");
+            "Waiting for plugins that asked to be loaded before the game."
+        );
 
-        registerUnloadAfter(
+        registerUnloadAfter
+        (
             ResolvePossiblePluginDependencyServices(),
-            "See the attached comment for the called function.");
+            "See the attached comment for the called function."
+        );
     }
 
     /// <summary>
     /// An event that fires when the installed plugins have changed.
     /// </summary>
-    public event Action? OnInstalledPluginsChanged;
+    public event Action? InstalledPluginsChanged;
 
     /// <summary>
     /// An event that fires when the available plugins have changed.
     /// </summary>
-    public event Action? OnAvailablePluginsChanged;
+    public event Action? AvailablePluginsChanged;
 
     /// <summary>
     /// Gets the current Dalamud API level, used to handle breaking changes. Only plugins with this level will be loaded.
@@ -169,6 +174,7 @@ internal class PluginManager : IInternalDisposableService
         get
         {
             var res = 0;
+
             using (this.pluginListLock.EnterScope())
             {
                 foreach (var p in this.installedPluginsList)
@@ -287,32 +293,34 @@ internal class PluginManager : IInternalDisposableService
     /// <param name="updateMetadata">The list of updated plugin metadata.</param>
     /// <param name="header">The header text to send to chat prior to any update info.</param>
     public void PrintUpdatedPlugins(List<PluginUpdateStatus>? updateMetadata, string header)
-        => Service<ChatGui>.GetAsync().ContinueWith(
-            chatGuiTask =>
+        => Service<ChatGui>.GetAsync().ContinueWith
+        (chatGuiTask =>
             {
                 if (!chatGuiTask.IsCompletedSuccessfully)
                     return;
 
                 var chatGui = chatGuiTask.Result;
+
                 if (updateMetadata is { Count: > 0 })
                 {
-                    chatGui.Print(
-                        new XivChatEntry
+                    using var rssb = new RentedSeStringBuilder();
+                    chatGui.Print
+                    (
+                        new PrintableChatMessage
                         {
-                            Message = new SeString(
-                                new List<Payload>()
-                                {
-                                    new TextPayload(header),
-                                    new TextPayload("  ["),
-                                    new UIForegroundPayload(500),
-                                    this.openInstallerWindowPluginChangelogsLink.Result,
-                                    new TextPayload("更新日志"),
-                                    RawPayload.LinkTerminator,
-                                    new UIForegroundPayload(0),
-                                    new TextPayload("]"),
-                                }),
-                            Type = this.configuration.GeneralChatType,
-                        });
+                            LogKind = this.configuration.GeneralChatType,
+                            Message = rssb.Builder
+                                          .Append(header)
+                                          .Append("  [")
+                                          .PushColorType(500)
+                                          .PushDalamudLink(this.openInstallerWindowPluginChangelogsLink.Result)
+                                          .Append("更新日志")
+                                          .PopLink()
+                                          .PopColorType()
+                                          .Append(']')
+                                          .ToReadOnlySeString()
+                        }
+                    );
 
                     foreach (var metadata in updateMetadata)
                     {
@@ -322,26 +330,31 @@ internal class PluginManager : IInternalDisposableService
                         }
                         else
                         {
-                            chatGui.Print(
-                                new XivChatEntry
+                            chatGui.Print
+                            (
+                                new PrintableChatMessage
                                 {
-                                    Message = Locs.DalamudPluginUpdateFailed(
+                                    Message = Locs.DalamudPluginUpdateFailed
+                                    (
                                         metadata.AffectedPlugin.Name,
                                         metadata.AffectedPlugin.Version,
-                                        PluginUpdateStatus.LocalizeUpdateStatusKind(metadata.Status)),
-                                    Type = XivChatType.Urgent,
-                                });
+                                        PluginUpdateStatus.LocalizeUpdateStatusKind(metadata.Status)
+                                    ),
+                                    LogKind = XivChatType.Urgent
+                                }
+                            );
                         }
                     }
                 }
-            });
+            }
+        );
 
     /// <summary>
     /// For a given manifest, determine if the user opted into testing this plugin.
     /// </summary>
     /// <param name="manifest">Manifest to check.</param>
     /// <returns>A value indicating whether testing should be used.</returns>
-    public bool HasTestingOptIn(IPluginManifest manifest) => 
+    public bool HasTestingOptIn(IPluginManifest manifest) =>
         this.configuration.PluginTestingOptIns!.Any(x => x.InternalName == manifest.InternalName);
 
     /// <summary>
@@ -385,8 +398,8 @@ internal class PluginManager : IInternalDisposableService
     public async Task UnloadAllPlugins()
     {
         var disposablePlugins = this.installedPluginsList
-                .Where(plugin => plugin.State is PluginState.Loaded or PluginState.LoadError)
-                .ToArray();
+                                    .Where(plugin => plugin.State is PluginState.Loaded or PluginState.LoadError)
+                                    .ToArray();
 
         if (disposablePlugins.Length == 0)
             return;
@@ -402,9 +415,11 @@ internal class PluginManager : IInternalDisposableService
             await plugin.UnloadAsync(PluginLoaderDisposalMode.None).SuppressException();
 
         // Unload plugins that can be unloaded from any thread.
-        await Task.WhenAll(
+        await Task.WhenAll
+                  (
                       disposablePlugins.Where(plugin => plugin.Manifest.CanUnloadAsync)
-                                       .Select(plugin => plugin.UnloadAsync(PluginLoaderDisposalMode.None)))
+                                       .Select(plugin => plugin.UnloadAsync(PluginLoaderDisposalMode.None))
+                  )
                   .SuppressException();
 
         // Just in case plugins still have tasks running that they didn't cancel when they should have,
@@ -433,10 +448,13 @@ internal class PluginManager : IInternalDisposableService
 
         var repos = new List<PluginRepository>();
         repos.AddRange(this.MainRepo);
-        repos.AddRange(this.configuration.ThirdRepoList
-                           .Where(repo => repo.IsEnabled && !repo.Url.IsNullOrEmpty())
-                           .DistinctBy(x => x.Url)
-                           .Select(repo => new PluginRepository(this.happyHttpClient, repo.Url, repo.IsEnabled)));
+        repos.AddRange
+        (
+            this.configuration.ThirdRepoList
+                .Where(repo => repo.IsEnabled && !repo.Url.IsNullOrEmpty())
+                .DistinctBy(x => x.Url)
+                .Select(repo => new PluginRepository(this.happyHttpClient, repo.Url, repo.IsEnabled))
+        );
 
         if (Service<DalamudConfiguration>.Get().AddPresetThirdRepos)
         {
@@ -458,11 +476,13 @@ internal class PluginManager : IInternalDisposableService
     public async Task ReloadAllReposAsync(bool force = true)
     {
         Task refreshTask;
+
         lock (this.repoRefreshLock)
         {
             if (this.repoRefreshTask is null or { IsCompleted: true })
             {
-                if (!force && this.lastRepoRefresh is { } lastRefresh &&
+                if (!force                                  &&
+                    this.lastRepoRefresh is { } lastRefresh &&
                     DateTimeOffset.UtcNow - lastRefresh < TimeSpan.FromMinutes(10))
                     return;
 
@@ -483,6 +503,7 @@ internal class PluginManager : IInternalDisposableService
     public async Task ReloadRepoAsync(PluginRepository repository)
     {
         Task refreshTask;
+
         lock (this.repoRefreshLock)
         {
             if (this.repoRefreshTask is null or { IsCompleted: true })
@@ -511,7 +532,7 @@ internal class PluginManager : IInternalDisposableService
     /// <returns>The task.</returns>
     public async Task LoadAllPlugins()
     {
-        var pluginDefs = new List<PluginDef>();
+        var pluginDefs    = new List<PluginDef>();
         var devPluginDefs = new List<PluginDef>();
 
         if (!this.pluginDirectory.Exists)
@@ -521,11 +542,13 @@ internal class PluginManager : IInternalDisposableService
         foreach (var pluginDir in this.pluginDirectory.GetDirectories())
         {
             var versionsDefs = new List<PluginDef>();
+
             foreach (var versionDir in pluginDir.GetDirectories())
             {
                 try
                 {
                     var dllFile = new FileInfo(Path.Combine(versionDir.FullName, $"{pluginDir.Name}.dll"));
+
                     if (!dllFile.Exists)
                     {
                         Log.Error("No DLL found for plugin at {Path}", versionDir.FullName);
@@ -533,6 +556,7 @@ internal class PluginManager : IInternalDisposableService
                     }
 
                     var manifestFile = LocalPluginManifest.GetManifestFile(dllFile);
+
                     if (!manifestFile.Exists)
                     {
                         Log.Error("No manifest for plugin at {Path}", dllFile.FullName);
@@ -540,6 +564,7 @@ internal class PluginManager : IInternalDisposableService
                     }
 
                     var manifest = LocalPluginManifest.Load(manifestFile);
+
                     if (manifest == null)
                     {
                         Log.Error("Manifest for plugin at {Path} was null", dllFile.FullName);
@@ -580,6 +605,7 @@ internal class PluginManager : IInternalDisposableService
         pluginDefs.Sort(PluginDef.Sorter);
 
         var isDevModeEnabled = this.configuration.DevMode == true;
+
         if (isDevModeEnabled)
         {
             foreach (var loadLocation in this.configuration.DevPluginLoadLocations)
@@ -588,6 +614,7 @@ internal class PluginManager : IInternalDisposableService
                     continue;
 
                 var fileInfo = new FileInfo(loadLocation.Path);
+
                 if (!fileInfo.Exists)
                 {
                     Log.Verbose("Dev plugin path {Path} does not exist", loadLocation.Path);
@@ -598,6 +625,7 @@ internal class PluginManager : IInternalDisposableService
                 {
                     // Manifests are now required for devPlugins
                     var manifestFile = LocalPluginManifest.GetManifestFile(fileInfo);
+
                     if (!manifestFile.Exists)
                     {
                         Log.Error("DLL at {DllPath} has no manifest, this is no longer valid", fileInfo.FullName);
@@ -605,6 +633,7 @@ internal class PluginManager : IInternalDisposableService
                     }
 
                     var manifest = LocalPluginManifest.Load(manifestFile);
+
                     if (manifest == null)
                     {
                         Log.Error("Could not deserialize manifest for DLL at {DllPath}", fileInfo.FullName);
@@ -634,16 +663,19 @@ internal class PluginManager : IInternalDisposableService
         async Task LoadPluginOnBoot(string logPrefix, PluginDef pluginDef, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
+
             using (Timings.Start($"{pluginDef.DllFile.Name}: {logPrefix}Boot"))
             {
                 try
                 {
-                    await this.LoadPluginAsync(
+                    await this.LoadPluginAsync
+                    (
                         pluginDef.DllFile,
                         pluginDef.Manifest,
                         PluginLoadReason.Boot,
                         pluginDef.DevPluginLocation,
-                        isBoot: true);
+                        isBoot: true
+                    );
                 }
                 catch (InvalidPluginException)
                 {
@@ -670,14 +702,19 @@ internal class PluginManager : IInternalDisposableService
         {
             Log.Information($"============= LoadPluginsAsync({logPrefix}) START =============");
 
-            await Task.WhenAll(
+            await Task.WhenAll
+            (
                 pluginDefsList
-                    .Select(pluginDef =>
-                                Task.Run(
-                                    Timings.AttachTimingHandle(
-                                             () => LoadPluginOnBoot(logPrefix, pluginDef, token)),
-                                    token))
-                    .ToArray()).ConfigureAwait(false);
+                    .Select
+                    (pluginDef =>
+                         Task.Run
+                         (
+                             Timings.AttachTimingHandle(() => LoadPluginOnBoot(logPrefix, pluginDef, token)),
+                             token
+                         )
+                    )
+                    .ToArray()
+            ).ConfigureAwait(false);
 
             Log.Information($"============= LoadPluginsAsync({logPrefix}) END =============");
         }
@@ -685,65 +722,92 @@ internal class PluginManager : IInternalDisposableService
         // Initialize the startup load tracker for all LoadSync plugins
         {
             this.StartupLoadTracking = new();
+
             foreach (var pluginDef in pluginDefs.Where(x => x.Manifest.LoadSync))
             {
                 this.StartupLoadTracking.Add(pluginDef.Manifest!.InternalName, pluginDef.Manifest.Name);
             }
         }
 
-        var syncPlugins = pluginDefs.Where(def => def.Manifest?.LoadSync == true).ToList();
+        var syncPlugins  = pluginDefs.Where(def => def.Manifest?.LoadSync == true).ToList();
         var asyncPlugins = pluginDefs.Where(def => def.Manifest?.LoadSync != true).ToList();
-        var loadTasks = new List<Task>();
+        var loadTasks    = new List<Task>();
 
         var tokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(5));
 
         // Load plugins that can be loaded anytime
-        await LoadPluginsSync(
+        await LoadPluginsSync
+        (
             "AnytimeSync",
             syncPlugins.Where(def => def.Manifest?.LoadRequiredState == 2),
-            tokenSource.Token);
-        loadTasks.Add(LoadPluginsAsync(
-                          "AnytimeAsync",
-                          asyncPlugins.Where(def => def.Manifest?.LoadRequiredState == 2),
-                          tokenSource.Token));
+            tokenSource.Token
+        );
+        loadTasks.Add
+        (
+            LoadPluginsAsync
+            (
+                "AnytimeAsync",
+                asyncPlugins.Where(def => def.Manifest?.LoadRequiredState == 2),
+                tokenSource.Token
+            )
+        );
 
         // Pass the rest of plugin loading to another thread(task)
-        _ = Task.Run(
+        _ = Task.Run
+        (
             async () =>
             {
                 Log.Verbose("Starting async boot load");
 
                 // Load plugins that want to be loaded during Framework.Tick
                 var framework = await Service<Framework>.GetAsync().ConfigureAwait(false);
-                await framework.RunOnTick(
-                    () => LoadPluginsSync(
+                await framework.RunOnTick
+                (
+                    () => LoadPluginsSync
+                    (
                         "FrameworkTickSync",
                         syncPlugins.Where(def => def.Manifest?.LoadRequiredState == 1),
-                        tokenSource.Token),
-                    cancellationToken: tokenSource.Token).ConfigureAwait(false);
+                        tokenSource.Token
+                    ),
+                    cancellationToken: tokenSource.Token
+                ).ConfigureAwait(false);
                 Log.Verbose("Loaded FrameworkTickSync plugins (LoadRequiredState == 1)");
 
-                loadTasks.Add(LoadPluginsAsync(
-                                  "FrameworkTickAsync",
-                                  asyncPlugins.Where(def => def.Manifest?.LoadRequiredState == 1),
-                                  tokenSource.Token));
+                loadTasks.Add
+                (
+                    LoadPluginsAsync
+                    (
+                        "FrameworkTickAsync",
+                        asyncPlugins.Where(def => def.Manifest?.LoadRequiredState == 1),
+                        tokenSource.Token
+                    )
+                );
                 Log.Verbose("Kicked off FrameworkTickAsync plugins (LoadRequiredState == 1)");
 
                 // Load plugins that want to be loaded during Framework.Tick, when drawing facilities are available
                 _ = await Service<InterfaceManager.InterfaceManagerWithScene>.GetAsync().ConfigureAwait(false);
                 Log.Verbose(" InterfaceManager is ready, starting to load DrawAvailableSync plugins");
-                await framework.RunOnTick(
-                    () => LoadPluginsSync(
+                await framework.RunOnTick
+                (
+                    () => LoadPluginsSync
+                    (
                         "DrawAvailableSync",
                         syncPlugins.Where(def => def.Manifest?.LoadRequiredState is 0 or null),
-                        tokenSource.Token),
-                    cancellationToken: tokenSource.Token);
+                        tokenSource.Token
+                    ),
+                    cancellationToken: tokenSource.Token
+                );
                 Log.Verbose("Loaded DrawAvailableSync plugins (LoadRequiredState == 0 or null)");
 
-                loadTasks.Add(LoadPluginsAsync(
-                                  "DrawAvailableAsync",
-                                  asyncPlugins.Where(def => def.Manifest?.LoadRequiredState is 0 or null),
-                                  tokenSource.Token));
+                loadTasks.Add
+                (
+                    LoadPluginsAsync
+                    (
+                        "DrawAvailableAsync",
+                        asyncPlugins.Where(def => def.Manifest?.LoadRequiredState is 0 or null),
+                        tokenSource.Token
+                    )
+                );
                 Log.Verbose("Kicked off DrawAvailableAsync plugins (LoadRequiredState == 0 or null)");
 
                 // Save signatures when all plugins are done loading, successful or not.
@@ -773,7 +837,10 @@ internal class PluginManager : IInternalDisposableService
                 }
 
                 this.StartupLoadTracking = null;
-            }, tokenSource.Token).ContinueWith(t =>
+            },
+            tokenSource.Token
+        ).ContinueWith
+        (t =>
             {
                 if (t.IsFaulted)
                 {
@@ -788,7 +855,8 @@ internal class PluginManager : IInternalDisposableService
                 }
 
                 Log.Verbose("Finished async boot load");
-            });
+            }
+        );
     }
 
     /// <summary>
@@ -807,6 +875,7 @@ internal class PluginManager : IInternalDisposableService
                 continue;
 
             var fileInfo = new FileInfo(loadLocation.Path);
+
             if (!fileInfo.Exists)
             {
                 Log.Verbose("Dev plugin path {Path} does not exist", loadLocation.Path);
@@ -824,6 +893,7 @@ internal class PluginManager : IInternalDisposableService
 
             // Manifests are now required for devPlugins
             var manifestFile = LocalPluginManifest.GetManifestFile(fileInfo);
+
             if (!manifestFile.Exists)
             {
                 Log.Error("DLL at {DllPath} has no manifest, this is no longer valid", fileInfo.FullName);
@@ -831,6 +901,7 @@ internal class PluginManager : IInternalDisposableService
             }
 
             var manifest = LocalPluginManifest.Load(manifestFile);
+
             if (manifest == null)
             {
                 Log.Error("Could not deserialize manifest for DLL at {DllPath}", fileInfo.FullName);
@@ -864,8 +935,12 @@ internal class PluginManager : IInternalDisposableService
     /// <param name="useTesting">If the testing version should be used.</param>
     /// <param name="reason">The reason this plugin was loaded.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    public async Task<LocalPlugin> InstallPluginAsync(
-        RemotePluginManifest repoManifest, bool useTesting, PluginLoadReason reason)
+    public async Task<LocalPlugin> InstallPluginAsync
+    (
+        RemotePluginManifest repoManifest,
+        bool                 useTesting,
+        PluginLoadReason     reason
+    )
     {
         var stream = await this.DownloadPluginAsync(repoManifest, useTesting);
         return await this.InstallPluginInternalAsync(repoManifest, useTesting, reason, stream);
@@ -906,18 +981,20 @@ internal class PluginManager : IInternalDisposableService
                 var versionDirs = pluginDir.GetDirectories();
 
                 versionDirs = versionDirs
-                              .OrderByDescending(dir =>
-                              {
-                                  var isVersion = Version.TryParse(dir.Name, out var version);
-
-                                  if (!isVersion)
+                              .OrderByDescending
+                              (dir =>
                                   {
-                                      Log.Debug($"Not a version, cleaning up {dir.FullName}");
-                                      dir.Delete(true);
-                                  }
+                                      var isVersion = Version.TryParse(dir.Name, out var version);
 
-                                  return version;
-                              })
+                                      if (!isVersion)
+                                      {
+                                          Log.Debug($"Not a version, cleaning up {dir.FullName}");
+                                          dir.Delete(true);
+                                      }
+
+                                      return version;
+                                  }
+                              )
                               .ToArray();
 
                 if (versionDirs.Length == 0)
@@ -930,6 +1007,7 @@ internal class PluginManager : IInternalDisposableService
                     for (var i = 0; i < versionDirs.Length; i++)
                     {
                         var versionDir = versionDirs[i];
+
                         try
                         {
                             if (i != 0)
@@ -940,6 +1018,7 @@ internal class PluginManager : IInternalDisposableService
                             }
 
                             var dllFile = new FileInfo(Path.Combine(versionDir.FullName, $"{pluginDir.Name}.dll"));
+
                             if (!dllFile.Exists)
                             {
                                 Log.Information($"Missing dll: cleaning up {versionDir.FullName}");
@@ -948,6 +1027,7 @@ internal class PluginManager : IInternalDisposableService
                             }
 
                             var manifestFile = LocalPluginManifest.GetManifestFile(dllFile);
+
                             if (!manifestFile.Exists)
                             {
                                 Log.Information($"Missing manifest: cleaning up {versionDir.FullName}");
@@ -963,6 +1043,7 @@ internal class PluginManager : IInternalDisposableService
                             }
 
                             var manifest = LocalPluginManifest.Load(manifestFile);
+
                             if (manifest.ScheduledForDeletion)
                             {
                                 Log.Information($"Scheduled deletion: cleaning up {versionDir.FullName}");
@@ -991,16 +1072,18 @@ internal class PluginManager : IInternalDisposableService
     /// <param name="autoUpdate">If this action was performed as part of an auto-update.</param>
     /// <param name="progress">An <see cref="IProgress{T}"/> implementation to receive progress updates about the installation status.</param>
     /// <returns>Success or failure and a list of updated plugin metadata.</returns>
-    public async Task<IEnumerable<PluginUpdateStatus>> UpdatePluginsAsync(
+    public async Task<IEnumerable<PluginUpdateStatus>> UpdatePluginsAsync
+    (
         ICollection<AvailablePluginUpdate> toUpdate,
-        bool dryRun,
-        bool autoUpdate = false,
-        IProgress<PluginUpdateProgress>? progress = null)
+        bool                               dryRun,
+        bool                               autoUpdate = false,
+        IProgress<PluginUpdateProgress>?   progress   = null
+    )
     {
         Log.Information("Starting plugin update");
 
-        var updateTasks = new List<Task<PluginUpdateStatus>>();
-        var totalPlugins = toUpdate.Count;
+        var updateTasks      = new List<Task<PluginUpdateStatus>>();
+        var totalPlugins     = toUpdate.Count;
         var processedPlugins = 0;
 
         foreach (var plugin in toUpdate)
@@ -1018,9 +1101,13 @@ internal class PluginManager : IInternalDisposableService
         var updatedList = await Task.WhenAll(updateTasks);
 
         this.NotifyInstalledPluginsChanged();
-        this.NotifyPluginsForStateChange(
-            autoUpdate ? PluginListInvalidationKind.AutoUpdate : PluginListInvalidationKind.Update,
-            updatedList.Select(x => x.AffectedPlugin));
+        this.NotifyPluginsForStateChange
+        (
+            autoUpdate ?
+                PluginListInvalidationKind.AutoUpdate :
+                PluginListInvalidationKind.Update,
+            updatedList.Select(x => x.AffectedPlugin)
+        );
 
         Log.Information("Plugin update OK. {UpdateCount} plugins updated", updatedList.Length);
 
@@ -1034,10 +1121,15 @@ internal class PluginManager : IInternalDisposableService
             if (progress != null)
             {
                 var newProcessedAmount = Interlocked.Increment(ref processedPlugins);
-                progress.Report(new PluginUpdateProgress(
-                                    newProcessedAmount,
-                                    totalPlugins,
-                                    plugin.InstalledPlugin.Manifest));
+                progress.Report
+                (
+                    new PluginUpdateProgress
+                    (
+                        newProcessedAmount,
+                        totalPlugins,
+                        plugin.InstalledPlugin.Manifest
+                    )
+                );
             }
 
             return result;
@@ -1059,18 +1151,21 @@ internal class PluginManager : IInternalDisposableService
         if (workingPluginId == Guid.Empty)
             throw new Exception("Existing plugin had no WorkingPluginId");
 
-        var version = metadata.UseTesting ? metadata.UpdateManifest.TestingAssemblyVersion : metadata.UpdateManifest.AssemblyVersion;
+        var version = metadata.UseTesting ?
+                          metadata.UpdateManifest.TestingAssemblyVersion :
+                          metadata.UpdateManifest.AssemblyVersion;
         var updateStatus = new PluginUpdateStatus
         {
             AffectedPlugin = new ActivePluginsChangedEventArgs.AffectedPlugin(plugin, version),
-            Status = PluginUpdateStatus.StatusKind.Success,
-            HasChangelog = !metadata.UpdateManifest.Changelog.IsNullOrWhitespace(),
+            Status         = PluginUpdateStatus.StatusKind.Success,
+            HasChangelog   = !metadata.UpdateManifest.Changelog.IsNullOrWhitespace()
         };
 
         // Check if this plugin is already up to date (=> AvailablePluginUpdate was stale)
         lock (this.installedPluginsList)
         {
             var matchedPlugin = this.installedPluginsList.FirstOrDefault(x => x.EffectiveWorkingPluginId == workingPluginId);
+
             if (matchedPlugin?.EffectiveVersion == metadata.EffectiveVersion)
             {
                 Log.Information("Plugin {Name} is already up to date", plugin.Manifest.Name);
@@ -1083,6 +1178,7 @@ internal class PluginManager : IInternalDisposableService
         {
             // Download the update before unloading
             Stream updateStream;
+
             try
             {
                 updateStream = await this.DownloadPluginAsync(metadata.UpdateManifest, metadata.UseTesting);
@@ -1186,11 +1282,11 @@ internal class PluginManager : IInternalDisposableService
         // API level - we keep the API before this in the installer to show as "outdated"
         {
             var effectiveDalamudApiLevel =
-                this.CanUseTesting(manifest) &&
+                this.CanUseTesting(manifest)             &&
                 manifest.TestingDalamudApiLevel.HasValue &&
-                manifest.TestingDalamudApiLevel.Value > manifest.DalamudApiLevel
-                    ? manifest.TestingDalamudApiLevel.Value
-                    : manifest.DalamudApiLevel;
+                manifest.TestingDalamudApiLevel.Value > manifest.DalamudApiLevel ?
+                    manifest.TestingDalamudApiLevel.Value :
+                    manifest.DalamudApiLevel;
 
             if (effectiveDalamudApiLevel < DalamudApiLevel - 1)
                 return false;
@@ -1244,7 +1340,7 @@ internal class PluginManager : IInternalDisposableService
             {
                 foreach (var plugin in this.installedPluginsList)
                 {
-                    if (plugin.Assembly != null &&
+                    if (plugin.Assembly                    != null &&
                         plugin.Assembly.GetName().FullName == declaringType.Assembly.GetName().FullName)
                         return plugin;
                 }
@@ -1302,7 +1398,7 @@ internal class PluginManager : IInternalDisposableService
             if (serviceType.GetServiceKind() == ServiceManager.ServiceKind.ScopedService)
             {
                 var typeAsServiceT = ServiceHelpers.GetAsService(serviceType);
-                var dependencies = ServiceHelpers.GetDependencies(typeAsServiceT, false);
+                var dependencies   = ServiceHelpers.GetDependencies(typeAsServiceT, false);
                 ServiceManager.Log.Verbose("Found dependencies of scoped plugin service {Type} ({Cnt})", serviceType.FullName!, dependencies!.Count);
 
                 foreach (var scopedDep in dependencies)
@@ -1336,12 +1432,15 @@ internal class PluginManager : IInternalDisposableService
         foreach (var installedPlugin in this.InstalledPlugins)
         {
             if (installedPlugin.EffectiveWorkingPluginId == Guid.Empty)
-                throw new Exception($"{(installedPlugin is LocalDevPlugin ? "DevPlugin" : "Plugin")} '{installedPlugin.Manifest.InternalName}' has an empty WorkingPluginId.");
+                throw new Exception
+                    ($"{(installedPlugin is LocalDevPlugin ? "DevPlugin" : "Plugin")} '{installedPlugin.Manifest.InternalName}' has an empty WorkingPluginId.");
 
             if (seenIds.Contains(installedPlugin.EffectiveWorkingPluginId))
             {
-                throw new Exception(
-                    $"{(installedPlugin is LocalDevPlugin ? "DevPlugin" : "Plugin")} '{installedPlugin.Manifest.InternalName}' has a duplicate WorkingPluginId '{installedPlugin.EffectiveWorkingPluginId}'");
+                throw new Exception
+                (
+                    $"{(installedPlugin is LocalDevPlugin ? "DevPlugin" : "Plugin")} '{installedPlugin.Manifest.InternalName}' has a duplicate WorkingPluginId '{installedPlugin.EffectiveWorkingPluginId}'"
+                );
             }
 
             seenIds.Add(installedPlugin.EffectiveWorkingPluginId);
@@ -1352,16 +1451,18 @@ internal class PluginManager : IInternalDisposableService
 
     private async Task<Stream> DownloadPluginAsync(RemotePluginManifest repoManifest, bool useTesting)
     {
-        var downloadUrl = useTesting ? repoManifest.DownloadLinkTesting : repoManifest.DownloadLinkInstall;
+        var downloadUrl = useTesting ?
+                              repoManifest.DownloadLinkTesting :
+                              repoManifest.DownloadLinkInstall;
         var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl)
         {
             Headers =
             {
                 Accept =
                 {
-                    new MediaTypeWithQualityHeaderValue("application/zip"),
-                },
-            },
+                    new MediaTypeWithQualityHeaderValue("application/zip")
+                }
+            }
         };
         var response = await this.happyHttpClient.SharedHttpClient.SendAsync(request);
         response.EnsureSuccessStatusCode();
@@ -1378,14 +1479,18 @@ internal class PluginManager : IInternalDisposableService
     /// <param name="zipStream">Stream of the ZIP archive containing the plugin that is about to be installed.</param>
     /// <param name="pluginToReplace">The plugin that is being replaced by this installation (used during an update).</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    private async Task<LocalPlugin> InstallPluginInternalAsync(
+    private async Task<LocalPlugin> InstallPluginInternalAsync
+    (
         RemotePluginManifest repoManifest,
-        bool useTesting,
-        PluginLoadReason reason,
-        Stream zipStream,
-        LocalPlugin? pluginToReplace = null)
+        bool                 useTesting,
+        PluginLoadReason     reason,
+        Stream               zipStream,
+        LocalPlugin?         pluginToReplace = null
+    )
     {
-        var version = useTesting ? repoManifest.TestingAssemblyVersion : repoManifest.AssemblyVersion;
+        var version = useTesting ?
+                          repoManifest.TestingAssemblyVersion :
+                          repoManifest.AssemblyVersion;
         Log.Debug($"Installing plugin {repoManifest.Name} (testing={useTesting}, version={version}, reason={reason})");
 
         // If this plugin is in the default profile for whatever reason, delete the state
@@ -1404,6 +1509,7 @@ internal class PluginManager : IInternalDisposableService
                 if (guidsToRemove.Length != 0)
                 {
                     Log.Verbose("Removing {Cnt} orphaned entries from default profile", guidsToRemove.Length);
+
                     foreach (var guid in guidsToRemove)
                     {
                         // We don't need to apply, it doesn't matter
@@ -1432,8 +1538,8 @@ internal class PluginManager : IInternalDisposableService
         }
 
         var pluginVersionsDir = new DirectoryInfo(Path.Combine(this.pluginDirectory.FullName, repoManifest.InternalName));
-        var tempOutputDir = new DirectoryInfo(FilesystemUtil.GetTempFileName());
-        var outputDir = new DirectoryInfo(Path.Combine(pluginVersionsDir.FullName, version?.ToString() ?? string.Empty));
+        var tempOutputDir     = new DirectoryInfo(FilesystemUtil.GetTempFileName());
+        var outputDir         = new DirectoryInfo(Path.Combine(pluginVersionsDir.FullName, version?.ToString() ?? string.Empty));
 
         FilesystemUtil.DeleteAndRecreateDirectory(tempOutputDir);
         FilesystemUtil.DeleteAndRecreateDirectory(outputDir);
@@ -1446,13 +1552,17 @@ internal class PluginManager : IInternalDisposableService
 
             foreach (var zipFile in archive.Entries)
             {
-                var outputFile = new FileInfo(
-                    Path.GetFullPath(Path.Combine(tempOutputDir.FullName, zipFile.FullName)));
+                var outputFile = new FileInfo
+                (
+                    Path.GetFullPath(Path.Combine(tempOutputDir.FullName, zipFile.FullName))
+                );
 
                 if (!outputFile.FullName.StartsWith(tempOutputDir.FullName, StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new IOException(
-                        "Trying to extract file outside of destination directory. See this link for more info: https://snyk.io/research/zip-slip-vulnerability");
+                    throw new IOException
+                    (
+                        "Trying to extract file outside of destination directory. See this link for more info: https://snyk.io/research/zip-slip-vulnerability"
+                    );
                 }
 
                 if (outputFile.Directory == null)
@@ -1463,8 +1573,11 @@ internal class PluginManager : IInternalDisposableService
                 if (zipFile.Name.IsNullOrEmpty())
                 {
                     // Assuming Empty for Directory
-                    Log.Verbose(
-                        "ZipFile name is null or empty, treating as a directory: {Path}", outputFile.Directory.FullName);
+                    Log.Verbose
+                    (
+                        "ZipFile name is null or empty, treating as a directory: {Path}",
+                        outputFile.Directory.FullName
+                    );
                     Directory.CreateDirectory(outputFile.Directory.FullName);
                     continue;
                 }
@@ -1474,27 +1587,33 @@ internal class PluginManager : IInternalDisposableService
                 zipFile.ExtractToFile(outputFile.FullName, true);
             }
 
-            var tempDllFile = LocalPluginManifest.GetPluginFile(tempOutputDir, repoManifest);
+            var tempDllFile      = LocalPluginManifest.GetPluginFile(tempOutputDir, repoManifest);
             var tempManifestFile = LocalPluginManifest.GetManifestFile(tempDllFile);
 
             // Reload as a local manifest, add some attributes, and save again.
             var tempManifest = LocalPluginManifest.Load(tempManifestFile) ?? throw new Exception("Plugin had no valid manifest");
+
             if (tempManifest.InternalName != repoManifest.InternalName)
             {
-                throw new Exception(
-                    $"Distributed internal name does not match repo internal name, distributed: {tempManifest.InternalName} repo: {repoManifest.InternalName}");
+                throw new Exception
+                (
+                    $"Distributed internal name does not match repo internal name, distributed: {tempManifest.InternalName} repo: {repoManifest.InternalName}"
+                );
             }
 
             if (tempManifest.AssemblyVersion != version)
             {
-                throw new Exception(
-                    $"Distributed plugin version does not match repo version, distributed: {tempManifest.AssemblyVersion} repo: {version}");
+                throw new Exception
+                (
+                    $"Distributed plugin version does not match repo version, distributed: {tempManifest.AssemblyVersion} repo: {version}"
+                );
             }
 
             if (tempManifest.WorkingPluginId != Guid.Empty)
                 throw new Exception("Plugin shall not specify a WorkingPluginId");
 
             Guid? newWorkingPluginId;
+
             if (pluginToReplace != null)
             {
                 newWorkingPluginId = pluginToReplace.EffectiveWorkingPluginId;
@@ -1514,9 +1633,9 @@ internal class PluginManager : IInternalDisposableService
             }
 
             // Document the url the plugin was installed from
-            tempManifest.InstalledFromUrl = repoManifest.SourceRepo.IsThirdParty
-                                                ? repoManifest.SourceRepo.PluginMasterUrl
-                                                : SpecialPluginSource.MainRepo;
+            tempManifest.InstalledFromUrl = repoManifest.SourceRepo.IsThirdParty ?
+                                                repoManifest.SourceRepo.PluginMasterUrl :
+                                                SpecialPluginSource.MainRepo;
 
             // HACK: We need to do this at the moment so that D17 plugins can load their assets.
             // Goat should get off his ass and fix the pipeline in Plogon to specify correct URLs
@@ -1528,10 +1647,10 @@ internal class PluginManager : IInternalDisposableService
             Log.Debug("Copying plugin from {TempOutputDir} to {OutputDir}", tempOutputDir, outputDir);
             FilesystemUtil.CopyFilesRecursively(tempOutputDir, outputDir);
 
-            var finalDllFile = LocalPluginManifest.GetPluginFile(outputDir, repoManifest);
+            var finalDllFile      = LocalPluginManifest.GetPluginFile(outputDir, repoManifest);
             var finalManifestFile = LocalPluginManifest.GetManifestFile(finalDllFile);
             var finalManifest = LocalPluginManifest.Load(finalManifestFile) ??
-                           throw new Exception("Plugin had no valid manifest after copy");
+                                throw new Exception("Plugin had no valid manifest after copy");
 
             Log.Information("Staged plugin {InternalName} (testing={UseTesting})", tempManifest.Name, useTesting);
             return await this.LoadPluginAsync(finalDllFile, finalManifest, reason, pluginToReplace: pluginToReplace);
@@ -1573,14 +1692,16 @@ internal class PluginManager : IInternalDisposableService
     /// fails for whatever reason.
     /// </param>
     /// <returns>The loaded plugin.</returns>
-    private async Task<LocalPlugin> LoadPluginAsync(
-        FileInfo dllFile,
-        LocalPluginManifest manifest,
-        PluginLoadReason reason,
+    private async Task<LocalPlugin> LoadPluginAsync
+    (
+        FileInfo                   dllFile,
+        LocalPluginManifest        manifest,
+        PluginLoadReason           reason,
         DevPluginLocationSettings? devPluginLocation = null,
-        bool isBoot = false,
-        bool doNotLoad = false,
-        LocalPlugin? pluginToReplace = null)
+        bool                       isBoot            = false,
+        bool                       doNotLoad         = false,
+        LocalPlugin?               pluginToReplace   = null
+    )
     {
         // TODO: Split this function - it should only take care of adding the plugin to the list, not loading itself, that should be done through the plugin instance
 
@@ -1657,6 +1778,7 @@ internal class PluginManager : IInternalDisposableService
 
             var wantsInDefaultProfile =
                 this.profileManager.DefaultProfile.WantsPlugin(plugin.EffectiveWorkingPluginId);
+
             if (wantsInDefaultProfile == null)
             {
                 // We don't know about this plugin, so we don't want to do anything here.
@@ -1716,8 +1838,16 @@ internal class PluginManager : IInternalDisposableService
 
         // Plugins that aren't in any profile will be added to the default profile with this call.
         // We are skipping a double-lookup for dev plugins that are wanted by non-default profiles, as noted above.
-        wantedByAnyProfile = wantedByAnyProfile || await this.profileManager.GetWantStateAsync(plugin.EffectiveWorkingPluginId, plugin.Manifest.InternalName, defaultState);
-        Log.Information("{Name} defaultState: {State} wantedByAnyProfile: {WantedByAny} loadPlugin: {LoadPlugin}", plugin.Manifest.InternalName, defaultState, wantedByAnyProfile, loadPlugin);
+        wantedByAnyProfile = wantedByAnyProfile ||
+                             await this.profileManager.GetWantStateAsync(plugin.EffectiveWorkingPluginId, plugin.Manifest.InternalName, defaultState);
+        Log.Information
+        (
+            "{Name} defaultState: {State} wantedByAnyProfile: {WantedByAny} loadPlugin: {LoadPlugin}",
+            plugin.Manifest.InternalName,
+            defaultState,
+            wantedByAnyProfile,
+            loadPlugin
+        );
 
         if (loadPlugin)
         {
@@ -1729,7 +1859,8 @@ internal class PluginManager : IInternalDisposableService
                 }
                 else
                 {
-                    Log.Verbose("{Name} not loaded, wantToLoad:{WantedByAnyProfile} orphaned:{IsOrphaned}", manifest.InternalName, wantedByAnyProfile, plugin.IsOrphaned);
+                    Log.Verbose
+                        ("{Name} not loaded, wantToLoad:{WantedByAnyProfile} orphaned:{IsOrphaned}", manifest.InternalName, wantedByAnyProfile, plugin.IsOrphaned);
                 }
             }
             catch (InvalidPluginException)
@@ -1796,34 +1927,48 @@ internal class PluginManager : IInternalDisposableService
 
             var updates = this.AvailablePlugins
                               .Where(remoteManifest => plugin.Manifest.InternalName == remoteManifest.InternalName)
-                              .Where(remoteManifest => plugin.Manifest.InstalledFromUrl == remoteManifest.SourceRepo.PluginMasterUrl || !remoteManifest.SourceRepo.IsThirdParty)
-                              .Where(remoteManifest => remoteManifest.MinimumDalamudVersion == null || Versioning.GetAssemblyVersionParsed() >= remoteManifest.MinimumDalamudVersion)
+                              .Where
+                              (remoteManifest => plugin.Manifest.InstalledFromUrl == remoteManifest.SourceRepo.PluginMasterUrl ||
+                                                 !remoteManifest.SourceRepo.IsThirdParty
+                              )
+                              .Where
+                              (remoteManifest => remoteManifest.MinimumDalamudVersion  == null ||
+                                                 Versioning.GetAssemblyVersionParsed() >= remoteManifest.MinimumDalamudVersion
+                              )
                               .Where(remoteManifest => !remoteManifest.IsTestingExclusive || this.UseTesting(remoteManifest))
-                              .Where(remoteManifest =>
-                              {
-                                  var useTesting = this.UseTesting(remoteManifest);
-                                  var candidateApiLevel = useTesting && remoteManifest.TestingDalamudApiLevel != null
-                                                              ? remoteManifest.TestingDalamudApiLevel.Value
-                                                              : remoteManifest.DalamudApiLevel;
+                              .Where
+                              (remoteManifest =>
+                                  {
+                                      var useTesting = this.UseTesting(remoteManifest);
+                                      var candidateApiLevel = useTesting && remoteManifest.TestingDalamudApiLevel != null ?
+                                                                  remoteManifest.TestingDalamudApiLevel.Value :
+                                                                  remoteManifest.DalamudApiLevel;
 
-                                  return candidateApiLevel == DalamudApiLevel;
-                              })
-                              .Select(remoteManifest =>
-                              {
-                                  var useTesting = this.UseTesting(remoteManifest);
-                                  var candidateVersion = useTesting
-                                                              ? remoteManifest.TestingAssemblyVersion
-                                                              : remoteManifest.AssemblyVersion;
-                                  var isUpdate = candidateVersion > installedVersion;
+                                      return candidateApiLevel == DalamudApiLevel;
+                                  }
+                              )
+                              .Select
+                              (remoteManifest =>
+                                  {
+                                      var useTesting = this.UseTesting(remoteManifest);
+                                      var candidateVersion = useTesting ?
+                                                                 remoteManifest.TestingAssemblyVersion :
+                                                                 remoteManifest.AssemblyVersion;
+                                      var isUpdate = candidateVersion > installedVersion;
 
-                                  return (isUpdate, useTesting, candidateVersion, remoteManifest);
-                              })
+                                      return (isUpdate, useTesting, candidateVersion, remoteManifest);
+                                  }
+                              )
                               .Where(tpl => tpl.isUpdate)
                               .ToList();
 
             if (updates.Count > 0)
             {
-                var update = updates.Aggregate((t1, t2) => t1.candidateVersion > t2.candidateVersion ? t1 : t2);
+                var update = updates.Aggregate
+                ((t1, t2) => t1.candidateVersion > t2.candidateVersion ?
+                                 t1 :
+                                 t2
+                );
                 this.updatablePluginsList.Add(new AvailablePluginUpdate(plugin, update.remoteManifest, update.useTesting));
             }
         }
@@ -1880,10 +2025,13 @@ internal class PluginManager : IInternalDisposableService
         using var scope = this.pluginListLock.EnterScope();
 
         this.availablePluginsList.Clear();
-        this.availablePluginsList.AddRange(this.Repos
-                                                .SelectMany(repo => repo.PluginMaster)
-                                                .Where(this.IsManifestEligible)
-                                                .Where(IsManifestVisible));
+        this.availablePluginsList.AddRange
+        (
+            this.Repos
+                .SelectMany(repo => repo.PluginMaster)
+                .Where(this.IsManifestEligible)
+                .Where(IsManifestVisible)
+        );
 
         if (notify)
         {
@@ -1895,14 +2043,14 @@ internal class PluginManager : IInternalDisposableService
     {
         this.DetectAvailablePluginUpdates();
 
-        this.OnAvailablePluginsChanged?.InvokeSafely();
+        this.AvailablePluginsChanged?.InvokeSafely();
     }
 
     private void NotifyInstalledPluginsChanged()
     {
         this.DetectAvailablePluginUpdates();
 
-        this.OnInstalledPluginsChanged?.InvokeSafely();
+        this.InstalledPluginsChanged?.InvokeSafely();
     }
 
     private void LoadAndStartLoadSyncPlugins()
@@ -1911,8 +2059,8 @@ internal class PluginManager : IInternalDisposableService
         {
             using (Timings.Start("PM Load Plugin Repos"))
             {
-                _ = this.SetPluginReposFromConfigAsync(false);
-                this.OnInstalledPluginsChanged += () => Task.Run(Troubleshooting.LogTroubleshooting);
+                _                            =  this.SetPluginReposFromConfigAsync(false);
+                this.InstalledPluginsChanged += () => Task.Run(Troubleshooting.LogTroubleshooting);
 
                 Log.Information("Repos loaded!");
             }
@@ -1926,15 +2074,17 @@ internal class PluginManager : IInternalDisposableService
             using (Timings.Start("PM Load Sync Plugins"))
             {
                 var loadAllPlugins = Task.Run(this.LoadAllPlugins)
-                                         .ContinueWith(t =>
-                                         {
-                                             if (t.IsFaulted)
+                                         .ContinueWith
+                                         (t =>
                                              {
-                                                 Log.Error(t.Exception, "Error in LoadAllPlugins()");
-                                             }
+                                                 if (t.IsFaulted)
+                                                 {
+                                                     Log.Error(t.Exception, "Error in LoadAllPlugins()");
+                                                 }
 
-                                             _ = Task.Run(Troubleshooting.LogTroubleshooting);
-                                         });
+                                                 _ = Task.Run(Troubleshooting.LogTroubleshooting);
+                                             }
+                                         );
 
                 // We wait for all blocking services and tasks to finish before kicking off the main thread in any mode.
                 // This means that we don't want to block here if this stupid thing isn't enabled.
@@ -1956,7 +2106,12 @@ internal class PluginManager : IInternalDisposableService
     /// <summary>
     /// Class representing progress of an update operation.
     /// </summary>
-    public record PluginUpdateProgress(int PluginsProcessed, int TotalPlugins, IPluginManifest CurrentPluginManifest);
+    public record PluginUpdateProgress
+    (
+        int             PluginsProcessed,
+        int             TotalPlugins,
+        IPluginManifest CurrentPluginManifest
+    );
 
     /// <summary>
     /// Simple class that tracks the internal names and public names of plugins that we are planning to load at startup,
@@ -1964,9 +2119,9 @@ internal class PluginManager : IInternalDisposableService
     /// </summary>
     public class StartupLoadTracker
     {
-        private readonly Dictionary<string, string> internalToPublic = [];
-        private readonly ConcurrentBag<string> allInternalNames = [];
-        private readonly ConcurrentBag<string> finishedInternalNames = [];
+        private readonly Dictionary<string, string> internalToPublic      = [];
+        private readonly ConcurrentBag<string>      allInternalNames      = [];
+        private readonly ConcurrentBag<string>      finishedInternalNames = [];
 
         /// <summary>
         /// Gets a value indicating the total load progress.
@@ -2011,7 +2166,9 @@ internal class PluginManager : IInternalDisposableService
         /// <returns>The public name.</returns>
         public string? GetPublicName(string internalName)
         {
-            return this.internalToPublic.TryGetValue(internalName, out var publicName) ? publicName : null;
+            return this.internalToPublic.TryGetValue(internalName, out var publicName) ?
+                       publicName :
+                       null;
         }
     }
 
@@ -2024,7 +2181,7 @@ internal class PluginManager : IInternalDisposableService
         ) =>
             $"  \ue06f “{name}”更新到了版本{version}。";
 
-        public static string DalamudPluginUpdateFailed(string name, Version version, string why) => 
+        public static string DalamudPluginUpdateFailed(string name, Version version, string why) =>
             $"  \ue06f 尝试更新“{name}”到版本{version}时发生错误（{why}）。";
     }
 }

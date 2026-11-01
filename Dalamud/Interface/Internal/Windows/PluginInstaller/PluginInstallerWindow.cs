@@ -1,37 +1,10 @@
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.IO;
-using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using CheapLoc;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Configuration.Internal;
-using Dalamud.Console;
-using Dalamud.Game.Command;
-using Dalamud.Game.Player;
-using Dalamud.Interface.Animation.EasingFunctions;
-using Dalamud.Interface.Colors;
-using Dalamud.Interface.Components;
-using Dalamud.Interface.ImGuiNotification;
-using Dalamud.Interface.ImGuiNotification.Internal;
-using Dalamud.Interface.Textures.Internal;
-using Dalamud.Interface.Textures.TextureWraps;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Logging.Internal;
-using Dalamud.Plugin;
 using Dalamud.Plugin.Internal;
-using Dalamud.Plugin.Internal.Exceptions;
-using Dalamud.Plugin.Internal.Profiles;
-using Dalamud.Plugin.Internal.Types;
-using Dalamud.Plugin.Internal.Types.Manifest;
 using Dalamud.Support;
 using Dalamud.Utility;
 
@@ -77,7 +50,7 @@ internal partial class PluginInstallerWindow : Window, IDisposable
 
         this.SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = this.Size.Value,
+            MinimumSize = this.Size.Value
         };
 
         Service<PluginManager>.GetAsync().ContinueWith
@@ -101,8 +74,8 @@ internal partial class PluginInstallerWindow : Window, IDisposable
 
                 this.dalamudChangelogManager = new(pluginManager);
 
-                pluginManager.OnAvailablePluginsChanged += this.OnAvailablePluginsChanged;
-                pluginManager.OnInstalledPluginsChanged += this.OnInstalledPluginsChanged;
+                pluginManager.AvailablePluginsChanged += this.OnAvailablePluginsChanged;
+                pluginManager.InstalledPluginsChanged += this.OnInstalledPluginsChanged;
 
                 this.OnAvailablePluginsChanged();
 
@@ -143,8 +116,8 @@ internal partial class PluginInstallerWindow : Window, IDisposable
 
         if (pluginManager != null)
         {
-            pluginManager.OnAvailablePluginsChanged -= this.OnAvailablePluginsChanged;
-            pluginManager.OnInstalledPluginsChanged -= this.OnInstalledPluginsChanged;
+            pluginManager.AvailablePluginsChanged -= this.OnAvailablePluginsChanged;
+            pluginManager.InstalledPluginsChanged -= this.OnInstalledPluginsChanged;
         }
     }
 

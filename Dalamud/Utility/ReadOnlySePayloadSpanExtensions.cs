@@ -1,5 +1,6 @@
-using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Game.Text.SeStringHandling.Payloads;
+using System.Diagnostics.CodeAnalysis;
+
+using Dalamud.Game.Text;
 
 using Lumina.Text.Payloads;
 using Lumina.Text.ReadOnly;
@@ -110,11 +111,11 @@ public static class ReadOnlySePayloadSpanExtensions
     /// <param name="rosps">The payload to read from.</param>
     /// <param name="payload">The parsed <see cref="DalamudLinkPayload"/> if parsing succeeded, or <see langword="default"/> if parsing failed.</param>
     /// <returns><see langword="true"/> if the payload was successfully parsed into a <see cref="DalamudLinkPayload"/>; otherwise, <see langword="false"/>.</returns>
-    public static bool TryReadDalamudLink(this ReadOnlySePayloadSpan rosps, out DalamudLinkPayload payload)
+    public static bool TryReadDalamudLink(this ReadOnlySePayloadSpan rosps, [NotNullWhen(true)] out DalamudLinkPayload? payload)
     {
-        payload = default;
+        payload = null;
 
-        if (!rosps.IsLink((LinkMacroPayloadType)Payload.EmbeddedInfoType.DalamudLink))
+        if (!rosps.IsLink(DalamudLinkPayload.LinkType))
             return false;
 
         uint commandId;
@@ -136,11 +137,7 @@ public static class ReadOnlySePayloadSpanExtensions
             if (!commandIdExpression.TryGetUInt(out commandId))
                 return false;
 
-            payload = new DalamudLinkPayload()
-            {
-                CommandId = commandId,
-                Plugin = pluginString.ToString(),
-            };
+            payload = new DalamudLinkPayload(commandId, pluginString.ToString(), 0, 0, string.Empty);
             return true;
         }
 
@@ -166,14 +163,7 @@ public static class ReadOnlySePayloadSpanExtensions
             return false;
         }
 
-        payload = new DalamudLinkPayload()
-        {
-            CommandId = commandId,
-            Plugin = extraData[0],
-            Extra1 = extra1,
-            Extra2 = extra2,
-            ExtraString = extraData[1],
-        };
+        payload = new DalamudLinkPayload(commandId, extraData[0], extra1, extra2, extraData[1]);
 
         return true;
     }

@@ -30,7 +30,6 @@
   </Folder>
   <Folder Name="/CN/">
     <Project Path="lib/FfxivArgLauncher/FfxivArgLauncher.csproj" />
-    <Project Path="lib/Lumina.Excel/src/Lumina.Excel/Lumina.Excel.csproj" />
     <Project Path="lib/Lumina.Excel/src/Lumina.Excel.Generator/Lumina.Excel.Generator.csproj" />
     <Project Path="lib/Lumina/src/Lumina/Lumina.csproj" />
   </Folder>
@@ -67,6 +66,9 @@
   <Project Path="build/Dalamud.Boot/Dalamud.Boot.vcxproj" Id="a26b8b98-74e0-3f5d-935f-86d318f43b15" />
   <Project Path="build/DalamudCrashHandler/DalamudCrashHandler.vcxproj" Id="e06892af-ba2d-34b9-97e9-8aa563df2c5d" />
   <Project Path="Dalamud.Common/Dalamud.Common.csproj">
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="Dalamud.Excel.Sheets/Dalamud.Excel.Sheets.csproj" Id="6d6fae42-bd7d-4d2a-9c32-a0881976d95c">
     <Platform Project="x64" />
   </Project>
   <Project Path="Dalamud.Injector/Dalamud.Injector.csproj">

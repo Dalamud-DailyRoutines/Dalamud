@@ -1,14 +1,8 @@
 using System.Linq;
 using System.Text.RegularExpressions;
-
-using CheapLoc;
-
 using Dalamud.Configuration.Internal;
 using Dalamud.Game.Chat;
 using Dalamud.Game.Gui;
-using Dalamud.Game.Text;
-using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
 using Dalamud.Interface.Internal;
 using Dalamud.Logging.Internal;
@@ -34,7 +28,7 @@ internal partial class ChatHandlers : IServiceType
     private ChatHandlers(ChatGui chatGui)
     {
         chatGui.CheckMessageHandled += this.OnCheckMessageHandled;
-        chatGui.ChatMessage += this.OnChatMessage;
+        chatGui.ChatMessage         += this.OnChatMessage;
     }
 
     /// <summary>
@@ -43,11 +37,11 @@ internal partial class ChatHandlers : IServiceType
     public string? LastLink { get; private set; }
 
     [GeneratedRegex(@"(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?", RegexOptions.Compiled)]
-    private static partial Regex CompiledUrlRegex();
+    private static partial Regex CompiledUrlRegex { get; }
 
     private void OnCheckMessageHandled(IHandleableChatMessage message)
     {
-        var textVal = message.Message.TextValue;
+        var textVal = message.Message.ToString();
 
         if (this.configuration.BadWords != null &&
             this.configuration.BadWords.Any(x => !string.IsNullOrEmpty(x) && textVal.Contains(x)))
@@ -62,6 +56,7 @@ internal partial class ChatHandlers : IServiceType
     private void OnChatMessage(IHandleableChatMessage message)
     {
         var clientState = Service<ClientState.ClientState>.GetNullable();
+
         if (clientState is null)
         {
             return;
@@ -76,7 +71,7 @@ internal partial class ChatHandlers : IServiceType
         }
 
         // For injections while logged in
-        if (clientState.IsLoggedIn && clientState.TerritoryType == 0 && !this.hasSeenLoadingMsg)
+        if (clientState.IsLoggedIn && clientState.TerritoryType.RowId == 0 && !this.hasSeenLoadingMsg)
         {
             this.PrintWelcomeMessage();
         }
@@ -86,7 +81,8 @@ internal partial class ChatHandlers : IServiceType
                 return;
 #endif
 
-        var linkMatch = CompiledUrlRegex().Match(message.Message.TextValue);
+        var linkMatch = CompiledUrlRegex.Match(message.Message.ToString());
+
         if (linkMatch.Value.Length > 0)
         {
             this.LastLink = linkMatch.Value;
@@ -95,10 +91,10 @@ internal partial class ChatHandlers : IServiceType
 
     private void PrintWelcomeMessage()
     {
-        var chatGui = Service<ChatGui>.GetNullable();
-        var pluginManager = Service<PluginManager>.GetNullable();
+        var chatGui          = Service<ChatGui>.GetNullable();
+        var pluginManager    = Service<PluginManager>.GetNullable();
         var dalamudInterface = Service<DalamudInterface>.GetNullable();
-        var dalamudConfig = Service<DalamudConfiguration>.GetNullable();
+        var dalamudConfig    = Service<DalamudConfiguration>.GetNullable();
 
         if (chatGui is null || pluginManager is null || dalamudInterface is null)
         {
@@ -116,24 +112,27 @@ internal partial class ChatHandlers : IServiceType
 
         if (string.IsNullOrEmpty(this.configuration.LastVersion) || !Versioning.GetAssemblyVersion().StartsWith(this.configuration.LastVersion))
         {
-            var linkPayload = chatGui.AddChatLinkHandler(
-                (_, _) => dalamudInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.Changelogs));
+            var dalamudLinkPayload = chatGui.AddChatLinkHandler(_ => dalamudInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.Changelogs));
 
-            var updateMessage = new SeStringBuilder()
-                .AddText("成功更新了 Dalamud。")
-                .AddUiForeground(500)
-                .AddText("  [")
-                .Add(linkPayload)
-                .AddText("更新日志")
-                .Add(RawPayload.LinkTerminator)
-                .AddText("]")
-                .AddUiForegroundOff();
+            using var rssb = new RentedSeStringBuilder();
 
-            chatGui.Print(new XivChatEntry
-            {
-                Message = updateMessage.Build(),
-                Type = XivChatType.Notice,
-            });
+            chatGui.Print
+            (
+                new PrintableChatMessage
+                {
+                    LogKind = XivChatType.Notice,
+                    Message = rssb.Builder
+                                  .Append("成功更新了 Dalamud。")
+                                  .PushColorType(500)
+                                  .Append("  [ ")
+                                  .PushDalamudLink(dalamudLinkPayload)
+                                  .Append("更新日志")
+                                  .PopLink()
+                                  .Append(" ]")
+                                  .PopColorType()
+                                  .ToReadOnlySeString()
+                }
+            );
 
             this.configuration.LastVersion = Versioning.GetAssemblyVersion();
             this.configuration.QueueSave();
@@ -141,24 +140,27 @@ internal partial class ChatHandlers : IServiceType
 
         if (dalamudConfig?.DevMode ?? false)
         {
-            var linkPayload = chatGui.AddChatLinkHandler(
-                (_, _) => dalamudInterface.OpenSettingsTo(SettingsOpenKind.Experimental));
+            var linkPayload = chatGui.AddChatLinkHandler(_ => dalamudInterface.OpenSettingsTo(SettingsOpenKind.Experimental));
 
-            var devModeWarningMessage = new SeStringBuilder()
-                .AddText("启用了开发者模式。若非刻意为之，请及时关闭，避免蒙受损失。")
-                .AddUiForeground(500)
-                .AddText("  [")
-                .Add(linkPayload)
-                .AddText("配置")
-                .Add(RawPayload.LinkTerminator)
-                .AddText("]")
-                .AddUiForegroundOff();
+            using var rssb = new RentedSeStringBuilder();
 
-            chatGui.Print(new XivChatEntry
-            {
-                Message = devModeWarningMessage.Build(),
-                Type = XivChatType.Notice,
-            });
+            chatGui.Print
+            (
+                new PrintableChatMessage
+                {
+                    LogKind = XivChatType.Notice,
+                    Message = rssb.Builder
+                                  .Append("启用了开发者模式。若非刻意为之，请及时关闭，避免蒙受损失。")
+                                  .PushColorType(500)
+                                  .Append("  [ ")
+                                  .PushDalamudLink(linkPayload)
+                                  .Append("配置")
+                                  .PopLink()
+                                  .Append(" ]")
+                                  .PopColorType()
+                                  .ToReadOnlySeString()
+                }
+            );
         }
 
         this.hasSeenLoadingMsg = true;

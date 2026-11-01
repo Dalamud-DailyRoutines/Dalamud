@@ -11,6 +11,42 @@ namespace Dalamud.Utility;
 public static class ReadOnlySeStringSpanExtensions
 {
     /// <summary>
+    /// Determines whether the string is plain text, without any macros.
+    /// </summary>
+    /// <param name="input">The string to check.</param>
+    /// <returns><see langword="true" /> if the string contains only plain text, <see langword="false"/> otherwise.</returns>
+    public static bool IsTextOnly(this ReadOnlySeStringSpan input)
+    {
+        foreach (var payload in input)
+        {
+            if (payload.Type != ReadOnlySePayloadType.Text)
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Determines whether the string contains the specified plain text.
+    /// </summary>
+    /// <param name="input">The string to search.</param>
+    /// <param name="needle">The text to find.</param>
+    /// <returns><see langword="true" /> if the text is found, <see langword="false"/> otherwise.</returns>
+    public static bool ContainsText(this ReadOnlySeStringSpan input, ReadOnlySpan<byte> needle)
+    {
+        foreach (var payload in input)
+        {
+            if (payload.Type != ReadOnlySePayloadType.Text)
+                continue;
+
+            if (payload.Body.IndexOf(needle) != -1)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Determines whether the string contains the specified plain text.
     /// </summary>
     /// <param name="input">The string to search.</param>

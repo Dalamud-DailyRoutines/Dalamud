@@ -1,18 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
-using CheapLoc;
-
 using Dalamud.Bindings.ImGui;
 using Dalamud.Configuration.Internal;
 using Dalamud.Console;
 using Dalamud.Game;
+using Dalamud.Game.Chat;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.Gui;
 using Dalamud.Game.Text;
-using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
 using Dalamud.Interface.ImGuiNotification;
 using Dalamud.Interface.ImGuiNotification.EventArgs;
@@ -23,6 +19,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Internal.Types;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
 
 namespace Dalamud.Plugin.Internal.AutoUpdate;
 
@@ -89,41 +86,48 @@ internal class AutoUpdateManager : IServiceType
     [ServiceManager.ServiceConstructor]
     public AutoUpdateManager(ConsoleManager console)
     {
-        Service<ClientState>.GetAsync().ContinueWith(
-            t =>
+        Service<ClientState>.GetAsync().ContinueWith
+        (t =>
             {
-                t.Result.Login += this.OnLogin;
-                t.Result.Logout += (int type, int code) => this.OnLogout();
-            });
+                t.Result.Login  += this.OnLogin;
+                t.Result.Logout += (_, _) => this.OnLogout();
+            }
+        );
         Service<Framework>.GetAsync().ContinueWith(t => { t.Result.Update += this.OnUpdate; });
 
         this.openInstallerWindowLinkTask =
-            Service<ChatGui>.GetAsync().ContinueWith(
-                chatGuiTask => chatGuiTask.Result.AddChatLinkHandler(
-                    (_, _) =>
-                     {
-                         Service<DalamudInterface>.GetNullable()?.OpenPluginInstallerTo(PluginInstallerOpenKind.InstalledPlugins);
-                     }));
+            Service<ChatGui>.GetAsync().ContinueWith
+            (chatGuiTask => chatGuiTask.Result.AddChatLinkHandler
+                 (_ => { Service<DalamudInterface>.GetNullable()?.OpenPluginInstallerTo(PluginInstallerOpenKind.InstalledPlugins); })
+            );
 
         this.isDryRun = console.AddVariable("dalamud.autoupdate.dry_run", "Simulate updates instead", false);
-        console.AddCommand("dalamud.autoupdate.trigger_login", "Trigger a login event", () =>
-        {
-            this.hasStartedInitialUpdateThisSession = false;
-            this.OnLogin();
-            return true;
-        });
-        console.AddCommand("dalamud.autoupdate.force_check", "Force a check for updates", () =>
-        {
-            this.nextUpdateCheckTime = DateTime.Now + TimeSpan.FromSeconds(5);
-            return true;
-        });
+        console.AddCommand
+        (
+            "dalamud.autoupdate.trigger_login",
+            "Trigger a login event",
+            () =>
+            {
+                this.hasStartedInitialUpdateThisSession = false;
+                this.OnLogin();
+                return true;
+            }
+        );
+        console.AddCommand
+        (
+            "dalamud.autoupdate.force_check",
+            "Force a check for updates",
+            () =>
+            {
+                this.nextUpdateCheckTime = DateTime.Now + TimeSpan.FromSeconds(5);
+                return true;
+            }
+        );
     }
 
     private enum UpdateListingRestriction
     {
-        Unrestricted,
-        AllowNone,
-        AllowMainRepo,
+        Unrestricted, AllowNone, AllowMainRepo
     }
 
     /// <summary>
@@ -152,8 +156,8 @@ internal class AutoUpdateManager : IServiceType
             AutoUpdateBehavior.OnlyNotify => UpdateListingRestriction.Unrestricted,
 
             AutoUpdateBehavior.UpdateMainRepo => UpdateListingRestriction.AllowMainRepo,
-            AutoUpdateBehavior.UpdateAll => UpdateListingRestriction.Unrestricted,
-            _ => throw new ArgumentOutOfRangeException(nameof(behavior), behavior, null),
+            AutoUpdateBehavior.UpdateAll      => UpdateListingRestriction.Unrestricted,
+            _                                 => throw new ArgumentOutOfRangeException(nameof(behavior), behavior, null)
         };
     }
 
@@ -175,7 +179,7 @@ internal class AutoUpdateManager : IServiceType
             return;
 
         var autoUpdateTaskInProgress = this.autoUpdateTask is not null && !this.autoUpdateTask.IsCompleted;
-        var isUnblocked = this.CanUpdateOrNag() && !autoUpdateTaskInProgress;
+        var isUnblocked              = this.CanUpdateOrNag()           && !autoUpdateTaskInProgress;
 
         if (this.unblockedSince == null && isUnblocked)
         {
@@ -214,10 +218,11 @@ internal class AutoUpdateManager : IServiceType
             this.hasStartedInitialUpdateThisSession = true;
 
             var currentlyUpdatablePlugins = this.GetAvailablePluginUpdates(DecideUpdateListingRestriction(behavior));
+
             if (currentlyUpdatablePlugins.Count == 0)
             {
                 this.IsAutoUpdateComplete = true;
-                this.nextUpdateCheckTime = DateTime.Now + TimeBetweenUpdateChecks;
+                this.nextUpdateCheckTime  = DateTime.Now + TimeBetweenUpdateChecks;
 
                 return;
             }
@@ -239,24 +244,27 @@ internal class AutoUpdateManager : IServiceType
 
         // 2. Continuously check for updates while the game is running. We run these every once in a while and
         //    will only show a notification here that lets people start the update or open the installer.
-        if (this.config.CheckPeriodicallyForUpdates &&
-            this.nextUpdateCheckTime != null &&
-            DateTime.Now > this.nextUpdateCheckTime &&
-            this.updateNotification == null)
+        if (this.config.CheckPeriodicallyForUpdates             &&
+            this.nextUpdateCheckTime != null                    &&
+            DateTime.Now             > this.nextUpdateCheckTime &&
+            this.updateNotification  == null)
         {
             Log.Verbose("Starting periodic update check");
             this.pluginManager.ReloadAllReposAsync()
-                .ContinueWith(
-                    t =>
+                .ContinueWith
+                (t =>
                     {
                         if (t.IsFaulted || t.IsCanceled)
                         {
                             Log.Error(t.Exception!, "Failed to reload plugin masters for auto-update");
                         }
 
-                        Log.Verbose($"Available Updates: {string.Join(", ", this.pluginManager.UpdatablePlugins.Select(s => s.UpdateManifest.InternalName))}");
-                        var updatable = this.GetAvailablePluginUpdates(
-                            DecideUpdateListingRestriction(behavior));
+                        Log.Verbose
+                            ("Available Updates: {Plugins}", string.Join(", ", this.pluginManager.UpdatablePlugins.Select(s => s.UpdateManifest.InternalName)));
+                        var updatable = this.GetAvailablePluginUpdates
+                        (
+                            DecideUpdateListingRestriction(behavior)
+                        );
 
                         if (updatable.Count > 0)
                         {
@@ -265,11 +273,14 @@ internal class AutoUpdateManager : IServiceType
                         else
                         {
                             this.nextUpdateCheckTime = DateTime.Now + TimeBetweenUpdateChecks;
-                            Log.Verbose(
+                            Log.Verbose
+                            (
                                 "Auto update found nothing to do, next update at {Time}",
-                                this.nextUpdateCheckTime);
+                                this.nextUpdateCheckTime
+                            );
                         }
-                    });
+                    }
+                );
         }
     }
 
@@ -295,20 +306,22 @@ internal class AutoUpdateManager : IServiceType
     {
         this.autoUpdateTask =
             Task.Run(() => this.RunAutoUpdates(updatablePlugins, notification))
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
+                .ContinueWith
+                (t =>
                     {
-                        Log.Error(t.Exception!, "Failed to run auto-updates");
-                    }
-                    else if (t.IsCanceled)
-                    {
-                        Log.Warning("Auto-update task was canceled");
-                    }
+                        if (t.IsFaulted)
+                        {
+                            Log.Error(t.Exception!, "Failed to run auto-updates");
+                        }
+                        else if (t.IsCanceled)
+                        {
+                            Log.Warning("Auto-update task was canceled");
+                        }
 
-                    this.autoUpdateTask = null;
-                    this.IsAutoUpdateComplete = true;
-                });
+                        this.autoUpdateTask       = null;
+                        this.IsAutoUpdateComplete = true;
+                    }
+                );
     }
 
     private async Task RunAutoUpdates(ICollection<AvailablePluginUpdate> updatablePlugins, IActiveNotification? notification = null)
@@ -318,30 +331,30 @@ internal class AutoUpdateManager : IServiceType
         if (updatablePlugins.Count == 0)
             return;
 
-        notification ??= this.GetBaseNotification(new Notification());
-        notification.Title = Locs.NotificationTitleUpdatingPlugins;
-        notification.Content = Locs.NotificationContentPreparingToUpdate(updatablePlugins.Count);
-        notification.Type = NotificationType.Info;
-        notification.InitialDuration = TimeSpan.MaxValue;
-        notification.ShowIndeterminateIfNoExpiry = false;
-        notification.UserDismissable = false;
-        notification.Progress = 0;
-        notification.Icon = INotificationIcon.From(FontAwesomeIcon.Download);
-        notification.Minimized = false;
+        notification                             ??= this.GetBaseNotification(new Notification());
+        notification.Title                       =   Locs.NotificationTitleUpdatingPlugins;
+        notification.Content                     =   Locs.NotificationContentPreparingToUpdate(updatablePlugins.Count);
+        notification.Type                        =   NotificationType.Info;
+        notification.InitialDuration             =   TimeSpan.MaxValue;
+        notification.ShowIndeterminateIfNoExpiry =   false;
+        notification.UserDismissable             =   false;
+        notification.Progress                    =   0;
+        notification.Icon                        =   INotificationIcon.From(FontAwesomeIcon.Download);
+        notification.Minimized                   =   false;
 
         var progress = new Progress<PluginManager.PluginUpdateProgress>();
         progress.ProgressChanged += (_, updateProgress) =>
         {
-            notification.Content = Locs.NotificationContentUpdating(updateProgress.CurrentPluginManifest.Name);
+            notification.Content  = Locs.NotificationContentUpdating(updateProgress.CurrentPluginManifest.Name);
             notification.Progress = (float)updateProgress.PluginsProcessed / updateProgress.TotalPlugins;
         };
 
         var pluginStates = (await this.pluginManager.UpdatePluginsAsync(updatablePlugins, this.isDryRun.Value, true, progress)).ToList();
         this.pluginManager.PrintUpdatedPlugins(pluginStates, "自动更新了插件。");
 
-        notification.Progress = 1;
+        notification.Progress        = 1;
         notification.UserDismissable = true;
-        notification.HardExpiry = DateTime.Now.AddSeconds(30);
+        notification.HardExpiry      = DateTime.Now.AddSeconds(30);
 
         notification.DrawActions += _ =>
         {
@@ -357,17 +370,17 @@ internal class AutoUpdateManager : IServiceType
             // Janky way to make sure the notification does not change before it's minimized...
             await Task.Delay(500);
 
-            notification.Title = Locs.NotificationTitleUpdatesSuccessful;
+            notification.Title         = Locs.NotificationTitleUpdatesSuccessful;
             notification.MinimizedText = Locs.NotificationContentUpdatesSuccessfulMinimized;
-            notification.Type = NotificationType.Success;
-            notification.Content = Locs.NotificationContentUpdatesSuccessful;
+            notification.Type          = NotificationType.Success;
+            notification.Content       = Locs.NotificationContentUpdatesSuccessful;
         }
         else
         {
-            notification.Title = Locs.NotificationTitleUpdatesFailed;
+            notification.Title         = Locs.NotificationTitleUpdatesFailed;
             notification.MinimizedText = Locs.NotificationContentUpdatesFailedMinimized;
-            notification.Type = NotificationType.Error;
-            notification.Content = Locs.NotificationContentUpdatesFailed;
+            notification.Type          = NotificationType.Error;
+            notification.Content       = Locs.NotificationContentUpdatesFailed;
 
             var failedPlugins = pluginStates
                                 .Where(x => x.Status != PluginUpdateStatus.StatusKind.Success)
@@ -382,16 +395,19 @@ internal class AutoUpdateManager : IServiceType
         if (updatablePlugins.Count == 0)
             return;
 
-        var notification = this.GetBaseNotification(new Notification
-        {
-            Title = Locs.NotificationTitleUpdatesAvailable,
-            Content = Locs.NotificationContentUpdatesAvailable(updatablePlugins),
-            MinimizedText = Locs.NotificationContentUpdatesAvailableMinimized(updatablePlugins.Count),
-            Type = NotificationType.Info,
-            InitialDuration = TimeSpan.MaxValue,
-            ShowIndeterminateIfNoExpiry = false,
-            Icon = INotificationIcon.From(FontAwesomeIcon.Download),
-        });
+        var notification = this.GetBaseNotification
+        (
+            new Notification
+            {
+                Title                       = Locs.NotificationTitleUpdatesAvailable,
+                Content                     = Locs.NotificationContentUpdatesAvailable(updatablePlugins),
+                MinimizedText               = Locs.NotificationContentUpdatesAvailableMinimized(updatablePlugins.Count),
+                Type                        = NotificationType.Info,
+                InitialDuration             = TimeSpan.MaxValue,
+                ShowIndeterminateIfNoExpiry = false,
+                Icon                        = INotificationIcon.From(FontAwesomeIcon.Download)
+            }
+        );
 
         void DrawNotificationContent(INotificationDrawArgs args)
         {
@@ -424,28 +440,31 @@ internal class AutoUpdateManager : IServiceType
             return;
 
         var chatGui = Service<ChatGui>.GetNullable();
+
         if (chatGui == null)
         {
-            Log.Verbose("Unable to get chat gui, discard notification for chat.");
+            Log.Verbose("Unable to get chat gui, discard notification for chat");
             return;
         }
 
-        chatGui.Print(new XivChatEntry
-        {
-            Message = new SeString(new List<Payload>
+        using var rssb = new RentedSeStringBuilder();
+        chatGui.Print
+        (
+            new PrintableChatMessage
             {
-                new TextPayload(Locs.NotificationContentUpdatesAvailableMinimized(updatablePlugins.Count)),
-                new TextPayload("  ["),
-                new UIForegroundPayload(500),
-                this.openInstallerWindowLinkTask.Result,
-                new TextPayload(Loc.Localize("DalamudInstallerHelp", "Open the plugin installer")),
-                RawPayload.LinkTerminator,
-                new UIForegroundPayload(0),
-                new TextPayload("]"),
-            }),
-
-            Type = XivChatType.Urgent,
-        });
+                LogKind = XivChatType.Urgent,
+                Message = rssb.Builder
+                              .Append(Locs.NotificationContentUpdatesAvailableMinimized(updatablePlugins.Count))
+                              .Append("  [")
+                              .PushColorType(500)
+                              .PushDalamudLink(this.openInstallerWindowLinkTask.Result)
+                              .Append("打开插件安装器")
+                              .PopLink()
+                              .PopColorType()
+                              .Append(']')
+                              .ToReadOnlySeString()
+            }
+        );
     }
 
     private List<AvailablePluginUpdate> GetAvailablePluginUpdates(UpdateListingRestriction restriction)
@@ -454,11 +473,13 @@ internal class AutoUpdateManager : IServiceType
 
         // Get all of our updatable plugins and do some initial filtering that must apply to all plugins.
         var updateablePlugins = this.pluginManager.UpdatablePlugins
-                                    .Where(
-                                        p =>
-                                            !p.InstalledPlugin.IsDev && // Never update dev-plugins
-                                            (p.InstalledPlugin.IsWantedByAnyProfile || this.config.UpdateDisabledPlugins) && // Never update plugins that are not wanted by any profile(not enabled)
-                                            !p.InstalledPlugin.Manifest.ScheduledForDeletion); // Never update plugins that we want to get rid of
+                                    .Where
+                                    (p =>
+                                         !p.InstalledPlugin.IsDev && // Never update dev-plugins
+                                         (p.InstalledPlugin.IsWantedByAnyProfile ||
+                                          this.config.UpdateDisabledPlugins) && // Never update plugins that are not wanted by any profile(not enabled)
+                                         !p.InstalledPlugin.Manifest.ScheduledForDeletion
+                                    ); // Never update plugins that we want to get rid of
 
         return updateablePlugins.Where(FilterPlugin).ToList();
 
@@ -493,9 +514,9 @@ internal class AutoUpdateManager : IServiceType
     private bool CanUpdateOrNag()
     {
         var clientState = Service<ClientState>.Get();
-        return this.IsPluginManagerReady() &&
-            !this.dalamudInterface.IsPluginInstallerOpen &&
-            clientState.IsClientIdle();
+        return this.IsPluginManagerReady()                  &&
+               !this.dalamudInterface.IsPluginInstallerOpen &&
+               clientState.IsClientIdle();
     }
 
     private bool IsPluginManagerReady()
@@ -505,52 +526,40 @@ internal class AutoUpdateManager : IServiceType
 
     private static class Locs
     {
-        public static string NotificationButtonOpenPluginInstaller => Loc.Localize("AutoUpdateOpenPluginInstaller", "Open installer");
+        public static string NotificationButtonOpenPluginInstaller => "打开安装器";
 
-        public static string NotificationButtonUpdate => Loc.Localize("AutoUpdateUpdate", "Update");
+        public static string NotificationButtonUpdate => "更新";
 
-        public static string NotificationTitleUpdatesAvailable => Loc.Localize("AutoUpdateUpdatesAvailable", "Updates available!");
+        public static string NotificationTitleUpdatesAvailable => "有可用更新";
 
-        public static string NotificationTitleUpdatesSuccessful => Loc.Localize("AutoUpdateUpdatesSuccessful", "Updates successful!");
+        public static string NotificationTitleUpdatesSuccessful => "更新成功";
 
-        public static string NotificationTitleUpdatingPlugins => Loc.Localize("AutoUpdateUpdatingPlugins", "Updating plugins...");
+        public static string NotificationTitleUpdatingPlugins => "正在更新插件……";
 
-        public static string NotificationTitleUpdatesFailed => Loc.Localize("AutoUpdateUpdatesFailed", "Updates failed!");
+        public static string NotificationTitleUpdatesFailed => "更新失败";
 
-        public static string NotificationContentUpdatesSuccessful => Loc.Localize("AutoUpdateUpdatesSuccessfulContent", "All plugins have been updated successfully.");
+        public static string NotificationContentUpdatesSuccessful => "所有插件均已成功更新。";
 
-        public static string NotificationContentUpdatesSuccessfulMinimized => Loc.Localize("AutoUpdateUpdatesSuccessfulContentMinimized", "Plugins updated successfully.");
+        public static string NotificationContentUpdatesSuccessfulMinimized => "插件已成功更新。";
 
-        public static string NotificationContentUpdatesFailed => Loc.Localize("AutoUpdateUpdatesFailedContent", "Some plugins failed to update. Please check the plugin installer for more information.");
+        public static string NotificationContentUpdatesFailed => "部分插件更新失败，请打开插件安装器查看详情。";
 
-        public static string NotificationContentUpdatesFailedMinimized => Loc.Localize("AutoUpdateUpdatesFailedContentMinimized", "Plugins failed to update.");
+        public static string NotificationContentUpdatesFailedMinimized => "插件更新失败。";
 
         public static string NotificationContentUpdatesAvailable(ICollection<AvailablePluginUpdate> updatablePlugins)
-            => (updatablePlugins.Count == 1
-                    ? Loc.Localize(
-                        "AutoUpdateUpdatesAvailableContentSingular",
-                        "There is a plugin that can be updated:")
-                    : string.Format(
-                        Loc.Localize(
-                            "AutoUpdateUpdatesAvailableContentPlural",
-                            "There are {0} plugins that can be updated:"),
-                        updatablePlugins.Count))
-               + "\n\n" + string.Join(", ", updatablePlugins.Select(x => x.InstalledPlugin.Manifest.Name));
+            => $"有 {updatablePlugins.Count} 个插件可以更新：\n\n" +
+               string.Join(", ", updatablePlugins.Select(x => x.InstalledPlugin.Manifest.Name));
 
         public static string NotificationContentUpdatesAvailableMinimized(int numUpdates)
-            => numUpdates == 1 ?
-                   Loc.Localize("AutoUpdateUpdatesAvailableContentMinimizedSingular", "1 plugin update available") :
-                   string.Format(Loc.Localize("AutoUpdateUpdatesAvailableContentMinimizedPlural", "{0} plugin updates available"), numUpdates);
+            => $"有 {numUpdates} 个插件更新可用";
 
         public static string NotificationContentPreparingToUpdate(int numPlugins)
-            => numPlugins == 1 ?
-                   Loc.Localize("AutoUpdatePreparingToUpdateSingular", "Preparing to update 1 plugin...") :
-                   string.Format(Loc.Localize("AutoUpdatePreparingToUpdatePlural", "Preparing to update {0} plugins..."), numPlugins);
+            => $"正在准备更新 {numPlugins} 个插件……";
 
         public static string NotificationContentUpdating(string name)
-            => string.Format(Loc.Localize("AutoUpdateUpdating", "Updating {0}..."), name);
+            => $"正在更新 {name}……";
 
         public static string NotificationContentFailedPlugins(IEnumerable<string> failedPlugins)
-            => string.Format(Loc.Localize("AutoUpdateFailedPlugins", "Failed plugin(s): {0}"), string.Join(", ", failedPlugins));
+            => $"更新失败的插件：{string.Join(", ", failedPlugins)}";
     }
 }

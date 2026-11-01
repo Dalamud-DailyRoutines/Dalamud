@@ -1,4 +1,4 @@
-using Dalamud.Game.Text.SeStringHandling.Payloads;
+using Dalamud.Game.Text;
 
 using Lumina.Text.Payloads;
 using Lumina.Text.ReadOnly;

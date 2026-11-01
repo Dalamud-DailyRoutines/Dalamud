@@ -1,15 +1,12 @@
-using System.Linq;
 using System.Numerics;
 
-using Dalamud.Game.Text.SeStringHandling;
+using Lumina.Text.ReadOnly;
 
 namespace Dalamud.Interface.ImGuiSeStringRenderer;
 
 /// <summary>Represents the result of a rendered interactable SeString.</summary>
 public ref struct SeStringDrawResult
 {
-    private Payload? lazyPayload;
-
     /// <summary>Gets the visible size of the text rendered/to be rendered.</summary>
     public Vector2 Size { get; init; }
 
@@ -23,9 +20,15 @@ public ref struct SeStringDrawResult
     public ReadOnlySpan<byte> InteractedPayloadEnvelope { get; init; }
 
     /// <summary>Gets the interacted payload, or <c>null</c> if none.</summary>
-    public Payload? InteractedPayload =>
-        this.lazyPayload ??=
-            this.InteractedPayloadEnvelope.IsEmpty
-                ? default
-                : SeString.Parse(this.InteractedPayloadEnvelope).Payloads.FirstOrDefault();
+    public ReadOnlySePayload? InteractedPayload => field ??= this.DecodeInteractedPayload();
+
+    private readonly ReadOnlySePayload? DecodeInteractedPayload()
+    {
+        foreach (var payload in new ReadOnlySeString(this.InteractedPayloadEnvelope))
+        {
+            return payload;
+        }
+
+        return null;
+    }
 }

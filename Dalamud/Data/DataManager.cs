@@ -1,21 +1,16 @@
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Dalamud.Game;
+using Dalamud.Common;
 using Dalamud.IoC;
 using Dalamud.IoC.Internal;
 using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using Dalamud.Utility.Timing;
-
 using Lumina;
 using Lumina.Data;
 using Lumina.Excel;
-using Lumina.Excel.Sheets;
-
 using Newtonsoft.Json;
 
 namespace Dalamud.Data;
@@ -32,12 +27,12 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
 {
     // REGION TODO: 固定为简体中文
     private const ClientLanguage DefaultLanguage = ClientLanguage.ChineseSimplified;
-    
+
     private static readonly ModuleLog Log = ModuleLog.Create<DataManager>();
 
-    private readonly Thread luminaResourceThread;
+    private readonly Thread                  luminaResourceThread;
     private readonly CancellationTokenSource luminaCancellationTokenSource;
-    private readonly RsvResolver rsvResolver;
+    private readonly RsvResolver             rsvResolver;
 
     [ServiceManager.ServiceConstructor]
     private DataManager(Dalamud dalamud)
@@ -54,29 +49,33 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
             {
                 var luminaOptions = new LuminaOptions
                 {
-                    LoadMultithreaded = true,
-                    CacheFileResources = true,
+                    LoadMultithreaded            = true,
+                    CacheFileResources           = true,
                     PanicOnSheetChecksumMismatch = false,
-                    RsvResolver = this.rsvResolver.TryResolve,
-                    DefaultExcelLanguage = this.Language.ToLumina(),
+                    RsvResolver                  = this.rsvResolver.TryResolve,
+                    DefaultExcelLanguage         = this.Language.ToLumina()
                 };
 
                 try
                 {
-                    this.GameData = new(
+                    this.GameData = new
+                    (
                         Path.Combine(Path.GetDirectoryName(Environment.ProcessPath)!, "sqpack"),
-                        luminaOptions)
+                        luminaOptions
+                    )
                     {
-                        StreamPool = new(),
+                        StreamPool = new()
                     };
                 }
                 catch (Exception ex)
                 {
                     Log.Error(ex, "Lumina GameData init failed");
-                    Util.Fatal(
+                    Util.Fatal
+                    (
                         "Dalamud could not read required game data files. This likely means your game installation is corrupted or incomplete.\n\n" +
                         "Please repair your installation by right-clicking the login button in XIVLauncher and choosing \"Repair game files\".",
-                        "Dalamud");
+                        "Dalamud"
+                    );
 
                     return;
                 }
@@ -88,8 +87,10 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
                     try
                     {
                         var tsInfo =
-                            JsonConvert.DeserializeObject<LauncherTroubleshootingInfo>(
-                                dalamud.StartInfo.TroubleshootingPackData);
+                            JsonConvert.DeserializeObject<LauncherTroubleshootingInfo>
+                            (
+                                dalamud.StartInfo.TroubleshootingPackData
+                            );
 
                         // Don't fail for IndexIntegrityResult.Exception, since the check during launch has a very small timeout
                         // this.HasModifiedGameDataFiles =
@@ -111,20 +112,22 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
             this.luminaCancellationTokenSource = new();
 
             var luminaCancellationToken = this.luminaCancellationTokenSource.Token;
-            this.luminaResourceThread = new(() =>
-            {
-                while (!luminaCancellationToken.IsCancellationRequested)
+            this.luminaResourceThread = new
+            (() =>
                 {
-                    if (this.GameData.FileHandleManager.HasPendingFileLoads)
+                    while (!luminaCancellationToken.IsCancellationRequested)
                     {
-                        this.GameData.ProcessFileHandleQueue();
-                    }
-                    else
-                    {
-                        Thread.Sleep(5);
+                        if (this.GameData.FileHandleManager.HasPendingFileLoads)
+                        {
+                            this.GameData.ProcessFileHandleQueue();
+                        }
+                        else
+                        {
+                            Thread.Sleep(5);
+                        }
                     }
                 }
-            });
+            );
             this.luminaResourceThread.Start();
         }
         catch (Exception ex)
@@ -169,18 +172,25 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
         var filePath = GameData.ParseFilePath(path);
         if (filePath == null)
             return default;
-        return this.GameData.Repositories.TryGetValue(filePath.Repository, out var repository) ? repository.GetFile<T>(filePath.Category, filePath) : default;
+        return this.GameData.Repositories.TryGetValue(filePath.Repository, out var repository) ?
+                   repository.GetFile<T>(filePath.Category, filePath) :
+                   default;
     }
 
     /// <inheritdoc/>
     public Task<T> GetFileAsync<T>(string path, CancellationToken cancellationToken) where T : FileResource =>
         GameData.ParseFilePath(path) is { } filePath &&
-        this.GameData.Repositories.TryGetValue(filePath.Repository, out var repository)
-            ? Task.Run(
-                () => repository.GetFile<T>(filePath.Category, filePath) ?? throw new FileNotFoundException(
-                          "Failed to load file, most likely because the file could not be found."),
-                cancellationToken)
-            : Task.FromException<T>(new FileNotFoundException("The file could not be found."));
+        this.GameData.Repositories.TryGetValue(filePath.Repository, out var repository) ?
+            Task.Run
+            (
+                () => repository.GetFile<T>(filePath.Category, filePath) ??
+                      throw new FileNotFoundException
+                      (
+                          "Failed to load file, most likely because the file could not be found."
+                      ),
+                cancellationToken
+            ) :
+            Task.FromException<T>(new FileNotFoundException("The file could not be found."));
 
     /// <inheritdoc/>
     public bool FileExists(string path)
@@ -205,7 +215,7 @@ internal sealed class DataManager : IInternalDisposableService, IDataManager
             NoGame,
             ReferenceNotFound,
             ReferenceFetchFailure,
-            Success,
+            Success
         }
 
         public IndexIntegrityResult? IndexIntegrity { get; set; }

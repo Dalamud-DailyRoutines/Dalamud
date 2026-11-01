@@ -3,28 +3,25 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
-
 using Dalamud.Bindings.ImGui;
+using Dalamud.Common;
 using Dalamud.Data;
-using Dalamud.Game;
+using Dalamud.Excel.Sheets;
 using Dalamud.Game.ClientState;
+using Dalamud.Game.Text;
 using Dalamud.Game.Text.Evaluator;
 using Dalamud.Game.Text.Noun.Enums;
-using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Utility;
-
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.Text;
-
 using Lumina.Data;
 using Lumina.Data.Files.Excel;
 using Lumina.Data.Structs.Excel;
 using Lumina.Excel;
-using Lumina.Excel.Sheets;
 using Lumina.Text.Expressions;
 using Lumina.Text.Payloads;
 using Lumina.Text.ReadOnly;
@@ -36,10 +33,10 @@ namespace Dalamud.Interface.Internal.Windows.Data.Widgets;
 /// </summary>
 internal class SeStringCreatorWidget : IDataWindowWidget
 {
-    private const LinkMacroPayloadType DalamudLinkType = (LinkMacroPayloadType)Payload.EmbeddedInfoType.DalamudLink - 1;
-
-    private const ImGuiTableFlags TableFlags = ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg |
-                                               ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings;
+    private const ImGuiTableFlags TableFlags = ImGuiTableFlags.Borders |
+                                               ImGuiTableFlags.RowBg   |
+                                               ImGuiTableFlags.ScrollY |
+                                               ImGuiTableFlags.NoSavedSettings;
 
     private static readonly string[] TextEntryTypeOptions = ["String", "Macro", "Fixed"];
 
@@ -100,7 +97,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         { MacroCode.Digit, ["值", "目标长度"] },
         { MacroCode.Ordinal, ["值"] },
         { MacroCode.Sound, ["是否为短音效", "音效 ID"] },
-        { MacroCode.LevelPos, ["地点 ID"] },
+        { MacroCode.LevelPos, ["地点 ID"] }
     };
 
     private readonly Dictionary<LinkMacroPayloadType, string[]> linkExpressionNames = new()
@@ -120,7 +117,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         { LinkMacroPayloadType.MKDLore, ["行 ID"] },
         { LinkMacroPayloadType.EventTutorial, ["行 ID"] },
         { LinkMacroPayloadType.Emote, ["表情"] },
-        { DalamudLinkType, ["命令 ID", "附加值 1", "附加值 2", "附加字符串"] },
+        { DalamudLinkPayload.LinkType, ["命令 ID", "附加值 1", "附加值 2", "附加字符串"] }
     };
 
     private readonly Dictionary<uint, string[]> fixedExpressionNames = new()
@@ -136,34 +133,33 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         { 9, ["类型 0", "类型 1", string.Empty] },
         { 10, ["类型 0", "类型 1", "状态 ID", "是否覆盖", "名称覆盖值", "描述覆盖值"] },
         { 11, ["类型 0", "类型 1", "招募 ID", string.Empty, "世界 ID", "跨界标志"] },
-        { 12, ["类型 0", "类型 1", "任务 ID", string.Empty, string.Empty, string.Empty, "任务名称"] },
+        { 12, ["类型 0", "类型 1", "任务 ID", string.Empty, string.Empty, string.Empty, "任务名称"] }
     };
 
-    private readonly List<TextEntry> entries = [
+    private readonly List<TextEntry> entries =
+    [
         new TextEntry(TextEntryType.String, "欢迎使用 "),
-        new TextEntry(TextEntryType.Macro, "<colortype(17)>"),
-        new TextEntry(TextEntryType.Macro, "<edgecolortype(19)>"),
+        new TextEntry(TextEntryType.Macro,  "<colortype(17)>"),
+        new TextEntry(TextEntryType.Macro,  "<edgecolortype(19)>"),
         new TextEntry(TextEntryType.String, "Dalamud"),
-        new TextEntry(TextEntryType.Macro, "<edgecolor(stackcolor)>"),
-        new TextEntry(TextEntryType.Macro, "<color(stackcolor)>"),
-        new TextEntry(TextEntryType.Macro, " <string(lstr1)>"),
+        new TextEntry(TextEntryType.Macro,  "<edgecolor(stackcolor)>"),
+        new TextEntry(TextEntryType.Macro,  "<color(stackcolor)>"),
+        new TextEntry(TextEntryType.Macro,  " <string(lstr1)>")
     ];
 
     private SeStringParameter[]? localParameters = [Versioning.GetScmVersion()];
-    private ReadOnlySeString input;
-    private ClientLanguage? language;
-    private Task? validImportSheetNamesTask;
-    private int importSelectedSheetName;
-    private int importRowId;
-    private string[]? validImportSheetNames;
-    private float inputsWidth;
-    private float lastContentWidth;
+    private ReadOnlySeString     input;
+    private ClientLanguage?      language;
+    private Task?                validImportSheetNamesTask;
+    private int                  importSelectedSheetName;
+    private int                  importRowId;
+    private string[]?            validImportSheetNames;
+    private float                inputsWidth;
+    private float                lastContentWidth;
 
     private enum TextEntryType
     {
-        String,
-        Macro,
-        Fixed,
+        String, Macro, Fixed
     }
 
     /// <inheritdoc/>
@@ -197,8 +193,10 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         // resize panels relative to the window size
         if (contentWidth != this.lastContentWidth)
         {
-            var originalWidth = this.lastContentWidth != 0 ? this.lastContentWidth : contentWidth;
-            this.inputsWidth = (this.inputsWidth / originalWidth) * contentWidth;
+            var originalWidth = this.lastContentWidth != 0 ?
+                                    this.lastContentWidth :
+                                    contentWidth;
+            this.inputsWidth      = (this.inputsWidth / originalWidth) * contentWidth;
             this.lastContentWidth = contentWidth;
         }
 
@@ -206,7 +204,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         if (!tabBar) return;
 
         this.DrawCreatorTab(contentWidth);
-        this.DrawGlobalParametersTab();
+        DrawGlobalParametersTab();
     }
 
     private void DrawCreatorTab(float contentWidth)
@@ -218,16 +216,19 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         ImGui.Spacing();
         this.DrawInputs();
 
-        this.localParameters ??= this.GetLocalParameters(this.input.AsSpan(), []);
+        this.localParameters ??= GetLocalParameters(this.input.AsSpan(), []);
 
-        var evaluated = Service<SeStringEvaluator>.Get().Evaluate(
+        var evaluated = Service<SeStringEvaluator>.Get().Evaluate
+        (
             this.input.AsSpan(),
             this.localParameters,
-            this.language);
+            this.language
+        );
 
         ImGui.SameLine(0, 0);
 
         ImGui.Button("###InputPanelResizer"u8, new Vector2(4, -1));
+
         if (ImGui.IsItemActive())
         {
             this.inputsWidth += ImGui.GetIO().MouseDelta.X;
@@ -254,13 +255,13 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             this.DrawParameters();
         }
 
-        this.DrawPreview(evaluated);
+        DrawPreview(evaluated);
 
         ImGui.Spacing();
         this.DrawPayloads(evaluated);
     }
 
-    private unsafe void DrawGlobalParametersTab()
+    private static unsafe void DrawGlobalParametersTab()
     {
         using var tab = ImRaii.TabItem("全局参数"u8);
         if (!tab) return;
@@ -268,15 +269,16 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         using var table = ImRaii.Table("GlobalParametersTable"u8, 5, TableFlags);
         if (!table) return;
 
-        ImGui.TableSetupColumn("ID"u8, ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("类型"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("ID"u8,  ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("类型"u8,  ImGuiTableColumnFlags.WidthFixed, 100);
         ImGui.TableSetupColumn("值指针"u8, ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableSetupColumn("值"u8, ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("描述"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("值"u8,   ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("描述"u8,  ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupScrollFreeze(5, 1);
         ImGui.TableHeadersRow();
 
         var deque = RaptureTextModule.Instance()->GlobalParameters;
+
         for (var i = 0u; i < deque.MySize; i++)
         {
             var item = deque[i];
@@ -292,6 +294,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             WidgetUtil.DrawCopyableText($"0x{(nint)item.ValuePtr:X}");
 
             ImGui.TableNextColumn(); // Value
+
             switch (item.Type)
             {
                 case TextParameterType.Integer:
@@ -317,104 +320,107 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             }
 
             ImGui.TableNextColumn();
-            ImGui.Text(i switch
-            {
-                0 => "玩家名称",
-                1 => "临时实体 1：名称",
-                2 => "临时实体 2：名称",
-                3 => "玩家性别",
-                4 => "临时实体 1：性别",
-                5 => "临时实体 2：性别",
-                6 => "临时实体 1：对象字符串 ID",
-                7 => "临时实体 2：对象字符串 ID",
-                10 => "艾欧泽亚时间：小时",
-                11 => "艾欧泽亚时间：分钟",
-                12 => "说话频道颜色（ColorSay）",
-                13 => "喊话频道颜色（ColorShout）",
-                14 => "悄悄话频道颜色（ColorTell）",
-                15 => "小队频道颜色（ColorParty）",
-                16 => "团队频道颜色（ColorAlliance）",
-                17 => "通讯贝 1 频道颜色（ColorLS1）",
-                18 => "通讯贝 2 频道颜色（ColorLS2）",
-                19 => "通讯贝 3 频道颜色（ColorLS3）",
-                20 => "通讯贝 4 频道颜色（ColorLS4）",
-                21 => "通讯贝 5 频道颜色（ColorLS5）",
-                22 => "通讯贝 6 频道颜色（ColorLS6）",
-                23 => "通讯贝 7 频道颜色（ColorLS7）",
-                24 => "通讯贝 8 频道颜色（ColorLS8）",
-                25 => "部队频道颜色（ColorFCompany）",
-                26 => "PvP 小队频道颜色（ColorPvPGroup）",
-                27 => "PvP 小队公告颜色（ColorPvPGroupAnnounce）",
-                28 => "新人频道颜色（ColorBeginner）",
-                29 => "玩家情感动作颜色（ColorEmoteUser）",
-                30 => "情感动作颜色（ColorEmote）",
-                31 => "呼喊频道颜色（ColorYell）",
-                32 => "部队公告颜色（ColorFCAnnounce）",
-                33 => "新人频道公告颜色（ColorBeginnerAnnounce）",
-                34 => "跨界通讯贝频道颜色（ColorCWLS）",
-                35 => "攻击成功颜色（ColorAttackSuccess）",
-                36 => "攻击失败颜色（ColorAttackFailure）",
-                37 => "技能颜色（ColorAction）",
-                38 => "物品颜色（ColorItem）",
-                39 => "治疗颜色（ColorCureGive）",
-                40 => "增益效果颜色（ColorBuffGive）",
-                41 => "减益效果颜色（ColorDebuffGive）",
-                42 => "回声颜色（ColorEcho）",
-                43 => "系统消息颜色（ColorSysMsg）",
-                51 => "玩家黑涡团军衔",
-                52 => "玩家双蛇党军衔",
-                53 => "玩家恒辉队军衔",
-                54 => "搭档名称",
-                55 => "任务内容名称",
-                56 => "系统战斗消息颜色（ColorSysBattle）",
-                57 => "系统采集消息颜色（ColorSysGathering）",
-                58 => "系统错误消息颜色（ColorSysErr）",
-                59 => "NPC 说话颜色（ColorNpcSay）",
-                60 => "物品提示颜色（ColorItemNotice）",
-                61 => "成长提示颜色（ColorGrowup）",
-                62 => "战利品颜色（ColorLoot）",
-                63 => "制作消息颜色（ColorCraft）",
-                64 => "采集消息颜色（ColorGathering）",
-                65 => "临时实体 1：名称以元音开头",
-                66 => "临时实体 2：名称以元音开头",
-                67 => "玩家职业 ID",
-                68 => "玩家等级",
-                69 => "玩家初始城市",
-                70 => "玩家种族",
-                71 => "玩家同步等级",
-                73 => "任务 #66047：已遇见阿尔菲诺和阿莉塞",
-                74 => "PlayStation 世代",
-                75 => "是否为旧版玩家",
-                77 => "客户端/平台？",
-                78 => "玩家出生月份",
-                79 => "手柄模式（PadMode）",
-                82 => "数据中心地区",
-                83 => "跨界通讯贝 2 频道颜色（ColorCWLS2）",
-                84 => "跨界通讯贝 3 频道颜色（ColorCWLS3）",
-                85 => "跨界通讯贝 4 频道颜色（ColorCWLS4）",
-                86 => "跨界通讯贝 5 频道颜色（ColorCWLS5）",
-                87 => "跨界通讯贝 6 频道颜色（ColorCWLS6）",
-                88 => "跨界通讯贝 7 频道颜色（ColorCWLS7）",
-                89 => "跨界通讯贝 8 频道颜色（ColorCWLS8）",
-                91 => "玩家所属大国防联军",
-                92 => "区域类型 ID",
-                93 => "是否启用软键盘",
-                94 => "职能颜色 1：防护职业（LogColorRoleTank）",
-                95 => "职能颜色 2：防护职业（LogColorRoleTank）",
-                96 => "职能颜色 1：治疗职业（LogColorRoleHealer）",
-                97 => "职能颜色 2：治疗职业（LogColorRoleHealer）",
-                98 => "职能颜色 1：进攻职业（LogColorRoleDPS）",
-                99 => "职能颜色 2：进攻职业（LogColorRoleDPS）",
-                100 => "职能颜色 1：其他职业（LogColorOtherClass）",
-                101 => "职能颜色 2：其他职业（LogColorOtherClass）",
-                102 => "是否拥有登录安全令牌",
-                103 => "是否订阅 PlayStation Plus",
-                104 => "手柄鼠标模式（PadMouseMode）",
-                106 => "优遇世界加成最高等级",
-                107 => "蜃景幻界辅助职业等级",
-                108 => "深层迷宫 ID",
-                _ => string.Empty,
-            });
+            ImGui.Text
+            (
+                i switch
+                {
+                    0   => "玩家名称",
+                    1   => "临时实体 1：名称",
+                    2   => "临时实体 2：名称",
+                    3   => "玩家性别",
+                    4   => "临时实体 1：性别",
+                    5   => "临时实体 2：性别",
+                    6   => "临时实体 1：对象字符串 ID",
+                    7   => "临时实体 2：对象字符串 ID",
+                    10  => "艾欧泽亚时间：小时",
+                    11  => "艾欧泽亚时间：分钟",
+                    12  => "说话频道颜色（ColorSay）",
+                    13  => "喊话频道颜色（ColorShout）",
+                    14  => "悄悄话频道颜色（ColorTell）",
+                    15  => "小队频道颜色（ColorParty）",
+                    16  => "团队频道颜色（ColorAlliance）",
+                    17  => "通讯贝 1 频道颜色（ColorLS1）",
+                    18  => "通讯贝 2 频道颜色（ColorLS2）",
+                    19  => "通讯贝 3 频道颜色（ColorLS3）",
+                    20  => "通讯贝 4 频道颜色（ColorLS4）",
+                    21  => "通讯贝 5 频道颜色（ColorLS5）",
+                    22  => "通讯贝 6 频道颜色（ColorLS6）",
+                    23  => "通讯贝 7 频道颜色（ColorLS7）",
+                    24  => "通讯贝 8 频道颜色（ColorLS8）",
+                    25  => "部队频道颜色（ColorFCompany）",
+                    26  => "PvP 小队频道颜色（ColorPvPGroup）",
+                    27  => "PvP 小队公告颜色（ColorPvPGroupAnnounce）",
+                    28  => "新人频道颜色（ColorBeginner）",
+                    29  => "玩家情感动作颜色（ColorEmoteUser）",
+                    30  => "情感动作颜色（ColorEmote）",
+                    31  => "呼喊频道颜色（ColorYell）",
+                    32  => "部队公告颜色（ColorFCAnnounce）",
+                    33  => "新人频道公告颜色（ColorBeginnerAnnounce）",
+                    34  => "跨界通讯贝频道颜色（ColorCWLS）",
+                    35  => "攻击成功颜色（ColorAttackSuccess）",
+                    36  => "攻击失败颜色（ColorAttackFailure）",
+                    37  => "技能颜色（ColorAction）",
+                    38  => "物品颜色（ColorItem）",
+                    39  => "治疗颜色（ColorCureGive）",
+                    40  => "增益效果颜色（ColorBuffGive）",
+                    41  => "减益效果颜色（ColorDebuffGive）",
+                    42  => "回声颜色（ColorEcho）",
+                    43  => "系统消息颜色（ColorSysMsg）",
+                    51  => "玩家黑涡团军衔",
+                    52  => "玩家双蛇党军衔",
+                    53  => "玩家恒辉队军衔",
+                    54  => "搭档名称",
+                    55  => "任务内容名称",
+                    56  => "系统战斗消息颜色（ColorSysBattle）",
+                    57  => "系统采集消息颜色（ColorSysGathering）",
+                    58  => "系统错误消息颜色（ColorSysErr）",
+                    59  => "NPC 说话颜色（ColorNpcSay）",
+                    60  => "物品提示颜色（ColorItemNotice）",
+                    61  => "成长提示颜色（ColorGrowup）",
+                    62  => "战利品颜色（ColorLoot）",
+                    63  => "制作消息颜色（ColorCraft）",
+                    64  => "采集消息颜色（ColorGathering）",
+                    65  => "临时实体 1：名称以元音开头",
+                    66  => "临时实体 2：名称以元音开头",
+                    67  => "玩家职业 ID",
+                    68  => "玩家等级",
+                    69  => "玩家初始城市",
+                    70  => "玩家种族",
+                    71  => "玩家同步等级",
+                    73  => "任务 #66047：已遇见阿尔菲诺和阿莉塞",
+                    74  => "PlayStation 世代",
+                    75  => "是否为旧版玩家",
+                    77  => "客户端/平台？",
+                    78  => "玩家出生月份",
+                    79  => "手柄模式（PadMode）",
+                    82  => "数据中心地区",
+                    83  => "跨界通讯贝 2 频道颜色（ColorCWLS2）",
+                    84  => "跨界通讯贝 3 频道颜色（ColorCWLS3）",
+                    85  => "跨界通讯贝 4 频道颜色（ColorCWLS4）",
+                    86  => "跨界通讯贝 5 频道颜色（ColorCWLS5）",
+                    87  => "跨界通讯贝 6 频道颜色（ColorCWLS6）",
+                    88  => "跨界通讯贝 7 频道颜色（ColorCWLS7）",
+                    89  => "跨界通讯贝 8 频道颜色（ColorCWLS8）",
+                    91  => "玩家所属大国防联军",
+                    92  => "区域类型 ID",
+                    93  => "是否启用软键盘",
+                    94  => "职能颜色 1：防护职业（LogColorRoleTank）",
+                    95  => "职能颜色 2：防护职业（LogColorRoleTank）",
+                    96  => "职能颜色 1：治疗职业（LogColorRoleHealer）",
+                    97  => "职能颜色 2：治疗职业（LogColorRoleHealer）",
+                    98  => "职能颜色 1：进攻职业（LogColorRoleDPS）",
+                    99  => "职能颜色 2：进攻职业（LogColorRoleDPS）",
+                    100 => "职能颜色 1：其他职业（LogColorOtherClass）",
+                    101 => "职能颜色 2：其他职业（LogColorOtherClass）",
+                    102 => "是否拥有登录安全令牌",
+                    103 => "是否订阅 PlayStation Plus",
+                    104 => "手柄鼠标模式（PadMouseMode）",
+                    106 => "优遇世界加成最高等级",
+                    107 => "蜃景幻界辅助职业等级",
+                    108 => "深层迷宫 ID",
+                    _   => string.Empty
+                }
+            );
         }
     }
 
@@ -439,8 +445,8 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         if (ImGui.Button("输出"u8))
         {
             var output = Utf8String.CreateEmpty();
-            var temp = Utf8String.CreateEmpty();
-            var temp2 = Utf8String.CreateEmpty();
+            var temp   = Utf8String.CreateEmpty();
+            var temp2  = Utf8String.CreateEmpty();
 
             foreach (var entry in this.entries)
             {
@@ -496,10 +502,12 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                 }
             }
 
-            var evaluated = Service<SeStringEvaluator>.Get().Evaluate(
+            var evaluated = Service<SeStringEvaluator>.Get().Evaluate
+            (
                 rssb.Builder.ToReadOnlySeString(),
                 this.localParameters,
-                this.language);
+                this.language
+            );
 
             RaptureLogModule.Instance()->PrintString(evaluated);
         }
@@ -540,6 +548,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         }
 
         var raptureTextModule = RaptureTextModule.Instance();
+
         if (!raptureTextModule->MacroEncoder.EncoderError.IsEmpty)
         {
             ImGui.SameLine();
@@ -548,11 +557,13 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
         ImGui.SameLine();
         ImGui.SetNextItemWidth(90 * ImGuiHelpers.GlobalScale);
-        var languageName = this.language.ToString();
-        using var dropdown = ImRaii.Combo("##Language"u8, languageName);
+        var       languageName = this.language.ToString();
+        using var dropdown     = ImRaii.Combo("##Language"u8, languageName);
+
         if (dropdown)
         {
             var values = Enum.GetValues<ClientLanguage>().OrderBy(lang => lang.ToString());
+
             foreach (var value in values)
             {
                 if (ImGui.Selectable(value.ToString(), value == this.language))
@@ -571,25 +582,29 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
         var dataManager = Service<DataManager>.Get();
 
-        this.validImportSheetNamesTask ??= Task.Run(() =>
-        {
-            this.validImportSheetNames = dataManager.Excel.SheetNames.Where(sheetName =>
+        this.validImportSheetNamesTask ??= Task.Run
+        (() =>
             {
-                try
-                {
-                    var headerFile = dataManager.GameData.GetFile<ExcelHeaderFile>($"exd/{sheetName}.exh");
-                    if (headerFile == null || headerFile.Header.Variant != ExcelVariant.Default)
-                        return false;
+                this.validImportSheetNames = dataManager.Excel.SheetNames.Where
+                (sheetName =>
+                    {
+                        try
+                        {
+                            var headerFile = dataManager.GameData.GetFile<ExcelHeaderFile>($"exd/{sheetName}.exh");
+                            if (headerFile == null || headerFile.Header.Variant != ExcelVariant.Default)
+                                return false;
 
-                    var sheet = dataManager.Excel.GetSheet<RawRow>(Language.English, sheetName);
-                    return sheet.Columns.Any(col => col.Type == ExcelColumnDataType.String);
-                }
-                catch
-                {
-                    return false;
-                }
-            }).OrderBy(sheetName => sheetName, StringComparer.InvariantCulture).ToArray();
-        });
+                            var sheet = dataManager.Excel.GetSheet<RawRow>(Language.English, sheetName);
+                            return sheet.Columns.Any(col => col.Type == ExcelColumnDataType.String);
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    }
+                ).OrderBy(sheetName => sheetName, StringComparer.InvariantCulture).ToArray();
+            }
+        );
 
         if (this.validImportSheetNames == null)
         {
@@ -650,6 +665,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                 ImGui.Text(i.ToString());
 
                 ImGui.TableNextColumn();
+
                 if (ImGui.Selectable($"{value.ToMacroString().Truncate(100)}###Column{i}"))
                 {
                     foreach (var payload in value)
@@ -682,7 +698,8 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         using var child = ImRaii.Child("Inputs"u8, new Vector2(this.inputsWidth, -1));
         if (!child) return;
 
-        using var table = ImRaii.Table("StringMakerTable"u8, 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table
+            ("StringMakerTable"u8, 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
         ImGui.TableSetupColumn("类型"u8, ImGuiTableColumnFlags.WidthFixed, 100);
@@ -691,17 +708,17 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         ImGui.TableSetupScrollFreeze(3, 1);
         ImGui.TableHeadersRow();
 
-        var arrowUpButtonSize = this.GetIconButtonSize(FontAwesomeIcon.ArrowUp);
-        var arrowDownButtonSize = this.GetIconButtonSize(FontAwesomeIcon.ArrowDown);
+        var arrowUpButtonSize   = GetIconButtonSize(FontAwesomeIcon.ArrowUp);
+        var arrowDownButtonSize = GetIconButtonSize(FontAwesomeIcon.ArrowDown);
 
-        var entryToRemove = -1;
-        var entryToMoveUp = -1;
+        var entryToRemove   = -1;
+        var entryToMoveUp   = -1;
         var entryToMoveDown = -1;
-        var updateString = false;
+        var updateString    = false;
 
         for (var i = 0; i < this.entries.Count; i++)
         {
-            var key = $"##Entry{i}";
+            var key   = $"##Entry{i}";
             var entry = this.entries[i];
 
             ImGui.TableNextRow();
@@ -709,26 +726,28 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             ImGui.TableNextColumn(); // Type
             var type = (int)entry.Type;
             ImGui.SetNextItemWidth(-1);
+
             if (ImGui.Combo($"##Type{i}", ref type, TextEntryTypeOptions))
             {
-                entry.Type = (TextEntryType)type;
-                updateString |= true;
+                entry.Type   = (TextEntryType)type;
+                updateString = true;
             }
 
             ImGui.TableNextColumn(); // Text
             var message = entry.Message;
             ImGui.SetNextItemWidth(-1);
+
             if (ImGui.InputText($"##{i}_Message", ref message, 2048))
             {
                 entry.Message = message;
-                updateString |= true;
+                updateString  = true;
             }
 
             ImGui.TableNextColumn(); // Actions
 
             if (i > 0)
             {
-                if (this.IconButton(key + "_Up", FontAwesomeIcon.ArrowUp, "上移"))
+                if (IconButton(key + "_Up", FontAwesomeIcon.ArrowUp, "上移"))
                 {
                     entryToMoveUp = i;
                 }
@@ -742,7 +761,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
             if (i < this.entries.Count - 1)
             {
-                if (this.IconButton(key + "_Down", FontAwesomeIcon.ArrowDown, "下移"))
+                if (IconButton(key + "_Down", FontAwesomeIcon.ArrowDown, "下移"))
                 {
                     entryToMoveDown = i;
                 }
@@ -756,18 +775,20 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
             if (ImGui.IsKeyDown(ImGuiKey.LeftShift) || ImGui.IsKeyDown(ImGuiKey.RightShift))
             {
-                if (this.IconButton(key + "_Delete", FontAwesomeIcon.Trash, "删除"))
+                if (IconButton(key + "_Delete", FontAwesomeIcon.Trash, "删除"))
                 {
                     entryToRemove = i;
                 }
             }
             else
             {
-                this.IconButton(
+                IconButton
+                (
                     key + "_Delete",
                     FontAwesomeIcon.Trash,
                     "按住 Shift 删除",
-                    disabled: true);
+                    disabled: true
+                );
             }
         }
 
@@ -778,7 +799,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             var removedItem = this.entries[entryToMoveUp];
             this.entries.RemoveAt(entryToMoveUp);
             this.entries.Insert(entryToMoveUp - 1, removedItem);
-            updateString |= true;
+            updateString = true;
         }
 
         if (entryToMoveDown != -1)
@@ -786,13 +807,13 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             var removedItem = this.entries[entryToMoveDown];
             this.entries.RemoveAt(entryToMoveDown);
             this.entries.Insert(entryToMoveDown + 1, removedItem);
-            updateString |= true;
+            updateString = true;
         }
 
         if (entryToRemove != -1)
         {
             this.entries.RemoveAt(entryToRemove);
-            updateString |= true;
+            updateString = true;
         }
 
         if (updateString)
@@ -826,10 +847,10 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             this.localParameters = null;
     }
 
-    private void DrawPreview(ReadOnlySeString str)
+    private static void DrawPreview(ReadOnlySeString str)
     {
         using var nodeColor = ImRaii.PushColor(ImGuiCol.Text, 0xFF00FF00);
-        using var node = ImRaii.TreeNode("预览"u8, ImGuiTreeNodeFlags.DefaultOpen);
+        using var node      = ImRaii.TreeNode("预览"u8, ImGuiTreeNodeFlags.DefaultOpen);
         nodeColor.Pop();
         if (!node) return;
 
@@ -841,7 +862,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
     private void DrawParameters()
     {
         using var nodeColor = ImRaii.PushColor(ImGuiCol.Text, 0xFF00FF00);
-        using var node = ImRaii.TreeNode("参数"u8, ImGuiTreeNodeFlags.DefaultOpen);
+        using var node      = ImRaii.TreeNode("参数"u8, ImGuiTreeNodeFlags.DefaultOpen);
         nodeColor.Pop();
         if (!node) return;
 
@@ -850,6 +871,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             if (this.localParameters[i].IsString)
             {
                 var str = this.localParameters[i].StringValue.ExtractText();
+
                 if (ImGui.InputText($"lstr({i + 1})", ref str, 255))
                 {
                     this.localParameters[i] = new(str);
@@ -858,6 +880,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             else
             {
                 var num = (int)this.localParameters[i].UIntValue;
+
                 if (ImGui.InputInt($"lnum({i + 1})", ref num))
                 {
                     this.localParameters[i] = new((uint)num);
@@ -886,7 +909,15 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         }
     }
 
-    private void DrawSeString(string id, ReadOnlySeStringSpan rosss, bool asTreeNode = false, bool renderSeString = false, int depth = 0, ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags.None)
+    private void DrawSeString
+    (
+        string               id,
+        ReadOnlySeStringSpan rosss,
+        bool                 asTreeNode     = false,
+        bool                 renderSeString = false,
+        int                  depth          = 0,
+        ImGuiTreeNodeFlags   treeNodeFlags  = ImGuiTreeNodeFlags.None
+    )
     {
         using var seStringId = ImRaii.PushId(id);
 
@@ -896,18 +927,25 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             return;
         }
 
-        using var node = asTreeNode ? this.SeStringTreeNode(id, rosss) : default;
+        using var node = asTreeNode ?
+                             SeStringTreeNode(id, rosss) :
+                             default;
         if (asTreeNode && !node) return;
 
         if (!asTreeNode && renderSeString)
         {
-            ImGuiHelpers.SeStringWrapped(rosss, new()
-            {
-                ForceEdgeColor = true,
-            });
+            ImGuiHelpers.SeStringWrapped
+            (
+                rosss,
+                new()
+                {
+                    ForceEdgeColor = true
+                }
+            );
         }
 
         var payloadIdx = -1;
+
         foreach (var payload in rosss)
         {
             payloadIdx++;
@@ -917,7 +955,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             if (payload.Type == ReadOnlySePayloadType.Macro)
                 preview += $": {payload.MacroCode}";
 
-            using var nodeColor = ImRaii.PushColor(ImGuiCol.Text, 0xFF00FFFF);
+            using var nodeColor   = ImRaii.PushColor(ImGuiCol.Text, 0xFF00FFFF);
             using var payloadNode = ImRaii.TreeNode($"[{payloadIdx}] {preview}", ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.SpanAvailWidth);
             nodeColor.Pop();
             if (!payloadNode) continue;
@@ -926,11 +964,16 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             if (!table) return;
 
             ImGui.TableSetupColumn("标签"u8, ImGuiTableColumnFlags.WidthFixed, 120);
-            ImGui.TableSetupColumn("树"u8, ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("树"u8,  ImGuiTableColumnFlags.WidthStretch);
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
-            ImGui.Text(payload.Type == ReadOnlySePayloadType.Text ? "Text" : "ToString()");
+            ImGui.Text
+            (
+                payload.Type == ReadOnlySePayloadType.Text ?
+                    "Text" :
+                    "ToString()"
+            );
             ImGui.TableNextColumn();
             var text = payload.ToString();
             WidgetUtil.DrawCopyableText($"\"{text}\"", text);
@@ -940,17 +983,20 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
             if (payload.ExpressionCount > 0)
             {
-                var exprIdx = 0;
-                uint? subType = null;
+                var   exprIdx   = 0;
+                uint? subType   = null;
                 uint? fixedType = null;
 
                 if (payload.MacroCode == MacroCode.Link && payload.TryGetExpression(out var linkExpr1) && linkExpr1.TryGetUInt(out var linkExpr1Val))
                 {
                     subType = linkExpr1Val;
                 }
-                else if (payload.MacroCode == MacroCode.Fixed && payload.TryGetExpression(out var fixedTypeExpr, out var linkExpr2) && fixedTypeExpr.TryGetUInt(out var fixedTypeVal) && linkExpr2.TryGetUInt(out var linkExpr2Val))
+                else if (payload.MacroCode == MacroCode.Fixed                               &&
+                         payload.TryGetExpression(out var fixedTypeExpr, out var linkExpr2) &&
+                         fixedTypeExpr.TryGetUInt(out var fixedTypeVal)                     &&
+                         linkExpr2.TryGetUInt(out var linkExpr2Val))
                 {
-                    subType = linkExpr2Val;
+                    subType   = linkExpr2Val;
                     fixedType = fixedTypeVal;
                 }
 
@@ -970,7 +1016,13 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
         ImGui.TableNextColumn();
         var expressionName = this.GetExpressionName(macroCode, subType, exprIdx, expr);
-        ImGui.Text($"[{exprIdx}] " + (string.IsNullOrEmpty(expressionName) ? $"表达式 {exprIdx}" : expressionName));
+        ImGui.Text
+        (
+            $"[{exprIdx}] " +
+            (string.IsNullOrEmpty(expressionName) ?
+                 $"表达式 {exprIdx}" :
+                 expressionName)
+        );
 
         ImGui.TableNextColumn();
 
@@ -989,6 +1041,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                 if (macroCode == MacroCode.Icon2)
                 {
                     var iconMapping = RaptureAtkModule.Instance()->AtkFontManager.Icon2RemapTable;
+
                     for (var i = 0; i < 30; i++)
                     {
                         if (iconMapping[i].IconId == iconId)
@@ -1012,9 +1065,9 @@ internal class SeStringCreatorWidget : IDataWindowWidget
 
             if (macroCode == MacroCode.Link && exprIdx == 0)
             {
-                var name = subType != null && (LinkMacroPayloadType)subType == DalamudLinkType
-                    ? "Dalamud"
-                    : Enum.GetName((LinkMacroPayloadType)u32);
+                var name = subType != null && (LinkMacroPayloadType)subType == DalamudLinkPayload.LinkType ?
+                               "Dalamud" :
+                               Enum.GetName((LinkMacroPayloadType)u32);
 
                 if (!string.IsNullOrEmpty(name))
                 {
@@ -1030,14 +1083,14 @@ internal class SeStringCreatorWidget : IDataWindowWidget
                     MacroCode.JaNoun => ClientLanguage.Japanese,
                     MacroCode.DeNoun => ClientLanguage.German,
                     MacroCode.FrNoun => ClientLanguage.French,
-                    _ => ClientLanguage.English,
+                    _                => ClientLanguage.English
                 };
                 var articleTypeEnumType = macroLanguage switch
                 {
                     ClientLanguage.Japanese => typeof(JapaneseArticleType),
-                    ClientLanguage.German => typeof(GermanArticleType),
-                    ClientLanguage.French => typeof(FrenchArticleType),
-                    _ => typeof(EnglishArticleType),
+                    ClientLanguage.German   => typeof(GermanArticleType),
+                    ClientLanguage.French   => typeof(FrenchArticleType),
+                    _                       => typeof(EnglishArticleType)
                 };
                 ImGui.SameLine();
                 ImGui.Text(Enum.GetName(articleTypeEnumType, u32));
@@ -1052,6 +1105,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
             if (macroCode is MacroCode.Fixed && subType != null && fixedType != null && fixedType is 100 or 200 && subType == 5 && exprIdx == 2)
             {
                 ImGui.SameLine();
+
                 if (ImGui.SmallButton("播放"u8))
                 {
                     UIGlobals.PlayChatSoundEffect(u32 + 1);
@@ -1180,7 +1234,10 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         if (macroCode == MacroCode.Switch)
             return $"分支 {idx - 1}";
 
-        if (macroCode == MacroCode.Link && subType != null && this.linkExpressionNames.TryGetValue((LinkMacroPayloadType)subType, out var linkNames) && idx - 1 < linkNames.Length)
+        if (macroCode == MacroCode.Link                                                            &&
+            subType   != null                                                                      &&
+            this.linkExpressionNames.TryGetValue((LinkMacroPayloadType)subType, out var linkNames) &&
+            idx - 1 < linkNames.Length)
             return linkNames[idx - 1];
 
         if (macroCode == MacroCode.Fixed && subType != null && this.fixedExpressionNames.TryGetValue((uint)subType, out var fixedNames) && idx < fixedNames.Length)
@@ -1192,7 +1249,7 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         return string.Empty;
     }
 
-    private SeStringParameter[] GetLocalParameters(ReadOnlySeStringSpan rosss, Dictionary<uint, SeStringParameter>? parameters)
+    private static SeStringParameter[] GetLocalParameters(ReadOnlySeStringSpan rosss, Dictionary<uint, SeStringParameter>? parameters)
     {
         parameters ??= [];
 
@@ -1262,30 +1319,35 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         return parameters.OrderBy(x => x.Key).Select(x => x.Value).ToArray();
     }
 
-    private ImRaii.TreeNodeDisposable SeStringTreeNode(string id, ReadOnlySeStringSpan previewText, uint color = 0xFF00FFFF, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None)
+    private static ImRaii.TreeNodeDisposable SeStringTreeNode
+        (string id, ReadOnlySeStringSpan previewText, uint color = 0xFF00FFFF, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None)
     {
         using var titleColor = ImRaii.PushColor(ImGuiCol.Text, color);
-        var node = ImRaii.TreeNode("##" + id, flags);
+        var       node       = ImRaii.TreeNode("##" + id, flags);
         ImGui.SameLine();
-        ImGuiHelpers.SeStringWrapped(previewText, new()
-        {
-            ForceEdgeColor = true,
-            WrapWidth = 9999,
-        });
+        ImGuiHelpers.SeStringWrapped
+        (
+            previewText,
+            new()
+            {
+                ForceEdgeColor = true,
+                WrapWidth      = 9999
+            }
+        );
         return node;
     }
 
-    private bool IconButton(string key, FontAwesomeIcon icon, string tooltip, Vector2 size = default, bool disabled = false, bool active = false)
+    private static bool IconButton(string key, FontAwesomeIcon icon, string tooltip, Vector2 size = default, bool disabled = false, bool active = false)
     {
-        using var iconFont = ImRaii.PushFont(UiBuilder.IconFont);
+        using var iconFont             = ImRaii.PushFont(UiBuilder.IconFont);
         if (!key.StartsWith("##")) key = "##" + key;
 
         var disposables = new List<IDisposable>();
 
         if (disabled)
         {
-            disposables.Add(ImRaii.PushColor(ImGuiCol.Text, ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]));
-            disposables.Add(ImRaii.PushColor(ImGuiCol.ButtonActive, ImGui.GetStyle().Colors[(int)ImGuiCol.Button]));
+            disposables.Add(ImRaii.PushColor(ImGuiCol.Text,          ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]));
+            disposables.Add(ImRaii.PushColor(ImGuiCol.ButtonActive,  ImGui.GetStyle().Colors[(int)ImGuiCol.Button]));
             disposables.Add(ImRaii.PushColor(ImGuiCol.ButtonHovered, ImGui.GetStyle().Colors[(int)ImGuiCol.Button]));
         }
         else if (active)
@@ -1310,13 +1372,17 @@ internal class SeStringCreatorWidget : IDataWindowWidget
         return pressed;
     }
 
-    private Vector2 GetIconButtonSize(FontAwesomeIcon icon)
+    private static Vector2 GetIconButtonSize(FontAwesomeIcon icon)
     {
         using var iconFont = ImRaii.PushFont(UiBuilder.IconFont);
         return ImGui.CalcTextSize(icon.ToIconString()) + ImGui.GetStyle().FramePadding * 2;
     }
 
-    private class TextEntry(TextEntryType type, string text)
+    private class TextEntry
+    (
+        TextEntryType type,
+        string        text
+    )
     {
         public string Message { get; set; } = text;
 

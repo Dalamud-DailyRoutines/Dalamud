@@ -1,17 +1,15 @@
 using System.Linq;
 using System.Text;
-
 using Dalamud.Bindings.ImGui;
+using Dalamud.Common;
 using Dalamud.Data;
-using Dalamud.Game;
+using Dalamud.Excel.Sheets;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.Text.Noun;
 using Dalamud.Game.Text.Noun.Enums;
 using Dalamud.Interface.Utility.Raii;
-
 using Lumina.Data;
 using Lumina.Excel;
-using Lumina.Excel.Sheets;
 
 namespace Dalamud.Interface.Internal.Windows.Data.Widgets;
 
@@ -25,7 +23,8 @@ internal class NounProcessorWidget : IDataWindowWidget
 
     internal static readonly string[] GermanCaseDisplayNames = [string.Empty, "主格", "属格", "与格", "宾格"];
 
-    private static readonly Type[] NounSheets = [
+    private static readonly Type[] NounSheets =
+    [
         typeof(Aetheryte),
         typeof(BNpcName),
         typeof(BeastTribe),
@@ -52,15 +51,15 @@ internal class NounProcessorWidget : IDataWindowWidget
         typeof(Mount),
         typeof(Ornament),
         typeof(TripleTriadCard),
-        typeof(XBMItem),
+        typeof(XBMItem)
     ];
 
-    private ClientLanguage[] languages = [];
-    private string[] languageNames = [];
+    private ClientLanguage[] languages     = [];
+    private string[]         languageNames = [];
 
     private int selectedSheetNameIndex;
     private int selectedLanguageIndex;
-    private int rowId = 1;
+    private int rowId  = 1;
     private int amount = 1;
 
     /// <inheritdoc/>
@@ -75,8 +74,8 @@ internal class NounProcessorWidget : IDataWindowWidget
     /// <inheritdoc/>
     public void Load()
     {
-        this.languages = Enum.GetValues<ClientLanguage>();
-        this.languageNames = Enum.GetNames<ClientLanguage>();
+        this.languages             = Enum.GetValues<ClientLanguage>();
+        this.languageNames         = Enum.GetNames<ClientLanguage>();
         this.selectedLanguageIndex = (int)Service<ClientState>.Get().ClientLanguage;
 
         this.Ready = true;
@@ -86,12 +85,13 @@ internal class NounProcessorWidget : IDataWindowWidget
     public void Draw()
     {
         var nounProcessor = Service<NounProcessor>.Get();
-        var dataManager = Service<DataManager>.Get();
+        var dataManager   = Service<DataManager>.Get();
 
         var sheetType = NounSheets.ElementAt(this.selectedSheetNameIndex);
-        var language = this.languages[this.selectedLanguageIndex];
+        var language  = this.languages[this.selectedLanguageIndex];
 
         ImGui.SetNextItemWidth(300);
+
         if (ImGui.Combo("###SelectedSheetName", ref this.selectedSheetNameIndex, NounSheets.Select(t => t.Name).ToArray()))
         {
             this.rowId = 1;
@@ -100,16 +100,18 @@ internal class NounProcessorWidget : IDataWindowWidget
         ImGui.SameLine();
 
         ImGui.SetNextItemWidth(120);
+
         if (ImGui.Combo("###SelectedLanguage", ref this.selectedLanguageIndex, this.languageNames))
         {
-            language = this.languages[this.selectedLanguageIndex];
+            language   = this.languages[this.selectedLanguageIndex];
             this.rowId = 1;
         }
 
         ImGui.SetNextItemWidth(120);
-        var sheet = dataManager.Excel.GetSheet<RawRow>(Language.English, sheetType.Name);
+        var sheet    = dataManager.Excel.GetSheet<RawRow>(Language.English, sheetType.Name);
         var minRowId = (int)sheet.FirstOrDefault().RowId;
         var maxRowId = (int)sheet.LastOrDefault().RowId;
+
         if (ImGui.InputInt("行 ID###RowId", ref this.rowId, 1, 10, flags: ImGuiInputTextFlags.AutoSelectAll))
         {
             if (this.rowId < minRowId)
@@ -123,6 +125,7 @@ internal class NounProcessorWidget : IDataWindowWidget
         ImGui.Text($"（范围：{minRowId} - {maxRowId}）");
 
         ImGui.SetNextItemWidth(120);
+
         if (ImGui.InputInt("数量###Amount", ref this.amount, 1, 10, flags: ImGuiInputTextFlags.AutoSelectAll))
         {
             if (this.amount <= 0)
@@ -132,12 +135,14 @@ internal class NounProcessorWidget : IDataWindowWidget
         var articleTypeEnumType = language switch
         {
             ClientLanguage.Japanese => typeof(JapaneseArticleType),
-            ClientLanguage.German => typeof(GermanArticleType),
-            ClientLanguage.French => typeof(FrenchArticleType),
-            _ => typeof(EnglishArticleType),
+            ClientLanguage.German   => typeof(GermanArticleType),
+            ClientLanguage.French   => typeof(FrenchArticleType),
+            _                       => typeof(EnglishArticleType)
         };
 
-        var numCases = language == ClientLanguage.German ? 4 : 1;
+        var numCases = language == ClientLanguage.German ?
+                           4 :
+                           1;
 
 #if DEBUG
         if (ImGui.Button("复制为自测条目"u8))
@@ -148,18 +153,23 @@ internal class NounProcessorWidget : IDataWindowWidget
             {
                 for (var grammaticalCase = 0; grammaticalCase < numCases; grammaticalCase++)
                 {
-                    var nounParams = new NounParams()
+                    var nounParams = new NounParams
                     {
-                        SheetName = sheetType.Name,
-                        RowId = (uint)this.rowId,
-                        Language = language,
-                        Quantity = this.amount,
-                        ArticleType = (int)articleType,
-                        GrammaticalCase = grammaticalCase,
+                        SheetName       = sheetType.Name,
+                        RowId           = (uint)this.rowId,
+                        Language        = language,
+                        Quantity        = this.amount,
+                        ArticleType     = (int)articleType,
+                        GrammaticalCase = grammaticalCase
                     };
                     var output = nounProcessor.ProcessNoun(nounParams).ExtractText().Replace("\"", "\\\"");
-                    var caseParam = language == ClientLanguage.German ? $"(int)GermanCases.{GermanCases[grammaticalCase + 1]}" : "1";
-                    sb.AppendLine($"new(nameof(LSheets.{sheetType.Name}), {this.rowId}, ClientLanguage.{language}, {this.amount}, (int){articleTypeEnumType.Name}.{Enum.GetName(articleTypeEnumType, articleType)}, {caseParam}, \"{output}\"),");
+                    var caseParam = language == ClientLanguage.German ?
+                                        $"(int)GermanCases.{GermanCases[grammaticalCase + 1]}" :
+                                        "1";
+                    sb.AppendLine
+                    (
+                        $"new(nameof({sheetType.Name}), {this.rowId}, ClientLanguage.{language}, {this.amount}, (int){articleTypeEnumType.Name}.{Enum.GetName(articleTypeEnumType, articleType)}, {caseParam}, \"{output}\"),"
+                    );
                 }
             }
 
@@ -167,12 +177,18 @@ internal class NounProcessorWidget : IDataWindowWidget
         }
 #endif
 
-        using var table = ImRaii.Table("TextDecoderTable"u8, 1 + numCases, ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table
+            ("TextDecoderTable"u8, 1 + numCases, ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
         ImGui.TableSetupColumn("冠词类型"u8, ImGuiTableColumnFlags.WidthFixed, 150);
         for (var i = 0; i < numCases; i++)
-            ImGui.TableSetupColumn(language == ClientLanguage.German ? GermanCaseDisplayNames[i] : "文本");
+            ImGui.TableSetupColumn
+            (
+                language == ClientLanguage.German ?
+                    GermanCaseDisplayNames[i] :
+                    "文本"
+            );
         ImGui.TableSetupScrollFreeze(6, 1);
         ImGui.TableHeadersRow();
 
@@ -188,14 +204,14 @@ internal class NounProcessorWidget : IDataWindowWidget
 
                 try
                 {
-                    var nounParams = new NounParams()
+                    var nounParams = new NounParams
                     {
-                        SheetName = sheetType.Name,
-                        RowId = (uint)this.rowId,
-                        Language = language,
-                        Quantity = this.amount,
-                        ArticleType = (int)articleType,
-                        GrammaticalCase = currentCase,
+                        SheetName       = sheetType.Name,
+                        RowId           = (uint)this.rowId,
+                        Language        = language,
+                        Quantity        = this.amount,
+                        ArticleType     = (int)articleType,
+                        GrammaticalCase = currentCase
                     };
                     ImGui.Text(nounProcessor.ProcessNoun(nounParams).ExtractText());
                 }
@@ -206,5 +222,4 @@ internal class NounProcessorWidget : IDataWindowWidget
             }
         }
     }
-
 }

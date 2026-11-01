@@ -1,14 +1,10 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-
-using CheapLoc;
-
 using Dalamud.Configuration.Internal;
 using Dalamud.Game;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
-using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Internal;
 using Dalamud.Utility;
 
@@ -23,154 +19,229 @@ internal class DalamudCommands : IServiceType
     [ServiceManager.ServiceConstructor]
     private DalamudCommands(CommandManager commandManager)
     {
-        commandManager.AddHandler("/xldclose", new CommandInfo(this.OnUnloadCommand)
-        {
-            HelpMessage = Loc.Localize("DalamudUnloadHelp", "Unloads XIVLauncher in-game addon. For debug use only!"),
-            ShowInHelp = false,
-        });
+        commandManager.AddHandler
+        (
+            "/xldclose",
+            new CommandInfo(OnUnloadCommand)
+            {
+                HelpMessage = "卸载 XIVLauncher 游戏内插件框架，仅供调试使用。",
+                ShowInHelp  = false
+            }
+        );
 
-        commandManager.AddHandler("/xlkill", new CommandInfo(this.OnKillCommand)
-        {
-            HelpMessage = "Kill the game. For debug use only!",
-            ShowInHelp = false,
-        });
+        commandManager.AddHandler
+        (
+            "/xlkill",
+            new CommandInfo(OnKillCommand)
+            {
+                HelpMessage = "Kill the game. For debug use only!",
+                ShowInHelp  = false
+            }
+        );
 
-        commandManager.AddHandler("/xlrestart", new CommandInfo(this.OnRestartCommand)
-        {
-            HelpMessage = "Restart the game. For debug use only!",
-            ShowInHelp = false,
-        });
+        commandManager.AddHandler
+        (
+            "/xlrestart",
+            new CommandInfo(OnRestartCommand)
+            {
+                HelpMessage = "Restart the game. For debug use only!",
+                ShowInHelp  = false
+            }
+        );
 
-        commandManager.AddHandler("/xlhelp", new CommandInfo(this.OnHelpCommand)
-        {
-            HelpMessage = Loc.Localize("DalamudCmdInfoHelp", "Shows list of commands available. If an argument is provided, shows help for that command."),
-        });
+        commandManager.AddHandler
+        (
+            "/xlhelp",
+            new CommandInfo(OnHelpCommand)
+            {
+                HelpMessage = "显示可用命令列表。提供参数时，显示对应命令的帮助。"
+            }
+        );
 
-        commandManager.AddHandler("/xlmute", new CommandInfo(this.OnBadWordsAddCommand)
-        {
-            HelpMessage = Loc.Localize("DalamudMuteHelp", "Mute a word or sentence from appearing in chat. Usage: /xlmute <word or sentence>"),
-            ShowInHelp = false,
-        });
+        commandManager.AddHandler
+        (
+            "/xlmute",
+            new CommandInfo(OnBadWordsAddCommand)
+            {
+                HelpMessage = "屏蔽聊天中的词语或句子。用法：/xlmute <词语或句子>",
+                ShowInHelp  = false
+            }
+        );
 
-        commandManager.AddHandler("/xlmutelist", new CommandInfo(this.OnBadWordsListCommand)
-        {
-            HelpMessage = Loc.Localize("DalamudMuteListHelp", "List muted words or sentences."),
-        });
+        commandManager.AddHandler
+        (
+            "/xlmutelist",
+            new CommandInfo(OnBadWordsListCommand)
+            {
+                HelpMessage = "列出已屏蔽的词语或句子。"
+            }
+        );
 
-        commandManager.AddHandler("/xlunmute", new CommandInfo(this.OnBadWordsRemoveCommand)
-        {
-            HelpMessage = Loc.Localize("DalamudUnmuteHelp", "Unmute a word or sentence. Usage: /xlunmute <word or sentence>"),
-        });
+        commandManager.AddHandler
+        (
+            "/xlunmute",
+            new CommandInfo(OnBadWordsRemoveCommand)
+            {
+                HelpMessage = "取消屏蔽词语或句子。用法：/xlunmute <词语或句子>"
+            }
+        );
 
-        commandManager.AddHandler("/ll", new CommandInfo(this.OnLastLinkCommand)
-        {
-            HelpMessage = Loc.Localize("DalamudLastLinkHelp", "Open the last posted link in your default browser."),
-        });
+        commandManager.AddHandler
+        (
+            "/ll",
+            new CommandInfo(OnLastLinkCommand)
+            {
+                HelpMessage = "使用默认浏览器打开聊天中最后出现的链接。"
+            }
+        );
 
-        commandManager.AddHandler("/xlbgmset", new CommandInfo(this.OnBgmSetCommand)
-        {
-            HelpMessage = Loc.Localize("DalamudBgmSetHelp", "Set the Game background music. Usage: /xlbgmset <BGM ID>"),
-        });
+        commandManager.AddHandler
+        (
+            "/xlbgmset",
+            new CommandInfo(OnBgmSetCommand)
+            {
+                HelpMessage = "设置游戏背景音乐。用法：/xlbgmset <BGM ID>"
+            }
+        );
 
-        commandManager.AddHandler("/xldev", new CommandInfo(this.OnDebugDrawDevMenu)
-        {
-            HelpMessage = Loc.Localize("DalamudDevMenuHelp", "Draw dev menu DEBUG"),
-            ShowInHelp = false,
-        });
+        commandManager.AddHandler
+        (
+            "/xldev",
+            new CommandInfo(OnDebugDrawDevMenu)
+            {
+                HelpMessage = "显示开发者菜单。",
+                ShowInHelp  = false
+            }
+        );
 
-        commandManager.AddHandler("/xlstats", new CommandInfo(this.OnTogglePluginStats)
-        {
-            HelpMessage = Loc.Localize("DalamudPluginStats", "Draw plugin statistics window"),
-        });
+        commandManager.AddHandler
+        (
+            "/xlstats",
+            new CommandInfo(OnTogglePluginStats)
+            {
+                HelpMessage = "打开插件统计窗口。"
+            }
+        );
 
-        commandManager.AddHandler("/xldata", new CommandInfo(this.OnDebugDrawDataMenu)
-        {
-            HelpMessage = Loc.Localize("DalamudDevDataMenuHelp", "Draw dev data menu DEBUG. Usage: /xldata [Data Dropdown Type]"),
-            ShowInHelp = false,
-        });
+        commandManager.AddHandler
+        (
+            "/xldata",
+            new CommandInfo(OnDebugDrawDataMenu)
+            {
+                HelpMessage = "打开开发者数据窗口。用法：/xldata [数据类别]",
+                ShowInHelp  = false
+            }
+        );
 
-        commandManager.AddHandler("/xllog", new CommandInfo(this.OnOpenLog)
-        {
-            HelpMessage = Loc.Localize("DalamudDevLogHelp", "Open the plugin log window/console"),
-        });
+        commandManager.AddHandler
+        (
+            "/xllog",
+            new CommandInfo(OnOpenLog)
+            {
+                HelpMessage = "打开插件日志窗口或控制台。"
+            }
+        );
 
-        commandManager.AddHandler("/xlplugins", new CommandInfo(this.OnOpenInstallerCommand)
-        {
-            HelpMessage = Loc.Localize("DalamudInstallerHelp", "Open the plugin installer"),
-        });
+        commandManager.AddHandler
+        (
+            "/xlplugins",
+            new CommandInfo(OnOpenInstallerCommand)
+            {
+                HelpMessage = "打开插件安装器"
+            }
+        );
 
-        commandManager.AddHandler("/xllanguage", new CommandInfo(this.OnSetLanguageCommand)
-        {
-            HelpMessage =
-                Loc.Localize(
-                    "DalamudLanguageHelp",
-                    "Set the language for Dalamud and plugins that support it. Available languages: ") +
-                Localization.ApplicableLangCodes.Aggregate("en", (current, code) => current + ", " + code),
-        });
+        commandManager.AddHandler
+        (
+            "/xllanguage",
+            new CommandInfo(OnSetLanguageCommand)
+            {
+                HelpMessage =
+                    "设置 Dalamud 及支持此功能的插件的语言。可用语言：" +
+                    Localization.ApplicableLangCodes.Aggregate("en", (current, code) => current + ", " + code)
+            }
+        );
 
-        commandManager.AddHandler("/xlsettings", new CommandInfo(this.OnOpenSettingsCommand)
-        {
-            HelpMessage = Loc.Localize(
-                "DalamudSettingsHelp",
-                "Change various In-Game-Addon settings like chat channels and the discord bot setup."),
-        });
+        commandManager.AddHandler
+        (
+            "/xlsettings",
+            new CommandInfo(OnOpenSettingsCommand)
+            {
+                HelpMessage = "打开 Dalamud 设置。"
+            }
+        );
 
-        commandManager.AddHandler("/xlversion", new CommandInfo(this.OnVersionInfoCommand)
-        {
-            HelpMessage = "Dalamud version info",
-        });
+        commandManager.AddHandler
+        (
+            "/xlversion",
+            new CommandInfo(OnVersionInfoCommand)
+            {
+                HelpMessage = "Dalamud version info"
+            }
+        );
 
-        commandManager.AddHandler("/xlui", new CommandInfo(this.OnUiCommand)
-        {
-            HelpMessage = Loc.Localize(
-                "DalamudUiModeHelp",
-                "Toggle Dalamud UI display modes. Native UI modifications may also be affected by this, but that depends on the plugin."),
-        });
+        commandManager.AddHandler
+        (
+            "/xlui",
+            new CommandInfo(OnUiCommand)
+            {
+                HelpMessage = "切换 Dalamud 界面的显示模式。部分插件对游戏原生界面的修改也可能受到影响。"
+            }
+        );
 
-        commandManager.AddHandler("/xlprofiler", new CommandInfo(this.OnOpenProfilerCommand)
-        {
-            HelpMessage = Loc.Localize(
-                "DalamudProfilerHelp",
-                "Open Dalamud's startup timing profiler."),
-        });
+        commandManager.AddHandler
+        (
+            "/xlprofiler",
+            new CommandInfo(OnOpenProfilerCommand)
+            {
+                HelpMessage = "打开 Dalamud 启动耗时分析器。"
+            }
+        );
 
-        commandManager.AddHandler("/xlcopylog", new CommandInfo(this.OnCopyLogCommand)
-        {
-            HelpMessage = Loc.Localize(
-                "DalamudCopyLogHelp",
-                "Copy the dalamud.log file to your clipboard."),
-        });
+        commandManager.AddHandler
+        (
+            "/xlcopylog",
+            new CommandInfo(OnCopyLogCommand)
+            {
+                HelpMessage = "将 dalamud.log 文件复制到剪贴板。"
+            }
+        );
         // Add the new command handler for toggling multi-monitor option
-        commandManager.AddHandler("/xltogglemultimonitor", new CommandInfo(this.OnToggleMultiMonitorCommand)
-        {
-            HelpMessage = Loc.Localize("DalamudToggleMultiMonitorHelp", "Toggle multi-monitor windows."),
-        });
+        commandManager.AddHandler
+        (
+            "/xltogglemultimonitor",
+            new CommandInfo(OnToggleMultiMonitorCommand)
+            {
+                HelpMessage = "切换多显示器窗口功能。"
+            }
+        );
     }
 
-    private void OnUnloadCommand(string command, string arguments)
+    private static void OnUnloadCommand(string command, string arguments)
     {
         Service<ChatGui>.Get().Print("Unloading...");
         Service<Framework>.Get().UnloadDalamud();
     }
 
-    private void OnKillCommand(string command, string arguments)
+    private static void OnKillCommand(string command, string arguments)
     {
         Process.GetCurrentProcess().Kill();
     }
 
-    private void OnRestartCommand(string command, string arguments)
+    private static void OnRestartCommand(string command, string arguments)
     {
         Dalamud.RestartGame();
     }
 
-    private void OnHelpCommand(string command, string arguments)
+    private static void OnHelpCommand(string command, string arguments)
     {
-        var chatGui = Service<ChatGui>.Get();
+        var chatGui        = Service<ChatGui>.Get();
         var commandManager = Service<CommandManager>.Get();
 
         if (arguments.IsNullOrWhitespace())
         {
-            chatGui.Print(Loc.Localize("DalamudCmdHelpAvailable", "Available commands:"));
+            chatGui.Print("可用命令：");
+
             foreach (var cmd in commandManager.Commands.OrderBy(cInfo => cInfo.Key))
             {
                 if (!cmd.Value.ShowInHelp)
@@ -182,31 +253,35 @@ internal class DalamudCommands : IServiceType
         else
         {
             var trimmedArguments = arguments.Trim();
-            var targetCommandText = trimmedArguments[0] == '/' ? trimmedArguments : $"/{trimmedArguments}";
-            chatGui.Print(commandManager.Commands.TryGetValue(targetCommandText, out var targetCommand)
-                              ? $"{targetCommandText}: {targetCommand.HelpMessage}"
-                              : Loc.Localize("DalamudCmdHelpNotFound", "Command not found."));
+            var targetCommandText = trimmedArguments[0] == '/' ?
+                                        trimmedArguments :
+                                        $"/{trimmedArguments}";
+            chatGui.Print
+            (
+                commandManager.Commands.TryGetValue(targetCommandText, out var targetCommand) ?
+                    $"{targetCommandText}: {targetCommand.HelpMessage}" :
+                    "未找到命令。"
+            );
         }
     }
 
-    private void OnBadWordsAddCommand(string command, string arguments)
+    private static void OnBadWordsAddCommand(string command, string arguments)
     {
         var chatGui = Service<ChatGui>.Get();
 
-        chatGui.PrintError(Loc.Localize("DalamudMuteListDeprecation", "The built-in Dalamud bad word list is deprecated and no new words can be added. " +
-                                                                      "Please use a plugin for this functionality."));
+        chatGui.PrintError("Dalamud 内置的聊天屏蔽词功能已弃用，无法添加新的屏蔽词。请使用插件实现此功能。");
     }
 
-    private void OnBadWordsListCommand(string command, string arguments)
+    private static void OnBadWordsListCommand(string command, string arguments)
     {
-        var chatGui = Service<ChatGui>.Get();
+        var chatGui       = Service<ChatGui>.Get();
         var configuration = Service<DalamudConfiguration>.Get();
 
         configuration.BadWords ??= [];
 
         if (configuration.BadWords.Count == 0)
         {
-            chatGui.Print(Loc.Localize("DalamudNoneMuted", "No muted words or sentences."));
+            chatGui.Print("没有已屏蔽的词语或句子。");
             return;
         }
 
@@ -216,9 +291,9 @@ internal class DalamudCommands : IServiceType
             chatGui.Print($"\"{word}\"");
     }
 
-    private void OnBadWordsRemoveCommand(string command, string arguments)
+    private static void OnBadWordsRemoveCommand(string command, string arguments)
     {
-        var chatGui = Service<ChatGui>.Get();
+        var chatGui       = Service<ChatGui>.Get();
         var configuration = Service<DalamudConfiguration>.Get();
 
         configuration.BadWords ??= [];
@@ -227,28 +302,31 @@ internal class DalamudCommands : IServiceType
 
         configuration.QueueSave();
 
-        chatGui.Print(string.Format(Loc.Localize("DalamudUnmuted", "Unmuted \"{0}\"."), arguments));
+        chatGui.Print($"已取消屏蔽“{arguments}”。");
     }
 
-    private void OnLastLinkCommand(string command, string arguments)
+    private static void OnLastLinkCommand(string command, string arguments)
     {
         var chatHandlers = Service<ChatHandlers>.Get();
-        var chatGui = Service<ChatGui>.Get();
+        var chatGui      = Service<ChatGui>.Get();
 
         if (string.IsNullOrEmpty(chatHandlers.LastLink))
         {
-            chatGui.Print(Loc.Localize("DalamudNoLastLink", "No last link..."));
+            chatGui.Print("尚未发现链接。");
             return;
         }
 
-        chatGui.Print(string.Format(Loc.Localize("DalamudOpeningLink", "Opening {0}"), chatHandlers.LastLink));
-        Process.Start(new ProcessStartInfo(chatHandlers.LastLink)
-        {
-            UseShellExecute = true,
-        });
+        chatGui.Print($"正在打开 {chatHandlers.LastLink}");
+        Process.Start
+        (
+            new ProcessStartInfo(chatHandlers.LastLink)
+            {
+                UseShellExecute = true
+            }
+        );
     }
 
-    private void OnBgmSetCommand(string command, string arguments)
+    private static void OnBgmSetCommand(string command, string arguments)
     {
         var gameGui = Service<GameGui>.Get();
 
@@ -263,18 +341,18 @@ internal class DalamudCommands : IServiceType
         }
     }
 
-    private void OnDebugDrawDevMenu(string command, string arguments)
+    private static void OnDebugDrawDevMenu(string command, string arguments)
     {
         Service<DalamudInterface>.Get().ToggleDevMenu();
         Service<DalamudConfiguration>.Get().DevMode = true;
     }
 
-    private void OnTogglePluginStats(string command, string arguments)
+    private static void OnTogglePluginStats(string command, string arguments)
     {
         Service<DalamudInterface>.Get().TogglePluginStatsWindow();
     }
 
-    private void OnDebugDrawDataMenu(string command, string arguments)
+    private static void OnDebugDrawDataMenu(string command, string arguments)
     {
         var dalamudInterface = Service<DalamudInterface>.Get();
 
@@ -284,62 +362,74 @@ internal class DalamudCommands : IServiceType
             dalamudInterface.ToggleDataWindow(arguments);
     }
 
-    private void OnOpenLog(string command, string arguments)
+    private static void OnOpenLog(string command, string arguments)
     {
         Service<DalamudInterface>.Get().ToggleLogWindow();
     }
 
-    private void OnVersionInfoCommand(string command, string arguments)
+    private static void OnVersionInfoCommand(string command, string arguments)
     {
-        var chatGui = Service<ChatGui>.Get();
+        var       chatGui = Service<ChatGui>.Get();
+        using var rssb    = new RentedSeStringBuilder();
 
-        chatGui.Print(new SeStringBuilder()
-                      .AddItalics("Dalamud:")
-                      .AddText($" {Versioning.GetScmVersion()}")
-                      .Build());
+        chatGui.Print
+        (
+            rssb.Builder
+                .AppendSetItalic(true)
+                .Append("Dalamud:")
+                .AppendSetItalic(false)
+                .Append($" {Versioning.GetScmVersion()}")
+                .ToReadOnlySeString()
+        );
 
-        chatGui.Print(new SeStringBuilder()
-                      .AddItalics("FFXIVCS:")
-                      .AddText($" {Versioning.GetGitHashClientStructs()}")
-                      .Build());
+        chatGui.Print
+        (
+            rssb.Builder
+                .Clear()
+                .AppendSetItalic(true)
+                .Append("FFXIVCS:")
+                .AppendSetItalic(false)
+                .Append($" {Versioning.GetGitHashClientStructs()}")
+                .ToReadOnlySeString()
+        );
     }
 
-    private void OnOpenInstallerCommand(string command, string arguments)
+    private static void OnOpenInstallerCommand(string command, string arguments)
     {
         var configuration = Service<DalamudConfiguration>.Get();
         Service<DalamudInterface>.Get().TogglePluginInstallerWindowTo(configuration.PluginInstallerOpen);
     }
 
-    private void OnSetLanguageCommand(string command, string arguments)
+    private static void OnSetLanguageCommand(string command, string arguments)
     {
-        var chatGui = Service<ChatGui>.Get();
+        var chatGui       = Service<ChatGui>.Get();
         var configuration = Service<DalamudConfiguration>.Get();
-        var localization = Service<Localization>.Get();
+        var localization  = Service<Localization>.Get();
 
         if (Localization.ApplicableLangCodes.Contains(arguments.ToLowerInvariant()) || arguments.Equals("en", StringComparison.InvariantCultureIgnoreCase))
         {
             localization.SetupWithLangCode(arguments.ToLowerInvariant());
             configuration.LanguageOverride = arguments.ToLowerInvariant();
 
-            chatGui.Print(string.Format(Loc.Localize("DalamudLanguageSetTo", "Language set to {0}"), arguments));
+            chatGui.Print($"语言已设置为 {arguments}");
         }
         else
         {
             localization.SetupWithUiCulture();
             configuration.LanguageOverride = null;
 
-            chatGui.Print(string.Format(Loc.Localize("DalamudLanguageSetTo", "Language set to {0}"), "default"));
+            chatGui.Print("语言已设置为 default");
         }
 
         configuration.QueueSave();
     }
 
-    private void OnOpenSettingsCommand(string command, string arguments)
+    private static void OnOpenSettingsCommand(string command, string arguments)
     {
         Service<DalamudInterface>.Get().ToggleSettingsWindow();
     }
 
-    private void OnUiCommand(string command, string arguments)
+    private static void OnUiCommand(string command, string arguments)
     {
         var im = Service<InterfaceManager>.Get();
 
@@ -347,7 +437,7 @@ internal class DalamudCommands : IServiceType
         {
             "show" => true,
             "hide" => false,
-            _ => !im.IsDispatchingEvents,
+            _      => !im.IsDispatchingEvents
         };
 
         var pm = Service<PluginManager>.Get();
@@ -365,35 +455,37 @@ internal class DalamudCommands : IServiceType
         }
     }
 
-    private void OnOpenProfilerCommand(string command, string arguments)
+    private static void OnOpenProfilerCommand(string command, string arguments)
     {
         Service<DalamudInterface>.Get().ToggleProfilerWindow();
     }
 
-    private void OnCopyLogCommand(string command, string arguments)
+    private static void OnCopyLogCommand(string command, string arguments)
     {
         var chatGui = Service<ChatGui>.Get();
-        var logPath = Path.Join(
+        var logPath = Path.Join
+        (
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "XIVLauncherCN",
-            "dalamud.log");
-        var message = Util.CopyFilesToClipboard([logPath])
-                          ? Loc.Localize("DalamudLogCopySuccess", "Log file copied to clipboard.")
-                          : Loc.Localize("DalamudLogCopyFailure", "Could not copy log file to clipboard.");
+            "dalamud.log"
+        );
+        var message = Util.CopyFilesToClipboard([logPath]) ?
+                          "已将日志文件复制到剪贴板。" :
+                          "无法将日志文件复制到剪贴板。";
         chatGui.Print(message);
     }
 
-    private void OnToggleMultiMonitorCommand(string command, string arguments)
+    private static void OnToggleMultiMonitorCommand(string command, string arguments)
     {
         var configuration = Service<DalamudConfiguration>.Get();
-        var chatGui = Service<ChatGui>.Get();
+        var chatGui       = Service<ChatGui>.Get();
 
         configuration.IsDisableViewport = !configuration.IsDisableViewport;
         configuration.QueueSave();
 
-        var message = configuration.IsDisableViewport
-            ? Loc.Localize("DalamudMultiMonitorDisabled", "Multi-monitor windows disabled.")
-            : Loc.Localize("DalamudMultiMonitorEnabled", "Multi-monitor windows enabled.");
+        var message = configuration.IsDisableViewport ?
+                          "已禁用多显示器窗口。" :
+                          "已启用多显示器窗口。";
 
         chatGui.Print(message);
     }

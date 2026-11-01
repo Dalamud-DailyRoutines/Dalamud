@@ -4,7 +4,6 @@ using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Ipc.Internal;
 using Dalamud.Utility;
-
 using Serilog;
 
 namespace Dalamud.Interface.Internal.Windows.Data.Widgets;
@@ -15,11 +14,11 @@ namespace Dalamud.Interface.Internal.Windows.Data.Widgets;
 internal class PluginIpcWidget : IDataWindowWidget
 {
     // IPC
-    private ICallGateProvider<string, string>? ipcPub;
+    private ICallGateProvider<string, string>?   ipcPub;
     private ICallGateSubscriber<string, string>? ipcSub;
 
     // IPC
-    private ICallGateProvider<ICharacter?, string>? ipcPubGo;
+    private ICallGateProvider<ICharacter?, string>?   ipcPubGo;
     private ICallGateSubscriber<ICharacter?, string>? ipcSubGo;
 
     private string callGateResponse = string.Empty;
@@ -46,24 +45,32 @@ internal class PluginIpcWidget : IDataWindowWidget
         {
             this.ipcPub = new CallGatePubSub<string, string>("dataDemo1");
 
-            this.ipcPub.RegisterAction(msg =>
-            {
-                Log.Information(
-                    "数据操作已调用：{Msg}\n" +
-                    "    上下文：{Context}",
-                    msg,
-                    this.ipcPub.GetContext());
-            });
+            this.ipcPub.RegisterAction
+            (msg =>
+                {
+                    Log.Information
+                    (
+                        "数据操作已调用：{Msg}\n" +
+                        "    上下文：{Context}",
+                        msg,
+                        this.ipcPub.GetContext()
+                    );
+                }
+            );
 
-            this.ipcPub.RegisterFunc(msg =>
-            {
-                Log.Information(
-                    "数据函数已调用：{Msg}\n" +
-                    "    上下文：{Context}",
-                    msg,
-                    this.ipcPub.GetContext());
-                return Guid.NewGuid().ToString();
-            });
+            this.ipcPub.RegisterFunc
+            (msg =>
+                {
+                    Log.Information
+                    (
+                        "数据函数已调用：{Msg}\n" +
+                        "    上下文：{Context}",
+                        msg,
+                        this.ipcPub.GetContext()
+                    );
+                    return Guid.NewGuid().ToString();
+                }
+            );
         }
 
         if (this.ipcSub == null)
@@ -78,31 +85,39 @@ internal class PluginIpcWidget : IDataWindowWidget
         {
             this.ipcPubGo = new CallGatePubSub<ICharacter?, string>("dataDemo2");
 
-            this.ipcPubGo.RegisterAction(go =>
-            {
-                Log.Information(
-                    "数据操作已调用：{Name}" +
-                    "\n    上下文：{Context}",
-                    go?.Name,
-                    this.ipcPubGo.GetContext());
-            });
+            this.ipcPubGo.RegisterAction
+            (go =>
+                {
+                    Log.Information
+                    (
+                        "数据操作已调用：{Name}" +
+                        "\n    上下文：{Context}",
+                        go?.Name.ToString(),
+                        this.ipcPubGo.GetContext()
+                    );
+                }
+            );
 
-            this.ipcPubGo.RegisterFunc(go =>
-            {
-                Log.Information(
-                    "数据函数已调用：{Name}\n" +
-                    "    上下文：{Context}",
-                    go?.Name,
-                    this.ipcPubGo.GetContext());
+            this.ipcPubGo.RegisterFunc
+            (go =>
+                {
+                    Log.Information
+                    (
+                        "数据函数已调用：{Name}\n" +
+                        "    上下文：{Context}",
+                        go?.Name.ToString(),
+                        this.ipcPubGo.GetContext()
+                    );
 
-                return "test";
-            });
+                    return "test";
+                }
+            );
         }
 
         if (this.ipcSubGo == null)
         {
             this.ipcSubGo = new CallGatePubSub<ICharacter?, string>("dataDemo2");
-            this.ipcSubGo.Subscribe(go => { Log.Information("GO: {Name}", go.Name); });
+            this.ipcSubGo.Subscribe(go => { Log.Information("GO: {Name}", go.Name.ToString()); });
         }
 
         if (ImGui.Button("PING"u8))

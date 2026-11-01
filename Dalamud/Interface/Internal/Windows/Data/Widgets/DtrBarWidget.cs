@@ -1,6 +1,5 @@
 using System.Linq;
 using System.Threading;
-
 using Dalamud.Bindings.ImGui;
 using Dalamud.Configuration.Internal;
 using Dalamud.Game;
@@ -17,7 +16,7 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
     private IDtrBarEntry? dtrTest2;
     private IDtrBarEntry? dtrTest3;
 
-    private Thread? loadTestThread;
+    private Thread?                  loadTestThread;
     private CancellationTokenSource? loadTestThreadCt;
 
     /// <inheritdoc/>
@@ -46,9 +45,9 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
         {
             if (ImGui.Button("执行多线程添加/移除操作"u8))
             {
-                var ct = this.loadTestThreadCt = new();
+                var ct   = this.loadTestThreadCt = new();
                 var dbar = Service<DtrBar>.Get();
-                var fw = Service<Framework>.Get();
+                var fw   = Service<Framework>.Get();
 
                 Action[] tests =
                 [
@@ -68,10 +67,7 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
                         var n = $"DtrBarWidgetTest{Random.Shared.NextInt64(8)}_";
                         dbar.Get(n, n[^6..]);
                     },
-                    () =>
-                    {
-                        dbar.Remove($"DtrBarWidgetTest{Random.Shared.NextInt64(8)}_");
-                    },
+                    () => { dbar.Remove($"DtrBarWidgetTest{Random.Shared.NextInt64(8)}_"); }
                 ];
 
                 ThreadStart RunLoop(Action work)
@@ -93,8 +89,8 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
                     };
                 }
 
-                this.loadTestThread = new(
-                    () =>
+                this.loadTestThread = new
+                (() =>
                     {
                         var threads = Enumerable
                                       .Range(0, Environment.ProcessorCount)
@@ -104,7 +100,8 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
                         foreach (var t in threads) t.Join();
                         for (var i = 0; i < 8; i++) dbar.Remove($"DtrBarWidgetTest{i % 8}");
                         for (var i = 0; i < 8; i++) dbar.Remove($"DtrBarWidgetTest{i % 8}_");
-                    });
+                    }
+                );
 
                 this.loadTestThread.Start();
             }
@@ -116,13 +113,13 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
         }
 
         ImGui.Separator();
-        this.DrawDtrTestEntry(ref this.dtrTest1, "DTR 测试 #1");
+        DrawDtrTestEntry(ref this.dtrTest1, "DTR 测试 #1");
 
         ImGui.Separator();
-        this.DrawDtrTestEntry(ref this.dtrTest2, "DTR 测试 #2");
+        DrawDtrTestEntry(ref this.dtrTest2, "DTR 测试 #2");
 
         ImGui.Separator();
-        this.DrawDtrTestEntry(ref this.dtrTest3, "DTR 测试 #3");
+        DrawDtrTestEntry(ref this.dtrTest3, "DTR 测试 #3");
 
         ImGui.Separator();
         ImGui.Text("IDtrBar.Entries："u8);
@@ -130,6 +127,7 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
             ImGui.Text(e.Title);
 
         var configuration = Service<DalamudConfiguration>.Get();
+
         if (configuration.DtrOrder != null)
         {
             ImGui.Separator();
@@ -143,11 +141,11 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
     {
         this.loadTestThreadCt?.Cancel();
         this.loadTestThread?.Join();
-        this.loadTestThread = null;
+        this.loadTestThread   = null;
         this.loadTestThreadCt = null;
     }
 
-    private void DrawDtrTestEntry(ref IDtrBarEntry? entry, string title)
+    private static void DrawDtrTestEntry(ref IDtrBarEntry? entry, string title)
     {
         var dtrBar = Service<DtrBar>.Get();
 
@@ -155,7 +153,7 @@ internal class DtrBarWidget : IDataWindowWidget, IDisposable
         {
             ImGui.Text(title);
 
-            var text = entry.Text?.TextValue ?? string.Empty;
+            var text = entry.Text.ToString();
             if (ImGui.InputText($"文本###{entry.Title}t", ref text, 255))
                 entry.Text = text;
 

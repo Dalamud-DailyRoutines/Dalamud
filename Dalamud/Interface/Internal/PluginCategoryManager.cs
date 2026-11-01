@@ -550,9 +550,9 @@ internal class PluginCategoryManager
         /// <param name="categories">List of category Ids to hardcode.</param>
         public GroupInfo
         (
-            GroupKind             groupKind,
-            string                name,
-            params CategoryKind[] categories
+            GroupKind                        groupKind,
+            string                           name,
+            params IEnumerable<CategoryKind> categories
         )
         {
             this.GroupKind = groupKind;
