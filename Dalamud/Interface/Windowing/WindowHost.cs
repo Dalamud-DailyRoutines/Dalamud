@@ -2,9 +2,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using System.Threading.Tasks;
-
-using CheapLoc;
-
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Interface.Colors;
@@ -19,9 +16,7 @@ using Dalamud.Interface.Utility.Internal;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing.Persistence;
 using Dalamud.Logging.Internal;
-
 using FFXIVClientStructs.FFXIV.Client.UI;
-
 using TerraFX.Interop.Windows;
 
 namespace Dalamud.Interface.Windowing;
@@ -31,61 +26,64 @@ namespace Dalamud.Interface.Windowing;
 /// </summary>
 public class WindowHost
 {
-    private const float FadeInOutTime = 0.072f;
-    private const float FocusFadeTime = 0.062f;
-    private const float BlurNoiseOpacity = 0.17f;
-    private const float MaxBlurStrength = 14f;
+    private const float  FadeInOutTime      = 0.072f;
+    private const float  FocusFadeTime      = 0.062f;
+    private const float  BlurNoiseOpacity   = 0.17f;
+    private const float  MaxBlurStrength    = 14f;
     private const string AdditionsPopupName = "WindowSystemContextActions";
 
     private static readonly ModuleLog Log = ModuleLog.Create<WindowSystem>();
 
-    private static bool wasEscPressedLastFrame = false;
+    private static bool wasEscPressedLastFrame;
 
-    private readonly TitleBarButton additionsButton;
+    private readonly TitleBarButton       additionsButton;
     private readonly List<TitleBarButton> allButtons = [];
 
-    private bool internalLastIsOpen = false;
-    private bool didPushInternalAlpha = false;
-    private float? internalAlpha = null;
+    private bool   internalLastIsOpen;
+    private bool   didPushInternalAlpha;
+    private float? internalAlpha;
 
-    private float? internalBlurFactorOverride = null;
+    private float? internalBlurFactorOverride;
 
-    private bool hasInitializedFromPreset = false;
+    private bool                      hasInitializedFromPreset;
     private PresetModel.PresetWindow? presetWindow;
-    private bool presetDirty = false;
+    private bool                      presetDirty;
 
-    private bool pushedFadeInAlpha = false;
-    private float fadeInTimer = 0f;
-    private float fadeOutTimer = 0f;
-    private IDrawListTextureWrap? fadeOutTexture = null;
-    private Vector2 fadeOutSize = Vector2.Zero;
-    private Vector2 fadeOutOrigin = Vector2.Zero;
+    private bool                  pushedFadeInAlpha;
+    private float                 fadeInTimer;
+    private float                 fadeOutTimer;
+    private IDrawListTextureWrap? fadeOutTexture;
+    private Vector2               fadeOutSize   = Vector2.Zero;
+    private Vector2               fadeOutOrigin = Vector2.Zero;
 
-    private bool hasError = false;
+    private bool       hasError;
     private Exception? lastError;
 
-    private float focusTransitionProgress = 0f;
+    private float focusTransitionProgress;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WindowHost"/> class.
     /// </summary>
     /// <param name="window">A plugin provided window.</param>
-    internal WindowHost(IWindow window)
+    internal WindowHost
+    (
+        IWindow window
+    )
     {
         this.Window = window;
 
         this.additionsButton = new()
         {
-            Icon = FontAwesomeIcon.Bars,
+            Icon       = FontAwesomeIcon.Bars,
             IconOffset = new Vector2(2.5f, 1),
             Click = _ =>
             {
                 this.Window.IsClickthrough = false;
-                this.presetDirty = true;
+                this.presetDirty           = true;
                 ImGui.OpenPopup(AdditionsPopupName);
             },
-            Priority = int.MinValue,
-            AvailableClickthrough = true,
+            Priority              = int.MinValue,
+            AvailableClickthrough = true
         };
     }
 
@@ -118,7 +116,7 @@ public class WindowHost
         /// <summary>
         /// Do not draw non-critical animations.
         /// </summary>
-        IsReducedMotion = 1 << 3,
+        IsReducedMotion = 1 << 3
     }
 
     /// <summary>
@@ -133,7 +131,11 @@ public class WindowHost
     /// </summary>
     /// <param name="internalDrawParams">Parameters controlling window behavior.</param>
     /// <param name="persistence">Handler for window persistence data.</param>
-    internal void DrawInternal(WindowDrawParameters internalDrawParams, WindowSystemPersistence? persistence)
+    internal void DrawInternal
+    (
+        WindowDrawParameters     internalDrawParams,
+        WindowSystemPersistence? persistence
+    )
     {
         this.Window.PreOpenCheck();
         var doFades = !internalDrawParams.Flags.HasFlag(WindowDrawFlags.IsReducedMotion) && !this.Window.DisableFadeInFadeOut;
@@ -160,6 +162,7 @@ public class WindowHost
             if (this.fadeOutTexture != null)
             {
                 this.fadeOutTimer -= ImGui.GetIO().DeltaTime;
+
                 if (this.fadeOutTimer <= 0f)
                 {
                     this.fadeOutTexture.Dispose();
@@ -172,7 +175,9 @@ public class WindowHost
                 }
             }
 
-            this.fadeInTimer = doFades ? 0f : FadeInOutTime;
+            this.fadeInTimer = doFades ?
+                                   0f :
+                                   FadeInOutTime;
             return;
         }
 
@@ -211,6 +216,7 @@ public class WindowHost
         }
 
         var isErrorStylePushed = false;
+
         if (!this.hasError)
         {
             if (this.internalAlpha.HasValue)
@@ -236,29 +242,38 @@ public class WindowHost
         // Smoothly fade title and tint colors bar when switching between active/inactive
         if (internalDrawParams.Flags.HasFlag(WindowDrawFlags.IsReducedMotion))
         {
-            this.focusTransitionProgress = wasFocused ? 1f : 0f;
+            this.focusTransitionProgress = wasFocused ?
+                                               1f :
+                                               0f;
         }
         else
         {
             var focusFadeStep = ImGui.GetIO().DeltaTime / FocusFadeTime;
-            this.focusTransitionProgress = Math.Clamp(
-                this.focusTransitionProgress + (wasFocused ? focusFadeStep : -focusFadeStep),
+            this.focusTransitionProgress = Math.Clamp
+            (
+                this.focusTransitionProgress +
+                (wasFocused ?
+                     focusFadeStep :
+                     -focusFadeStep),
                 0f,
-                1f);
+                1f
+            );
         }
 
-        var t = this.focusTransitionProgress;
-        var easedFocusProgress = 1f - (1f - t) * (1f - t) * (1f - t);
+        var t                  = this.focusTransitionProgress;
+        var easedFocusProgress = 1f - ((1f - t) * (1f - t) * (1f - t));
 
         if (this.Window is not StyleEditorWindow)
         {
             var style = ImGui.GetStyle();
-            var lerpedTitleBgColor = Vector4.Lerp(
+            var lerpedTitleBgColor = Vector4.Lerp
+            (
                 style.Colors[(int)ImGuiCol.TitleBg],
                 style.Colors[(int)ImGuiCol.TitleBgActive],
-                easedFocusProgress);
-            ImGui.PushStyleColor(ImGuiCol.TitleBg, lerpedTitleBgColor);
-            ImGui.PushStyleColor(ImGuiCol.TitleBgActive, lerpedTitleBgColor);
+                easedFocusProgress
+            );
+            ImGui.PushStyleColor(ImGuiCol.TitleBg,          lerpedTitleBgColor);
+            ImGui.PushStyleColor(ImGuiCol.TitleBgActive,    lerpedTitleBgColor);
             ImGui.PushStyleColor(ImGuiCol.TitleBgCollapsed, lerpedTitleBgColor);
         }
 
@@ -277,7 +292,11 @@ public class WindowHost
 
         if (this.Window.IsClickthrough)
         {
-            flags |= ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoMouseInputs;
+            flags |= ImGuiWindowFlags.NoInputs          |
+                     ImGuiWindowFlags.NoNav             |
+                     ImGuiWindowFlags.NoCollapse        |
+                     ImGuiWindowFlags.NoScrollWithMouse |
+                     ImGuiWindowFlags.NoMouseInputs;
         }
 
         // If we have an error, reset all flags to default, and unlock window size.
@@ -293,6 +312,7 @@ public class WindowHost
         {
             ref var nextWindowData = ref ImGui.GetCurrentContext().NextWindowData;
             effectiveWindowBgAlpha = ImGui.GetStyle().Colors[(int)ImGuiCol.WindowBg].W;
+
             if (nextWindowData.Flags.HasFlag(ImGuiNextWindowDataFlags.HasBgAlpha))
             {
                 effectiveWindowBgAlpha = nextWindowData.BgAlphaVal;
@@ -307,32 +327,39 @@ public class WindowHost
         var windowHasBackground = effectiveWindowBgAlpha != 0f;
 
         var isWindowOpen = this.Window.IsOpen;
-        if (this.CanShowCloseButton ? ImGui.Begin(this.Window.WindowName, ref isWindowOpen, flags) : ImGui.Begin(this.Window.WindowName, flags))
+
+        if (this.CanShowCloseButton ?
+                ImGui.Begin(this.Window.WindowName, ref isWindowOpen, flags) :
+                ImGui.Begin(this.Window.WindowName, flags))
         {
             // Apply background blur
             {
                 var effectiveBlurFactor = this.internalBlurFactorOverride ?? internalDrawParams.DefaultBackgroundBlurStrength;
-                var shouldBlur = this.Window.AllowBackgroundBlur &&
-                                 effectiveBlurFactor != 0f &&
+                var shouldBlur = this.Window.AllowBackgroundBlur                            &&
+                                 effectiveBlurFactor          != 0f                         &&
                                  ImGui.GetWindowViewport().ID == ImGui.GetMainViewport().ID &&
                                  windowHasBackground;
 
                 if (shouldBlur)
                 {
                     var wPos = ImGui.GetWindowPos();
-                    ImGuiHelpers.PrependBlurBehind(
+                    ImGuiHelpers.PrependBlurBehind
+                    (
                         ImGui.GetWindowDrawList(),
                         wPos,
                         wPos + ImGui.GetWindowSize(),
                         float.Lerp(0.005f, effectiveBlurFactor, this.internalAlpha ?? 1f) * MaxBlurStrength,
                         ImGui.GetStyle().WindowRounding,
-                        tintColor: Vector4.Lerp(internalDrawParams.DefaultBackgroundBlurTint, internalDrawParams.DefaultBackgroundBlurTintActive, easedFocusProgress),
+                        tintColor: Vector4.Lerp
+                            (internalDrawParams.DefaultBackgroundBlurTint, internalDrawParams.DefaultBackgroundBlurTintActive, easedFocusProgress),
                         noiseOpacity: float.Lerp(0.09f, 1f, effectiveWindowBgAlpha * this.internalAlpha ?? 1f) * BlurNoiseOpacity,
-                        luminosityColor: internalDrawParams.DefaultBackgroundBlurLuminosity);
+                        luminosityColor: internalDrawParams.DefaultBackgroundBlurLuminosity
+                    );
                 }
             }
 
             var context = ImGui.GetCurrentContext();
+
             if (!context.IsNull)
             {
                 ImGuiP.GetCurrentWindow().InheritNoInputs = this.Window.IsClickthrough;
@@ -361,7 +388,7 @@ public class WindowHost
                 {
                     Log.Error(ex, "Error during Draw(): {WindowName}", this.Window.WindowName);
 
-                    this.hasError = true;
+                    this.hasError  = true;
                     this.lastError = ex;
                 }
             }
@@ -375,6 +402,7 @@ public class WindowHost
         // VP handling
         var windowViewport = ImGui.GetWindowViewport();
         var isMainViewport = windowViewport.ID == ImGui.GetMainViewport().ID;
+
         if (!isMainViewport)
         {
             if (this.Window.IsTopMost)
@@ -386,9 +414,10 @@ public class WindowHost
         var flagsApplicableForTitleBarIcons = !flags.HasFlag(ImGuiWindowFlags.NoDecoration) &&
                                               !flags.HasFlag(ImGuiWindowFlags.NoTitleBar);
         var showAdditions = (this.Window.AllowPinning || this.Window.AllowClickthrough || this.Window.AllowBackgroundBlur) &&
-                            internalDrawParams.Flags.HasFlag(WindowDrawFlags.UseAdditionalOptions) &&
+                            internalDrawParams.Flags.HasFlag(WindowDrawFlags.UseAdditionalOptions)                         &&
                             flagsApplicableForTitleBarIcons;
         var printWindow = false;
+
         if (showAdditions)
         {
             ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 1f);
@@ -401,14 +430,17 @@ public class WindowHost
                 if (this.Window.AllowPinning)
                 {
                     var showAsPinned = this.Window.IsPinned || this.Window.IsClickthrough;
-                    if (ImGui.Checkbox(Loc.Localize("WindowSystemContextActionPin", "Pin Window"), ref showAsPinned))
+
+                    if (ImGui.Checkbox("固定窗口", ref showAsPinned))
                     {
                         this.Window.IsPinned = showAsPinned;
-                        this.presetDirty = true;
+                        this.presetDirty     = true;
                     }
 
-                    ImGuiComponents.HelpMarker(
-                        Loc.Localize("WindowSystemContextActionPinHint", "Pinned windows will not move or resize when you click and drag them, nor will they close when escape is pressed."));
+                    ImGuiComponents.HelpMarker
+                    (
+                        "固定后，窗口无法通过鼠标拖动来移动或调整大小，也不会在按下 Esc 键时关闭。"
+                    );
                 }
 
                 if (this.Window.IsClickthrough)
@@ -417,30 +449,40 @@ public class WindowHost
                 if (this.Window.AllowClickthrough)
                 {
                     var isClickthrough = this.Window.IsClickthrough;
-                    if (ImGui.Checkbox(
-                            Loc.Localize("WindowSystemContextActionClickthrough", "Make clickthrough"),
-                            ref isClickthrough))
+
+                    if (ImGui.Checkbox
+                        (
+                            "启用鼠标穿透",
+                            ref isClickthrough
+                        ))
                     {
                         this.Window.IsClickthrough = isClickthrough;
-                        this.presetDirty = true;
+                        this.presetDirty           = true;
                     }
 
-                    ImGuiComponents.HelpMarker(
-                        Loc.Localize("WindowSystemContextActionClickthroughHint", "Clickthrough windows will not receive mouse input, move or resize. They are completely inert."));
+                    ImGuiComponents.HelpMarker
+                    (
+                        "启用鼠标穿透后，窗口将不再响应鼠标操作，也无法移动或调整大小。"
+                    );
 
                     if (!isMainViewport)
                     {
                         var isTopMost = this.Window.IsTopMost;
-                        if (ImGui.Checkbox(
-                                Loc.Localize("WindowSystemContextActionTopMost", "Stay on top"),
-                                ref isTopMost))
+
+                        if (ImGui.Checkbox
+                            (
+                                "窗口置顶",
+                                ref isTopMost
+                            ))
                         {
                             this.Window.IsTopMost = isTopMost;
-                            this.presetDirty = true;
+                            this.presetDirty      = true;
                         }
 
-                        ImGuiComponents.HelpMarker(
-                            Loc.Localize("WindowSystemContextActionTopMostHint", "Stay-on-top windows will not move into the background."));
+                        ImGuiComponents.HelpMarker
+                        (
+                            "置顶后，窗口将始终显示在其他窗口前方。"
+                        );
                     }
                 }
 
@@ -449,10 +491,10 @@ public class WindowHost
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
                 using (ImRaii.Disabled(this.internalAlpha == null || this.internalAlpha == ImGui.GetStyle().Alpha))
                 {
-                    if (ImGui.Button(Loc.Localize("WindowSystemContextActionReset", "Reset") + "##resetAlpha"))
+                    if (ImGui.Button("重置##resetAlpha"))
                     {
                         this.internalAlpha = null;
-                        this.presetDirty = true;
+                        this.presetDirty   = true;
                     }
                 }
 
@@ -460,8 +502,14 @@ public class WindowHost
 
                 var alpha = (this.internalAlpha ?? ImGui.GetStyle().Alpha) * 100f;
 
-                if (ImGui.SliderFloat(Loc.Localize("WindowSystemContextActionAlpha", "Opacity"), ref alpha, 20f,
-                                      100f, "%.1f%%"))
+                if (ImGui.SliderFloat
+                    (
+                        "不透明度",
+                        ref alpha,
+                        20f,
+                        100f,
+                        "%.1f%%"
+                    ))
                 {
                     this.internalAlpha = Math.Clamp(alpha / 100f, 0.2f, 1f);
                 }
@@ -476,9 +524,10 @@ public class WindowHost
                     using var disabled = ImRaii.Disabled(!isMainViewport);
 
                     // ReSharper disable once CompareOfFloatsByEqualityOperator
-                    using (ImRaii.Disabled(this.internalBlurFactorOverride == null || this.internalBlurFactorOverride == internalDrawParams.DefaultBackgroundBlurStrength))
+                    using (ImRaii.Disabled
+                               (this.internalBlurFactorOverride == null || this.internalBlurFactorOverride == internalDrawParams.DefaultBackgroundBlurStrength))
                     {
-                        if (ImGui.Button(Loc.Localize("WindowSystemContextActionReset", "Reset") + "##resetBlur"))
+                        if (ImGui.Button("重置##resetBlur"))
                         {
                             this.internalBlurFactorOverride = null;
                         }
@@ -493,28 +542,29 @@ public class WindowHost
 
                     var blurOverride =
                         (this.internalBlurFactorOverride ?? internalDrawParams.DefaultBackgroundBlurStrength) * 100f;
-                    if (ImGui.SliderFloat(Loc.Localize("WindowSystemContextActionBlur", "Background Blur"), ref blurOverride, 0f, 100f, "%.1f%%"))
+
+                    if (ImGui.SliderFloat("背景模糊", ref blurOverride, 0f, 100f, "%.1f%%"))
                     {
                         this.internalBlurFactorOverride = blurOverride / 100f;
-                        this.presetDirty = true;
+                        this.presetDirty                = true;
                     }
 
                     if (!isMainViewport && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                     {
-                        ImGui.SetTooltip(Loc.Localize("WindowSystemContextActionBlurDisabledHint", "Background blur only takes effect when the window is inside the game window."));
+                        ImGui.SetTooltip("背景模糊仅在窗口位于游戏窗口内时生效。");
                     }
                 }
 
                 if (this.Window.AllowClickthrough)
                 {
-                    ImGui.TextColored(
+                    ImGui.TextColored
+                    (
                         ImGuiColors.DalamudGrey,
-                        Loc.Localize(
-                            "WindowSystemContextActionClickthroughDisclaimer",
-                            "Open this menu again by clicking the three dashes to disable clickthrough."));
+                        "点击标题栏上的三横线按钮，重新打开此菜单即可关闭鼠标穿透。"
+                    );
                 }
 
-                if (ImGui.Button(Loc.Localize("WindowSystemContextActionPrintWindow", "Print window")))
+                if (ImGui.Button("窗口截图"))
                     printWindow = true;
 
                 ImGui.EndPopup();
@@ -545,27 +595,33 @@ public class WindowHost
         if (internalDrawParams.Flags.HasFlag(WindowDrawFlags.UseFocusManagement) && !this.Window.IsPinned)
         {
             var escapeDown = Service<KeyState>.Get()[VirtualKey.ESCAPE];
-            if (escapeDown && this.Window.IsFocused && !wasEscPressedLastFrame && this.Window.RespectCloseHotkey)
+
+            switch (escapeDown)
             {
-                this.Window.IsOpen = false;
-                wasEscPressedLastFrame = true;
-            }
-            else if (!escapeDown && wasEscPressedLastFrame)
-            {
-                wasEscPressedLastFrame = false;
+                case true when this.Window.IsFocused && !wasEscPressedLastFrame && this.Window.RespectCloseHotkey:
+                    this.Window.IsOpen     = false;
+                    wasEscPressedLastFrame = true;
+                    break;
+                case false when wasEscPressedLastFrame:
+                    wasEscPressedLastFrame = false;
+                    break;
             }
         }
 
         // Allow the window to be closed with a gamepad
-        if (ImGui.IsKeyPressed(ImGuiKey.GamepadFaceRight) && !this.Window.IsPinned && this.Window.IsFocused && ImGui.GetCurrentContext() is { NavId: 0, NavFocusScopeId: 0 })
+        if (ImGui.IsKeyPressed
+                (ImGuiKey.GamepadFaceRight) &&
+            !this.Window.IsPinned           &&
+            this.Window.IsFocused           &&
+            ImGui.GetCurrentContext() is { NavId: 0, NavFocusScopeId: 0 })
         {
             this.Window.IsOpen = false;
         }
 
-        this.fadeOutSize = ImGui.GetWindowSize();
+        this.fadeOutSize   = ImGui.GetWindowSize();
         this.fadeOutOrigin = ImGui.GetWindowPos();
         var isCollapsed = ImGui.IsWindowCollapsed();
-        var isDocked = ImGui.IsWindowDocked();
+        var isDocked    = ImGui.IsWindowDocked();
 
         ImGui.End();
 
@@ -582,21 +638,27 @@ public class WindowHost
         // Ideally we should get rid of this "fake window" thing and just insert a new drawlist at the correct spot.
         if (!this.Window.IsOpen && this.fadeOutTexture == null && doFades && !isCollapsed && !isDocked)
         {
-            this.fadeOutTexture = Service<TextureManager>.Get().CreateDrawListTexture(
-                "WindowFadeOutTexture");
+            this.fadeOutTexture = Service<TextureManager>.Get().CreateDrawListTexture
+            (
+                "WindowFadeOutTexture"
+            );
             this.fadeOutTexture.ResizeAndDrawWindow(this.Window.WindowName, Vector2.One);
             this.fadeOutTimer = FadeInOutTime;
         }
 
         if (printWindow)
         {
-            var tex = Service<TextureManager>.Get().CreateDrawListTexture(
-                Loc.Localize("WindowSystemContextActionPrintWindow", "Print window"));
+            var tex = Service<TextureManager>.Get().CreateDrawListTexture
+            (
+                "窗口截图"
+            );
             tex.ResizeAndDrawWindow(this.Window.WindowName, Vector2.One);
-            _ = Service<DevTextureSaveMenu>.Get().ShowTextureSaveMenuAsync(
+            _ = Service<DevTextureSaveMenu>.Get().ShowTextureSaveMenuAsync
+            (
                 this.Window.WindowName,
                 this.Window.WindowName,
-                Task.FromResult<IDalamudTextureWrap>(tex));
+                Task.FromResult<IDalamudTextureWrap>(tex)
+            );
         }
 
         if (isErrorStylePushed)
@@ -644,14 +706,17 @@ public class WindowHost
 
         if (this.Window.SizeConstraints.HasValue)
         {
-            var (min, max) = this.GetValidatedConstraints(this.Window.SizeConstraints.Value);
-            ImGui.SetNextWindowSizeConstraints(
+            var (min, max) = GetValidatedConstraints(this.Window.SizeConstraints.Value);
+            ImGui.SetNextWindowSizeConstraints
+            (
                 min * ImGuiHelpers.GlobalScale,
-                max * ImGuiHelpers.GlobalScale);
+                max * ImGuiHelpers.GlobalScale
+            );
         }
 
-        var maxBgAlpha = this.Window.BgAlpha;
+        var maxBgAlpha  = this.Window.BgAlpha;
         var fadeInAlpha = this.fadeInTimer / FadeInOutTime;
+
         if (fadeInAlpha < 1f)
         {
             maxBgAlpha = maxBgAlpha.HasValue ?
@@ -667,7 +732,10 @@ public class WindowHost
         }
     }
 
-    private (Vector2 Min, Vector2 Max) GetValidatedConstraints(WindowSizeConstraints constraints)
+    private static (Vector2 Min, Vector2 Max) GetValidatedConstraints
+    (
+        WindowSizeConstraints constraints
+    )
     {
         var min = constraints.MinimumSize;
         var max = constraints.MaximumSize;
@@ -679,7 +747,10 @@ public class WindowHost
         return (min, max);
     }
 
-    private void PreHandlePreset(WindowSystemPersistence? persistence)
+    private void PreHandlePreset
+    (
+        WindowSystemPersistence? persistence
+    )
     {
         if (persistence == null || this.hasInitializedFromPreset)
             return;
@@ -693,30 +764,33 @@ public class WindowHost
         if (this.presetWindow == null)
         {
             this.presetWindow = new PresetModel.PresetWindow();
-            this.presetDirty = true;
+            this.presetDirty  = true;
             return;
         }
 
-        this.Window.IsPinned = this.presetWindow.IsPinned;
-        this.Window.IsClickthrough = this.presetWindow.IsClickThrough;
-        this.Window.IsTopMost = this.presetWindow.IsTopMost;
-        this.internalAlpha = this.presetWindow.Alpha;
+        this.Window.IsPinned            = this.presetWindow.IsPinned;
+        this.Window.IsClickthrough      = this.presetWindow.IsClickThrough;
+        this.Window.IsTopMost           = this.presetWindow.IsTopMost;
+        this.internalAlpha              = this.presetWindow.Alpha;
         this.internalBlurFactorOverride = this.presetWindow.BlurFactorOverride;
     }
 
-    private void PostHandlePreset(WindowSystemPersistence? persistence)
+    private void PostHandlePreset
+    (
+        WindowSystemPersistence? persistence
+    )
     {
         if (persistence == null)
             return;
 
-        Debug.Assert(this.presetWindow != null, "this.presetWindow != null");
+        Debug.Assert(this.presetWindow != null);
 
         if (this.presetDirty)
         {
-            this.presetWindow.IsPinned = this.Window.IsPinned;
-            this.presetWindow.IsClickThrough = this.Window.IsClickthrough;
-            this.presetWindow.IsTopMost = this.Window.IsTopMost;
-            this.presetWindow.Alpha = this.internalAlpha;
+            this.presetWindow.IsPinned           = this.Window.IsPinned;
+            this.presetWindow.IsClickThrough     = this.Window.IsClickthrough;
+            this.presetWindow.IsTopMost          = this.Window.IsTopMost;
+            this.presetWindow.Alpha              = this.internalAlpha;
             this.presetWindow.BlurFactorOverride = this.internalBlurFactorOverride;
 
             var id = ImGui.GetID(this.Window.WindowName);
@@ -729,16 +803,16 @@ public class WindowHost
 
     private unsafe void DrawTitleBarButtons()
     {
-        var window = ImGuiP.GetCurrentWindow();
-        var flags = window.Flags;
+        var window       = ImGuiP.GetCurrentWindow();
+        var flags        = window.Flags;
         var titleBarRect = window.TitleBarRect();
         ImGui.PushClipRect(ImGui.GetWindowPos(), ImGui.GetWindowPos() + ImGui.GetWindowSize(), false);
 
-        var style = ImGui.GetStyle();
+        var style    = ImGui.GetStyle();
         var fontSize = ImGui.GetFontSize();
         var drawList = ImGui.GetWindowDrawList();
 
-        var padR = 0f;
+        var padR       = 0f;
         var buttonSize = ImGui.GetFontSize();
 
         var numNativeButtons = 0;
@@ -755,23 +829,47 @@ public class WindowHost
         // Pad to the left, to get out of the way of the native buttons
         padR += numNativeButtons * (buttonSize + style.ItemInnerSpacing.X);
 
-        Vector2 GetCenter(ImRect rect) => new((rect.Min.X + rect.Max.X) * 0.5f, (rect.Min.Y + rect.Max.Y) * 0.5f);
-
         var numButtons = 0;
-        bool DrawButton(TitleBarButton button, Vector2 pos)
+
+        foreach (var button in this.allButtons)
+        {
+            if (this.Window.IsClickthrough && !button.AvailableClickthrough)
+                continue;
+
+            Vector2 position = new(titleBarRect.Max.X - padR - buttonSize, titleBarRect.Min.Y + style.FramePadding.Y);
+            padR += buttonSize + style.ItemInnerSpacing.X;
+
+            if (DrawButton(button, position))
+                button.Click?.Invoke(ImGuiMouseButton.Left);
+        }
+
+        ImGui.PopClipRect();
+
+        return;
+
+        Vector2 GetCenter
+        (
+            ImRect rect
+        ) => new((rect.Min.X + rect.Max.X) * 0.5f, (rect.Min.Y + rect.Max.Y) * 0.5f);
+
+        bool DrawButton
+        (
+            TitleBarButton button,
+            Vector2        pos
+        )
         {
             var id = ImGui.GetID($"###CustomTbButton{numButtons}");
             numButtons++;
 
-            var max = pos + new Vector2(fontSize, fontSize);
-            ImRect bb = new(pos, max);
-            var isClipped = !ImGuiP.ItemAdd(bb, id, null, 0);
-            bool hovered, held, pressed;
+            var    max       = pos + new Vector2(fontSize, fontSize);
+            ImRect bb        = new(pos, max);
+            var    isClipped = !ImGuiP.ItemAdd(bb, id, null, 0);
+            bool   hovered, held, pressed;
 
             if (this.Window.IsClickthrough)
             {
                 // ButtonBehavior does not function if the window is clickthrough, so we have to do it ourselves
-                var pad = ImGui.GetStyle().TouchExtraPadding;
+                var pad  = ImGui.GetStyle().TouchExtraPadding;
                 var rect = new ImRect(pos - pad, max + pad);
                 hovered = rect.Contains(ImGui.GetMousePos());
 
@@ -792,13 +890,24 @@ public class WindowHost
                 return pressed;
 
             // Render
-            var bgCol = ImGui.GetColorU32((held && hovered) ? ImGuiCol.ButtonActive : hovered ? ImGuiCol.ButtonHovered : ImGuiCol.Button);
-            var textCol = button.IconColor.HasValue ? ImGui.GetColorU32(button.IconColor.Value) : ImGui.GetColorU32(ImGuiCol.Text);
+            var bgCol = ImGui.GetColorU32
+            (
+                (held, hovered) switch
+                {
+                    (true, true) => ImGuiCol.ButtonActive,
+                    (_, true)    => ImGuiCol.ButtonHovered,
+                    _            => ImGuiCol.Button
+                }
+            );
+            var textCol = button.IconColor.HasValue ?
+                              ImGui.GetColorU32(button.IconColor.Value) :
+                              ImGui.GetColorU32(ImGuiCol.Text);
             if (hovered || held)
                 drawList.AddCircleFilled(GetCenter(bb) + new Vector2(0.0f, -0.5f), (fontSize * 0.5f) + 1.0f, bgCol);
 
             var offset = button.IconOffset * ImGuiHelpers.GlobalScale;
-            drawList.AddText(InterfaceManager.IconFont, (float)(fontSize * 0.8), new Vector2(bb.Min.X + offset.X, bb.Min.Y + offset.Y), textCol, button.Icon.ToIconString());
+            drawList.AddText
+                (InterfaceManager.IconFont, (float)(fontSize * 0.8), new Vector2(bb.Min.X + offset.X, bb.Min.Y + offset.Y), textCol, button.Icon.ToIconString());
 
             if (hovered)
                 button.ShowTooltip?.Invoke();
@@ -809,20 +918,6 @@ public class WindowHost
 
             return pressed;
         }
-
-        foreach (var button in this.allButtons)
-        {
-            if (this.Window.IsClickthrough && !button.AvailableClickthrough)
-                continue;
-
-            Vector2 position = new(titleBarRect.Max.X - padR - buttonSize, titleBarRect.Min.Y + style.FramePadding.Y);
-            padR += buttonSize + style.ItemInnerSpacing.X;
-
-            if (DrawButton(button, position))
-                button.Click?.Invoke(ImGuiMouseButton.Left);
-        }
-
-        ImGui.PopClipRect();
     }
 
     private void DrawFakeFadeOutWindow()
@@ -834,47 +929,52 @@ public class WindowHost
 
         using var style = ImRaii.PushStyle(ImGuiStyleVar.WindowPadding, Vector2.Zero);
         style.Push(ImGuiStyleVar.WindowBorderSize, 0);
-        style.Push(ImGuiStyleVar.FrameBorderSize, 0);
+        style.Push(ImGuiStyleVar.FrameBorderSize,  0);
 
-        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoNav |
-                                       ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoMouseInputs |
-                                       ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground;
+        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoInputs          |
+                                       ImGuiWindowFlags.NoNav             |
+                                       ImGuiWindowFlags.NoScrollWithMouse |
+                                       ImGuiWindowFlags.NoMouseInputs     |
+                                       ImGuiWindowFlags.NoDecoration      |
+                                       ImGuiWindowFlags.NoBackground;
 
         if (ImGui.Begin(this.Window.WindowName, flags))
         {
             var dl = ImGui.GetWindowDrawList();
-            dl.AddImage(
+            dl.AddImage
+            (
                 this.fadeOutTexture!.Handle,
                 this.fadeOutOrigin,
                 this.fadeOutOrigin + this.fadeOutSize,
                 Vector2.Zero,
                 Vector2.One,
-                ImGui.ColorConvertFloat4ToU32(new(1f, 1f, 1f, Math.Clamp(this.fadeOutTimer / FadeInOutTime, 0f, 1f))));
+                ImGui.ColorConvertFloat4ToU32(new(1f, 1f, 1f, Math.Clamp(this.fadeOutTimer / FadeInOutTime, 0f, 1f)))
+            );
         }
 
         ImGui.End();
     }
 
-    private void DrawErrorMessage()
-    {
-        // TODO: Once window systems are services, offer to reload the plugin
-        DalamudComponents.DrawErrorDisplay(
+    // TODO: Once window systems are services, offer to reload the plugin
+    private void DrawErrorMessage() =>
+        DalamudComponents.DrawErrorDisplay
+        (
             "窗口渲染异常，请咨询插件开发者获悉详情。",
             this.lastError,
             [
                 ("重新渲染", () =>
                     {
-                        this.hasError = false;
+                        this.hasError  = false;
                         this.lastError = null;
                     }),
                 ("关闭窗口", () =>
-                {
-                    this.Window.IsOpen = false;
-                    this.hasError = false;
-                    this.lastError = null;
-                })
-            ]);
-    }
+                    {
+                        this.Window.IsOpen = false;
+                        this.hasError      = false;
+                        this.lastError     = null;
+                    })
+            ]
+        );
 
     /// <summary>
     /// Parameters used when drawing a window through a <see cref="WindowSystem"/>.
