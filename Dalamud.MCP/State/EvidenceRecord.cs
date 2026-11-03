@@ -67,4 +67,6 @@ internal sealed class EvidenceRecord
     /// Gets 记录时间。
     /// </summary>
     public DateTimeOffset Timestamp { get; }
+
+    public object? Details { get; init; }
 }

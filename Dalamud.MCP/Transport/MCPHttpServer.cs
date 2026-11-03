@@ -15,14 +15,12 @@ namespace Dalamud;
 /// </summary>
 internal sealed class MCPHttpServer : IDisposable
 {
-    private const           string   SERVER_VERSION  = "1.0.0";
-    private static readonly TimeSpan REQUEST_TIMEOUT = TimeSpan.FromSeconds(20);
+    private const           string   SERVER_VERSION  = "2.0.0";
+    private static readonly TimeSpan REQUEST_TIMEOUT = TimeSpan.FromSeconds(75);
 
     private readonly HttpListener                                listener = new();
     private readonly McpServerPrimitiveCollection<McpServerTool> tools;
     private readonly CancellationTokenSource                     cancellation = new();
-    private          Implementation?                             knownClientInfo;
-    private          ClientCapabilities?                         knownClientCapabilities;
     private          bool                                        disposed;
 
     /// <summary>
@@ -105,8 +103,17 @@ internal sealed class MCPHttpServer : IDisposable
     {
         var response = context.Response;
 
+        using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.cancellation.Token);
+        requestCancellation.CancelAfter(TimeSpan.FromSeconds(70));
+
         try
         {
+            if (context.Request.ContentLength64 > 1024 * 1024)
+            {
+                response.StatusCode = 413;
+                return;
+            }
+
             if (!string.Equals(context.Request.HttpMethod, "POST", StringComparison.Ordinal))
             {
                 response.StatusCode = 405;
@@ -115,7 +122,13 @@ internal sealed class MCPHttpServer : IDisposable
 
             string body;
             using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8))
-                body = await reader.ReadToEndAsync(this.cancellation.Token);
+                body = await reader.ReadToEndAsync(requestCancellation.Token);
+
+            if (body.Length > 1024 * 1024)
+            {
+                response.StatusCode = 413;
+                return;
+            }
 
             var message = JsonSerializer.Deserialize<JsonRpcMessage>(body, McpJsonUtilities.DefaultOptions);
 
@@ -138,16 +151,20 @@ internal sealed class MCPHttpServer : IDisposable
                 {
                     Tools = new ToolsCapability()
                 },
-                ToolCollection          = this.tools,
-                ScopeRequests           = false,
-                KnownClientInfo         = Volatile.Read(ref this.knownClientInfo),
-                KnownClientCapabilities = Volatile.Read(ref this.knownClientCapabilities)
+                ToolCollection = this.tools,
+                ScopeRequests  = false,
+                KnownClientInfo = message is JsonRpcRequest { Method: "initialize" } ?
+                                      null :
+                                      new Implementation { Name = "stateless-client", Version = "1" },
+                KnownClientCapabilities = message is JsonRpcRequest { Method: "initialize" } ?
+                                              null :
+                                              new ClientCapabilities()
             };
 
             await using var server = McpServer.Create(transport, options);
-            _ = server.RunAsync(this.cancellation.Token);
+            _ = server.RunAsync(requestCancellation.Token);
 
-            await transport.DeliverAsync(message, this.cancellation.Token);
+            await transport.DeliverAsync(message, requestCancellation.Token);
 
             if (message is JsonRpcNotification)
             {
@@ -155,7 +172,7 @@ internal sealed class MCPHttpServer : IDisposable
                 return;
             }
 
-            var reply = await transport.ReadOutboundAsync(REQUEST_TIMEOUT, this.cancellation.Token);
+            var reply = await transport.ReadOutboundAsync(REQUEST_TIMEOUT, requestCancellation.Token);
 
             if (reply is null)
             {
@@ -163,10 +180,13 @@ internal sealed class MCPHttpServer : IDisposable
                 return;
             }
 
-            if (this.knownClientInfo is null && server.ClientInfo is not null)
+            while (reply is JsonRpcNotification)
+                reply = await transport.ReadOutboundAsync(REQUEST_TIMEOUT, requestCancellation.Token);
+
+            if (reply is null)
             {
-                this.knownClientInfo         = server.ClientInfo;
-                this.knownClientCapabilities = server.ClientCapabilities;
+                response.StatusCode = 504;
+                return;
             }
 
             var json  = JsonSerializer.Serialize(reply, McpJsonUtilities.DefaultOptions);
@@ -176,6 +196,10 @@ internal sealed class MCPHttpServer : IDisposable
             response.StatusCode      = 200;
             response.ContentLength64 = bytes.Length;
             await response.OutputStream.WriteAsync(bytes, this.cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            response.StatusCode = 504;
         }
         catch (Exception exception)
         {

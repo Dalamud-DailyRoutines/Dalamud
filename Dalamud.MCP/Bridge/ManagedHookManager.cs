@@ -1,115 +1,107 @@
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using HarmonyLib;
 using ModelContextProtocol;
 
 namespace Dalamud;
 
-/// <summary>
-/// 用 Harmony 给托管方法加前缀，命中时按方法反查观察点并记录证据。
-/// </summary>
+/// <summary>同一目标共享补丁，独立管理观察点并记录返回与异常。</summary>
 internal static class ManagedHookManager
 {
-    private static readonly Harmony                                  HARMONY = new("dalamud.mcp");
-    private static readonly ConcurrentDictionary<string, MethodBase> TARGETS = new(StringComparer.Ordinal);
+    private static readonly Harmony Harmony = new("dalamud.mcp");
+    private static readonly Lock Gate = new();
+    private static readonly Dictionary<string, MethodInfo> Targets = new(StringComparer.Ordinal);
 
-    /// <summary>
-    /// 给托管方法安装前缀。
-    /// </summary>
-    /// <param name="observation">观察点。</param>
-    /// <param name="target">目标方法。</param>
-    public static void Patch
-    (
-        Observation observation,
-        MethodBase  target
-    )
+    public static void Patch(Observation observation, MethodInfo target)
     {
-        var prefix = typeof(ManagedHookManager).GetMethod(nameof(Prefix), BindingFlags.Static | BindingFlags.NonPublic) ?? throw new McpException("找不到前缀方法。");
+        lock (Gate)
+        {
+            if (!Targets.Values.Contains(target))
+            {
+                var postfix = target.ReturnType == typeof(void) ? nameof(PostfixVoid) : nameof(PostfixResult);
+                try
+                {
+                    Harmony.Patch(target,
+                        postfix: new HarmonyMethod(typeof(ManagedHookManager).GetMethod(postfix, BindingFlags.Static | BindingFlags.NonPublic)!),
+                        finalizer: new HarmonyMethod(typeof(ManagedHookManager).GetMethod(nameof(Finalizer), BindingFlags.Static | BindingFlags.NonPublic)!));
+                }
+                catch
+                {
+                    Harmony.Unpatch(target, HarmonyPatchType.All, Harmony.Id);
+                    throw;
+                }
+            }
 
-        var processor = HARMONY.CreateProcessor(target);
-        processor.AddPrefix(new HarmonyMethod(prefix));
-        processor.Patch();
-
-        TARGETS[observation.Id] = target;
-        observation.Source      = target;
+            Targets.Add(observation.Id, target);
+        }
     }
 
-    /// <summary>
-    /// 移除某个观察点的前缀。
-    /// </summary>
-    /// <param name="observationId">观察点 id。</param>
-    /// <returns>是否移除了订阅。</returns>
-    public static bool Unpatch
-    (
-        string observationId
-    )
+    public static bool Unpatch(string observationId)
     {
-        if (!TARGETS.TryRemove(observationId, out var target))
-            return false;
+        lock (Gate)
+        {
+            if (!Targets.Remove(observationId, out var target))
+                return false;
 
-        HARMONY.Unpatch(target, HarmonyPatchType.All, HARMONY.Id);
-        return true;
+            if (!Targets.Values.Contains(target))
+                Harmony.Unpatch(target, HarmonyPatchType.All, Harmony.Id);
+
+            return true;
+        }
     }
 
-    /// <summary>
-    /// 移除全部前缀。
-    /// </summary>
     public static void Clear()
     {
-        foreach (var id in TARGETS.Keys.ToArray())
-            Unpatch(id);
+        lock (Gate)
+        {
+            foreach (var target in Targets.Values.Distinct())
+                Harmony.Unpatch(target, HarmonyPatchType.All, Harmony.Id);
+
+            Targets.Clear();
+        }
     }
 
-    private static void Prefix
-    (
-        MethodBase __originalMethod,
-        object[]   __args
-    )
+    private static void PostfixVoid(MethodBase __originalMethod, object[] __args) => Record(__originalMethod, __args, null, null);
+
+    private static void PostfixResult(MethodBase __originalMethod, object[] __args, object? __result) => Record(__originalMethod, __args, __result, null);
+
+    private static Exception? Finalizer(MethodBase __originalMethod, object[] __args, Exception? __exception)
     {
-        var observationId = FindObservationId(__originalMethod);
-        if (observationId is null)
-            return;
+        if (__exception is not null)
+            Record(__originalMethod, __args, null, __exception);
 
-        var builder = new StringBuilder(128);
-        builder.Append("method=").Append(__originalMethod.DeclaringType?.Name).Append('.').Append(__originalMethod.Name);
+        return __exception;
+    }
 
-        for (var index = 0; index < __args.Length; index++)
-        {
-            builder.Append(" arg").Append(index).Append('=');
-            builder.Append(ValueFormatter.Format(__args[index], 1));
-        }
-
+    private static void Record(MethodBase method, object[] arguments, object? returned, Exception? exception)
+    {
         try
         {
-            MCPRuntime.Observations.Record(observationId, "managedhook", builder.ToString(), null, null);
+            string[] ids;
+            lock (Gate)
+                ids = Targets.Where(entry => entry.Value == method).Select(entry => entry.Key).ToArray();
+
+            if (ids.Length == 0)
+                return;
+
+            var details = new
+            {
+                method = method.ToString(),
+                arguments = Array.ConvertAll(arguments, argument => ValueFormatter.Snapshot(argument)),
+                returned = ValueFormatter.Snapshot(returned),
+                exception = exception?.Message,
+                threadId = Environment.CurrentManagedThreadId
+            };
+            foreach (var id in ids)
+                MCPRuntime.Observations.Record(id, "managedhook", exception is null ? "托管方法返回" : "托管方法异常", null, null, details);
         }
         catch (Exception)
         {
             // ignored
         }
-    }
-
-    private static string? FindObservationId
-    (
-        MethodBase method
-    )
-    {
-        foreach (var entry in TARGETS)
-        {
-            if (entry.Value == method || entry.Value.Equals(method))
-                return entry.Key;
-        }
-
-        foreach (var entry in TARGETS)
-        {
-            if (string.Equals(entry.Value.Name, method.Name, StringComparison.Ordinal) && entry.Value.DeclaringType == method.DeclaringType)
-            {
-                return entry.Key;
-            }
-        }
-
-        return null;
     }
 }

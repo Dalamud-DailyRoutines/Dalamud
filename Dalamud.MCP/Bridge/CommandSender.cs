@@ -1,6 +1,7 @@
+using System.Threading;
+using System.Threading.Tasks;
 using Dalamud.Game;
 using Dalamud.Game.Command;
-using Dalamud.Utility;
 using ModelContextProtocol;
 
 namespace Dalamud;
@@ -14,25 +15,37 @@ internal static class CommandSender
     /// 执行一条斜杠命令。
     /// </summary>
     /// <param name="content">命令文本，需要以 / 开头，例如 /pdr。</param>
+    /// <param name="cancellationToken">取消尚未执行的操作或异步等待。</param>
     /// <returns>JSON 文本。</returns>
-    public static string Send
+    public static async Task<string> Send
     (
-        string? content
+        string?           content,
+        CancellationToken cancellationToken
     )
     {
-        var text = string.IsNullOrWhiteSpace(content)
-                       ? throw new McpException("command 模式需要提供 command，例如 /pdr。")
-                       : content.Trim();
+        var text = string.IsNullOrWhiteSpace(content) ?
+                       throw new McpException("command 模式需要提供 command，例如 /pdr。") :
+                       content.Trim();
 
         if (!text.StartsWith('/'))
             throw new McpException($"游戏内命令需要以 / 开头，当前为 \"{text}\"。");
 
-        var accepted = false;
+        var accepted = await Service<Framework>.Get().Run
+                       (
+                           () =>
+                           {
+                               cancellationToken.ThrowIfCancellationRequested();
+                               return Service<CommandManager>.Get().ProcessCommand(text);
+                           },
+                           cancellationToken
+                       ).ConfigureAwait(false);
 
-        Service<Framework>.Get()
-                          .RunOnTick(() => accepted = Service<CommandManager>.Get().ProcessCommand(text))
-                          .WaitSafely();
-
-        return "{\"command\":" + ValueFormatter.Format(text, 0) + ",\"accepted\":" + (accepted ? "true" : "false") + "}";
+        return "{\"command\":"                +
+               ValueFormatter.Format(text, 0) +
+               ",\"accepted\":"               +
+               (accepted ?
+                    "true" :
+                    "false") +
+               "}";
     }
 }

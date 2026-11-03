@@ -100,6 +100,33 @@ internal sealed class Observation
     /// </summary>
     public bool Active { get; set; } = true;
 
+    public int SampleEvery { get; init; } = 1;
+
+    public int MaxRecords { get; init; } = 256;
+
+    public DateTimeOffset ExpiresAt { get; init; } = DateTimeOffset.UtcNow.AddMinutes(5);
+
+    public long Hits { get; private set; }
+
+    public long Skipped { get; private set; }
+
+    public bool ShouldCapture()
+    {
+        this.Hits++;
+
+        if (DateTimeOffset.UtcNow >= this.ExpiresAt || this.EvidenceCount >= this.MaxRecords)
+        {
+            this.Active = false;
+            return false;
+        }
+
+        if ((this.Hits - 1) % this.SampleEvery == 0)
+            return true;
+
+        this.Skipped++;
+        return false;
+    }
+
     /// <summary>
     /// Gets or sets 上一次读到的原始字节，用于变化检测。
     /// </summary>

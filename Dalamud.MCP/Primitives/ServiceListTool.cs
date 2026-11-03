@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 
@@ -18,10 +19,11 @@ internal static class ServiceListTool
     /// <returns>JSON 文本。</returns>
     public static string Run
     (
-        string? filter       = null,
-        bool    includeState = true,
-        int     offset       = 0,
-        int     limit        = 100
+        [Description("按类型全名或简单名做不区分大小写的包含匹配。")]
+        string? filter = null,
+        [Description("是否附带当前构造状态。")] bool includeState = true,
+        [Description("结果偏移。")]       int  offset       = 0,
+        [Description("最多返回的条目数。")]   int  limit        = 100
     )
     {
         var types = ServiceResolver.EnumerateServiceTypes();
@@ -51,7 +53,12 @@ internal static class ServiceListTool
             if (includeState)
             {
                 var instance = ServiceResolver.GetOrNull(type);
-                builder.Append(",\"constructed\":").Append(instance is null ? "false" : "true");
+                builder.Append(",\"constructed\":").Append
+                (
+                    instance is null ?
+                        "false" :
+                        "true"
+                );
                 if (instance is not null)
                     builder.Append(",\"ref\":\"").Append(Escape(MCPRuntime.References.TrackObject(instance))).Append('"');
             }

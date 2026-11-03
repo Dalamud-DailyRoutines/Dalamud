@@ -1,7 +1,9 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using ModelContextProtocol;
 
 namespace Dalamud;
@@ -11,7 +13,14 @@ namespace Dalamud;
 /// </summary>
 internal static class MemScanTool
 {
-    private const string HEX_PREFIX = "0x";
+    public enum Operation
+    {
+        Pattern,
+        Value,
+        Filter,
+        List,
+        Drop
+    }
 
     /// <summary>
     /// 执行扫描。
@@ -29,33 +38,39 @@ internal static class MemScanTool
     /// <param name="rangeEnd">扫描范围终点。</param>
     /// <param name="alignment">对齐步长，0 表示按类型自然对齐。</param>
     /// <param name="limit">返回的候选地址数量上限。</param>
+    /// <param name="cancellationToken">取消尚未执行的操作或异步等待。</param>
     /// <returns>JSON 文本。</returns>
     public static string Run
     (
-        string  action,
-        string? pattern    = null,
-        string? valueType  = null,
-        string? value      = null,
-        string? upper      = null,
-        string? session    = null,
-        string? filter     = null,
-        string? module     = null,
-        bool    whole      = false,
-        string? rangeStart = null,
-        string? rangeEnd   = null,
-        int     alignment  = 0,
-        int     limit      = 16
+        [Description("操作类型: pattern、value、filter、list、drop。")]
+        Operation action,
+        [Description("特征码文本，支持 ?? 通配。")] string? pattern = null,
+        [Description("值类型名，value 模式需要；支持 byte、sbyte、short、ushort、int、uint、long、ulong、float、double、bool，也接受 u8、i8、u16、i16、u32、i32、u64、i64、f32、f64 这类别名。")]
+        string? valueType = null,
+        [Description("目标值，filter 模式下作为 equals 或 between 的下界。")]
+        string? value = null,
+        [Description("between 过滤的上界。")] string? upper   = null,
+        [Description("会话 id。")]         string? session = null,
+        [Description("过滤条件: changed、unchanged、increased、decreased、equals、between。")]
+        string? filter = null,
+        [Description("限定模块名，省略时使用主模块。")]   string? module            = null,
+        [Description("是否扫描整个可读地址空间。")]     bool    whole             = false,
+        [Description("扫描范围起点。")]           string? rangeStart        = null,
+        [Description("扫描范围终点。")]           string? rangeEnd          = null,
+        [Description("对齐步长，0 表示按类型自然对齐。")] int     alignment         = 0,
+        [Description("返回的候选地址数量上限。")]      int     limit             = 16,
+        CancellationToken                          cancellationToken = default
     )
     {
         var page = Math.Clamp(limit, 1, 500);
         var from = ParseOptionalAddress(rangeStart);
         var to   = ParseOptionalAddress(rangeEnd);
 
-        return action.ToLowerInvariant() switch
+        return action.ToString().ToLowerInvariant() switch
         {
-            "pattern" => ScanPattern(pattern, module, whole, from, to, page),
-            "value"   => StartSession(valueType, value, upper, module, whole, from, to, alignment, page),
-            "filter"  => FilterSession(session, filter, value, upper, page),
+            "pattern" => ScanPattern(pattern, module, whole, from, to, page, cancellationToken),
+            "value"   => StartSession(valueType, value, upper, module, whole, from, to, alignment, page, cancellationToken),
+            "filter"  => FilterSession(session, filter, value, upper, page, cancellationToken),
             "list"    => ListSessions(),
             "drop"    => DropSession(session),
             _         => throw new McpException($"不支持的操作 \"{action}\"，可用值为 pattern、value、filter、list、drop。")
@@ -64,12 +79,13 @@ internal static class MemScanTool
 
     private static string ScanPattern
     (
-        string? pattern,
-        string? module,
-        bool    whole,
-        nint    rangeStart,
-        nint    rangeEnd,
-        int     limit
+        string?           pattern,
+        string?           module,
+        bool              whole,
+        nint              rangeStart,
+        nint              rangeEnd,
+        int               limit,
+        CancellationToken cancellationToken
     )
     {
         if (string.IsNullOrWhiteSpace(pattern))
@@ -77,7 +93,7 @@ internal static class MemScanTool
 
         var started = Stopwatch.GetTimestamp();
         var regions = RegionProvider.GetReadableRegions(whole, module, rangeStart, rangeEnd);
-        var hits    = MemoryScanner.ScanPattern(pattern, regions, limit);
+        var hits    = MemoryScanner.ScanPattern(pattern, regions, limit, cancellationToken);
         var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
 
         MCPRuntime.Trace.Write("mem_scan", $"pattern={pattern} hits={hits.Count} regions={regions.Count}", elapsed);
@@ -104,15 +120,16 @@ internal static class MemScanTool
 
     private static string StartSession
     (
-        string? valueType,
-        string? value,
-        string? upper,
-        string? module,
-        bool    whole,
-        nint    rangeStart,
-        nint    rangeEnd,
-        int     alignment,
-        int     limit
+        string?           valueType,
+        string?           value,
+        string?           upper,
+        string?           module,
+        bool              whole,
+        nint              rangeStart,
+        nint              rangeEnd,
+        int               alignment,
+        int               limit,
+        CancellationToken cancellationToken
     )
     {
         if (string.IsNullOrWhiteSpace(valueType))
@@ -121,12 +138,17 @@ internal static class MemScanTool
         if (string.IsNullOrWhiteSpace(value))
             throw new McpException("value 模式需要提供 value。");
 
-        var lower      = ParseNumber(value);
-        var upperBound = string.IsNullOrWhiteSpace(upper) ? (double?)null : ParseNumber(upper);
+        if (MCPRuntime.ScanSessions.Count >= 16)
+            throw new McpException("最多保留 16 个扫描会话，请先 drop 释放。 ");
+
+        var lower = NumericValue.Parse(value, valueType);
+        var upperBound = string.IsNullOrWhiteSpace(upper) ?
+                             (NumericValue?)null :
+                             NumericValue.Parse(upper, valueType);
 
         var started = Stopwatch.GetTimestamp();
         var regions = RegionProvider.GetReadableRegions(whole, module, rangeStart, rangeEnd);
-        var (candidates, values, total, truncated) = MemoryScanner.ScanValue(valueType, lower, upperBound, regions, alignment);
+        var (candidates, values, total, truncated) = MemoryScanner.ScanValue(valueType, lower, upperBound, regions, alignment, cancellationToken);
         var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
 
         var id          = MCPRuntime.NextScanSessionId();
@@ -140,11 +162,12 @@ internal static class MemScanTool
 
     private static string FilterSession
     (
-        string? id,
-        string? filter,
-        string? value,
-        string? upper,
-        int     limit
+        string?           id,
+        string?           filter,
+        string?           value,
+        string?           upper,
+        int               limit,
+        CancellationToken cancellationToken
     )
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -156,11 +179,16 @@ internal static class MemScanTool
         if (!MCPRuntime.ScanSessions.TryGetValue(id, out var scanSession) || scanSession is null)
             throw new McpException($"会话 \"{id}\" 不存在或已释放。");
 
-        var target     = string.IsNullOrWhiteSpace(value) ? (double?)null : ParseNumber(value);
-        var upperBound = string.IsNullOrWhiteSpace(upper) ? (double?)null : ParseNumber(upper);
+        var target = string.IsNullOrWhiteSpace(value) ?
+                         (NumericValue?)null :
+                         NumericValue.Parse(value, scanSession.ValueType);
+        var upperBound = string.IsNullOrWhiteSpace(upper) ?
+                             (NumericValue?)null :
+                             NumericValue.Parse(upper, scanSession.ValueType);
 
         var started = Stopwatch.GetTimestamp();
-        MemoryScanner.ApplyFilter(scanSession, filter, target, upperBound);
+        lock (scanSession.Gate)
+            MemoryScanner.ApplyFilter(scanSession, filter, target, upperBound, cancellationToken);
         var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
 
         MCPRuntime.Trace.Write("mem_scan", $"filter session={id} filter={filter} kept={scanSession.Candidates.Count}", elapsed);
@@ -210,7 +238,11 @@ internal static class MemScanTool
             throw new McpException("drop 模式需要提供 session。");
 
         var removed = MCPRuntime.ScanSessions.TryRemove(id, out _);
-        return "{\"action\":\"drop\",\"removed\":" + (removed ? "true" : "false") + "}";
+        return "{\"action\":\"drop\",\"removed\":" +
+               (removed ?
+                    "true" :
+                    "false") +
+               "}";
     }
 
     private static string RenderSession
@@ -226,7 +258,12 @@ internal static class MemScanTool
         builder.Append(",\"valueType\":").Append(ValueFormatter.Format(scanSession.ValueType, 0));
         builder.Append(",\"remaining\":").Append(scanSession.Candidates.Count);
         builder.Append(",\"totalMatched\":").Append(scanSession.TotalMatched);
-        builder.Append(",\"truncated\":").Append(scanSession.Truncated ? "true" : "false");
+        builder.Append(",\"truncated\":").Append
+        (
+            scanSession.Truncated ?
+                "true" :
+                "false"
+        );
         builder.Append(",\"candidates\":[");
 
         var count = Math.Min(limit, scanSession.Candidates.Count);
@@ -245,7 +282,7 @@ internal static class MemScanTool
                     0
                 )
             );
-            builder.Append(",\"value\":").Append(ValueFormatter.Format(scanSession.Values[index], 0));
+            builder.Append(",\"value\":").Append(ValueFormatter.Format(scanSession.Values[index].Value, 0));
             builder.Append(",\"ref\":").Append
             (
                 ValueFormatter.Format
@@ -265,18 +302,7 @@ internal static class MemScanTool
     (
         string? text
     ) =>
-        string.IsNullOrWhiteSpace(text) ? 0 : (nint)MemoryAccess.ParseAddress(text);
-
-    private static double ParseNumber
-    (
-        string text
-    )
-    {
-        var trimmed = text.Trim();
-
-        if (trimmed.StartsWith(HEX_PREFIX, StringComparison.OrdinalIgnoreCase))
-            return MemoryAccess.ParseAddress(trimmed);
-
-        return double.Parse(trimmed, CultureInfo.InvariantCulture);
-    }
+        string.IsNullOrWhiteSpace(text) ?
+            0 :
+            (nint)MemoryAccess.ParseAddress(text);
 }

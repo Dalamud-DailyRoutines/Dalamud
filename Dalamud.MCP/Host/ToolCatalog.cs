@@ -1,4 +1,7 @@
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
 namespace Dalamud;
@@ -31,7 +34,7 @@ internal static class ToolCatalog
             typeof(ObjectAccessTool),
             nameof(ObjectAccessTool.Run),
             "object_access",
-            "对托管对象做读取、写入、方法调用与成员列举。根可以是 service:类型名、裸服务类型名、服务类型名.成员路径，或引用 id。list 对集合一次铺开全部元素（上限 512 个），对其它对象列出字段与属性及其当前值。返回值是 Task 时给出任务状态，可据此判断异步操作是否完成。",
+            "托管运行时入口。先 service_list 或 types 找目标，再 describe 取得完整成员和方法 id；read、query 支持路径、分页及字段投影；invoke 用方法 id 和 JSON 实参；task 取得异步结果；release 显式释放强引用。describe 不读取属性。操作默认在框架线程执行。",
             false
         );
         Add
@@ -40,7 +43,7 @@ internal static class ToolCatalog
             typeof(FfcsIndexTool),
             nameof(FfcsIndexTool.Run),
             "ffcs_index",
-            "查询 FFXIVClientStructs 的类型、符号地址、字段布局与失效签名。symbols 省略 type 时按 filter 跨全部类型搜索符号名；布局会报出内联数组的元素类型与元素个数。",
+            "原生类型与符号发现。types 搜索类型；describe 返回方法 id、参数、返回类型及可调用状态；symbols 查看地址与特征码 pattern；layout 查看字段偏移及内联数组布局。调用前使用 describe 消除重载歧义。",
             true
         );
         Add
@@ -49,7 +52,7 @@ internal static class ToolCatalog
             typeof(FfcsCallTool),
             nameof(FfcsCallTool.Run),
             "ffcs_call",
-            "复用 FFXIVClientStructs 生成的方法，对原生实例调用成员函数。文本实参按目标签名转换，Utf8String* 与 CStringPointer 参数会按各自布局组装。",
+            "使用 ffcs_index describe 返回的方法 id 在框架线程调用原生方法。JSON 参数区分地址、借用文本、对象引用与 null。借用文本仅在调用期间有效，方法不得保留其指针。",
             false
         );
         Add
@@ -77,7 +80,7 @@ internal static class ToolCatalog
             nameof(MemScanTool.Run),
             "mem_scan",
             "特征码扫描、数值扫描与带会话的收敛过滤。值类型支持 byte、sbyte、short、ushort、int、uint、long、ulong、float、double 与 bool。",
-            true
+            false
         );
         Add
         (
@@ -85,7 +88,7 @@ internal static class ToolCatalog
             typeof(ObserveTool),
             nameof(ObserveTool.Run),
             "observe",
-            "安装观察点：内存变化、原生挂钩、托管挂钩与托管事件。",
+            "安装有期限和采样限制的内存、原生方法、托管方法及事件观察点。方法使用 describe 返回的成员 id。结果经 evidence 游标读取，完成后 remove 解除观察。",
             false
         );
         Add
@@ -94,8 +97,8 @@ internal static class ToolCatalog
             typeof(EvidenceTool),
             nameof(EvidenceTool.Run),
             "evidence",
-            "按游标拉取观察点产生的证据，并支持长轮询等待。",
-            true
+            "按游标拉取观察点产生的证据，并支持长轮询等待。返回 nextCursor 与证据保留边界；gap 表示存在丢失。clear 会清空全部客户端共享证据。",
+            false
         );
         Add
         (
@@ -103,8 +106,8 @@ internal static class ToolCatalog
             typeof(ControlTool),
             nameof(ControlTool.Run),
             "control",
-            "列出线程、挂起与恢复线程。",
-            false
+            "列出进程线程或服务器状态。进程内服务不支持全进程暂停。",
+            true
         );
         Add
         (
@@ -121,7 +124,7 @@ internal static class ToolCatalog
             typeof(CaptureTool),
             nameof(CaptureTool.Run),
             "capture",
-            "抓取一帧画面并附上坐标基准，插件界面会一并包含在内；默认按源分辨率输出，可用 maxDimension 缩放，或配合 region 裁出目标区域放大以辨读细节。",
+            "抓取包含插件界面的游戏帧，或按 screenshot 编号裁剪缓存画面。region 为结构化矩形，maxDimension 可缩小或放大。返回 screenshot 坐标引用，后续输入可直接使用图像像素，不必手工换算。",
             true
         );
         Add
@@ -130,7 +133,7 @@ internal static class ToolCatalog
             typeof(InputTool),
             nameof(InputTool.Run),
             "input",
-            "向游戏注入键鼠输入或执行游戏内斜杠命令。action 只接受 key、mouse、command 三个值；取 mouse 时动作名填在 mouse 参数里，取值是 move、left、right、middle、wheel，省略 mouse 时按 left 处理。鼠标点击会先把真实光标移到目标位置，离开时放回原处。游戏本体经输入设备接口生效，插件界面经窗口消息生效，两者都不需要游戏窗口在前台，也不会影响其它程序。key 与 mouse 的坐标以渲染帧像素为基准，与 capture 一致；command 直接执行例如 /pdr 这样的命令并在框架线程上跑。",
+            "按帧向指定目标播放结构化 actions：game 为游戏本体，plugin 为主窗口内的插件界面。支持点击、双击、拖动、滚动、组合键、插件文本及等待。不会激活游戏窗口或移动桌面光标。使用 screenshot 编号后可直接传图像像素坐标；默认执行后截图。完成表示输入帧已注入，界面效果须依据返回画面判断。command 执行 Dalamud 斜杠命令。",
             false
         );
         Add
@@ -156,15 +159,26 @@ internal static class ToolCatalog
         bool                                        readOnly
     )
     {
-        var method = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static) ?? throw new MissingMethodException(type.FullName, methodName);
-
-        var options = new McpServerToolCreateOptions
+        try
         {
-            Name        = toolName,
-            Description = description,
-            ReadOnly    = readOnly
-        };
+            var method = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static) ?? throw new MissingMethodException(type.FullName, methodName);
 
-        collection.Add(McpServerTool.Create(method, (object?)null, options));
+            var options = new McpServerToolCreateOptions
+            {
+                Name        = toolName,
+                Description = description,
+                ReadOnly    = readOnly,
+                SerializerOptions = new JsonSerializerOptions(McpJsonUtilities.DefaultOptions)
+                {
+                    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
+                }
+            };
+
+            collection.Add(new MCPInvocationTool(McpServerTool.Create(method, (object?)null, options)));
+        }
+        catch (Exception exception)
+        {
+            throw new InvalidOperationException($"创建 MCP 工具“{toolName}”失败：{exception.GetBaseException().Message}", exception);
+        }
     }
 }

@@ -56,7 +56,21 @@ internal sealed class MemoryWatcher : IDisposable
 
             foreach (var observation in this.store.List())
             {
-                if (!observation.Active || observation.Mode != "memwatch" || observation.Address == 0)
+                if (!observation.Active || DateTimeOffset.UtcNow >= observation.ExpiresAt || observation.EvidenceCount >= observation.MaxRecords)
+                {
+                    try
+                    {
+                        ObserveTool.Remove(observation.Id);
+                    }
+                    catch (Exception exception)
+                    {
+                        MCPRuntime.Trace.Write("observation_cleanup_failed", $"{observation.Id}: {exception.Message}");
+                    }
+
+                    continue;
+                }
+
+                if (observation.Mode != "memwatch" || observation.Address == 0)
                     continue;
 
                 if (observation.LastPollTicks != 0 && now - observation.LastPollTicks < observation.PollIntervalMs)

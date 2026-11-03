@@ -71,9 +71,7 @@ internal static class StructureLayout
         {
             0 => throw new McpException($"找不到类型 \"{name}\"。"),
             1 => matches[0],
-            _ => matches.OrderBy(type => type.Namespace?.StartsWith("FFXIVClientStructs", StringComparison.Ordinal) == true ? 0 : 1)
-                        .ThenBy(type => type.FullName, StringComparer.Ordinal)
-                        .First()
+            _ => throw new McpException($"类型名称 {name} 存在歧义，请使用全名：{string.Join(", ", matches.Select(type => type.FullName))}")
         };
 
         lock (CACHE_LOCK)
@@ -164,7 +162,9 @@ internal static class StructureLayout
         if (type.GetCustomAttribute<InlineArrayAttribute>() is not { } attribute)
             return null;
 
-        var elementType = type.IsGenericType ? type.GetGenericArguments()[0] : typeof(byte);
+        var elementType = type.IsGenericType ?
+                              type.GetGenericArguments()[0] :
+                              typeof(byte);
         return (elementType, attribute.Length);
     }
 
@@ -178,6 +178,18 @@ internal static class StructureLayout
         Type type
     )
     {
+        if (type.IsPrimitive)
+        {
+            return Type.GetTypeCode(type) switch
+            {
+                TypeCode.Boolean or TypeCode.Byte or TypeCode.SByte  => 1,
+                TypeCode.Char or TypeCode.Int16 or TypeCode.UInt16   => 2,
+                TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Single => 4,
+                TypeCode.Int64 or TypeCode.UInt64 or TypeCode.Double => 8,
+                _                                                    => IntPtr.Size
+            };
+        }
+
         var layout = type.StructLayoutAttribute;
         if (layout is { Size: > 0 })
             return layout.Size;
@@ -237,11 +249,11 @@ internal static class StructureLayout
         if (fieldType.IsPointer)
             return IntPtr.Size;
 
-        if (fieldType.IsEnum)
-            return GetSize(Enum.GetUnderlyingType(fieldType));
-
-        return fieldType.IsPrimitive
-                   ? Marshal.SizeOf(fieldType)
-                   : GetSize(fieldType);
+        return GetSize
+        (
+            fieldType.IsEnum ?
+                Enum.GetUnderlyingType(fieldType) :
+                fieldType
+        );
     }
 }

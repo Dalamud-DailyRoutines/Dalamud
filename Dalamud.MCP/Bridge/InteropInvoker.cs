@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using InteropGenerator.Runtime;
@@ -51,14 +51,14 @@ internal static unsafe class InteropInvoker
     /// <returns>调用结果。</returns>
     public static object? Invoke
     (
-        MethodInfo method,
-        nint       thisPointer,
-        string[]   rawArguments
+        MethodInfo    method,
+        nint          thisPointer,
+        JsonElement[] rawArguments
     )
     {
         var parameters = method.GetParameters();
 
-        if (parameters.Length != rawArguments.Length)
+        if (parameters.Length < rawArguments.Length || parameters.Count(parameter => !parameter.IsOptional) > rawArguments.Length)
         {
             throw new McpException
             (
@@ -66,73 +66,73 @@ internal static unsafe class InteropInvoker
             );
         }
 
-        var converted = new object?[parameters.Length];
-        for (var index = 0; index < parameters.Length; index++)
-            converted[index] = ConvertArgument(rawArguments[index], parameters[index].ParameterType);
+        var allocations = new List<nint>();
 
-        return GetInvoker(method)(thisPointer, converted);
+        try
+        {
+            var converted = new object?[parameters.Length];
+
+            for (var index = 0; index < parameters.Length; index++)
+            {
+                converted[index] = index < rawArguments.Length ?
+                                       ConvertArgument(rawArguments[index], parameters[index].ParameterType, allocations) :
+                                       parameters[index].DefaultValue;
+            }
+
+            return GetInvoker(method)(thisPointer, converted);
+        }
+        finally
+        {
+            foreach (var allocation in allocations)
+                Marshal.FreeHGlobal(allocation);
+        }
     }
 
-    /// <summary>
-    /// 把文本转换成目标参数类型。文本形式的 <c>Utf8String*</c> 会按 Utf8String 布局在新分配的内存里组装。
-    /// </summary>
-    /// <param name="raw">文本形式的值。</param>
-    /// <param name="targetType">目标类型。</param>
-    /// <returns>转换后的值。</returns>
-    public static object? ConvertArgument
-    (
-        string raw,
-        Type   targetType
-    )
+    private static object? ConvertArgument(JsonElement value, Type targetType, List<nint> allocations)
     {
-        if (targetType == typeof(string))
-            return raw;
+        if (!targetType.IsPointer && targetType != typeof(CStringPointer))
+            return RuntimeArguments.Bind(value, targetType);
 
-        if (targetType.IsPointer)
+        switch (value.ValueKind)
         {
-            var pointedTo = targetType.GetElementType()!;
-
-            if (pointedTo == typeof(Utf8String))
-                return checked((IntPtr)AllocUtf8String(raw));
-
-            if (pointedTo == typeof(byte) && LooksLikeText(raw))
-                return checked((IntPtr)AllocUtf8Bytes(raw));
-
-            return checked((IntPtr)MemoryAccess.ParseAddress(raw));
+            case JsonValueKind.Null:
+                return targetType == typeof(CStringPointer) ?
+                           (CStringPointer)(byte*)0 :
+                           IntPtr.Zero;
         }
 
-        if (targetType == typeof(CStringPointer))
-            return (CStringPointer)AllocUtf8Bytes(raw);
+        if (value.ValueKind == JsonValueKind.Object && value.TryGetProperty("text", out var text))
+        {
+            if (targetType == typeof(CStringPointer))
+                return (CStringPointer)AllocUtf8Bytes(text.GetString()!, allocations);
 
-        var underlying = Nullable.GetUnderlyingType(targetType) ?? targetType;
+            if (targetType.GetElementType() == typeof(Utf8String))
+                return (IntPtr)AllocUtf8String(text.GetString()!, allocations);
 
-        if (underlying == typeof(nint) || underlying == typeof(IntPtr))
-            return checked((IntPtr)MemoryAccess.ParseAddress(raw));
+            if (targetType.GetElementType() == typeof(byte))
+                return (IntPtr)AllocUtf8Bytes(text.GetString()!, allocations);
 
-        if (underlying == typeof(nuint) || underlying == typeof(UIntPtr))
-            return checked((UIntPtr)(ulong)MemoryAccess.ParseAddress(raw));
+            throw new McpException($"{targetType} 不支持文本参数。");
+        }
 
-        if (underlying == typeof(bool))
-            return bool.Parse(raw);
+        if (value.ValueKind != JsonValueKind.Object || !value.TryGetProperty("address", out var address))
+            throw new McpException("原生指针参数需要 {\"address\":\"0x...\"}、{\"text\":\"文本\"} 或 null。");
 
-        if (underlying.IsEnum)
-            return Enum.Parse(underlying, raw, true);
-
-        if (underlying == typeof(char))
-            return raw.Length > 0 ? raw[0] : throw new McpException("无法把空字符串转换为 char。");
-
-        return underlying.IsPrimitive
-                   ? Convert.ChangeType(raw, underlying, CultureInfo.InvariantCulture)
-                   : throw new McpException($"暂不支持把文本转换为 {targetType.Name}。");
+        var pointer = (nint)MemoryAccess.ParseAddress(address.GetString()!);
+        return targetType == typeof(CStringPointer) ?
+                   (CStringPointer)(byte*)pointer :
+                   pointer;
     }
 
     private static byte* AllocUtf8Bytes
     (
-        string text
+        string     text,
+        List<nint> allocations
     )
     {
         var bytes  = Encoding.UTF8.GetBytes(text);
         var memory = (byte*)Marshal.AllocHGlobal(bytes.Length + 1);
+        allocations.Add((nint)memory);
 
         for (var index = 0; index < bytes.Length; index++)
             memory[index] = bytes[index];
@@ -143,12 +143,14 @@ internal static unsafe class InteropInvoker
 
     private static Utf8String* AllocUtf8String
     (
-        string text
+        string     text,
+        List<nint> allocations
     )
     {
         var size   = StructureLayout.GetSize(typeof(Utf8String));
         var bytes  = Encoding.UTF8.GetBytes(text);
         var memory = (byte*)Marshal.AllocHGlobal(size);
+        allocations.Add((nint)memory);
 
         for (var index = 0; index < size; index++)
             memory[index] = 0;
@@ -175,29 +177,12 @@ internal static unsafe class InteropInvoker
         *(long*)(memory + bufferSize.Offset)    = bufferCapacity;
         *(long*)(memory + bufferUsed.Offset)    = bytes.Length + 1L;
         *(long*)(memory + stringLength.Offset)  = bytes.Length;
-        *(memory + isEmpty.Offset)              = bytes.Length == 0 ? (byte)1 : (byte)0;
-        *(memory + useInline.Offset)            = 1;
+        *(memory + isEmpty.Offset) = bytes.Length == 0 ?
+                                         (byte)1 :
+                                         (byte)0;
+        *(memory + useInline.Offset) = 1;
 
         return (Utf8String*)memory;
-    }
-
-    private static bool LooksLikeText
-    (
-        string raw
-    )
-    {
-        var text = raw.Trim();
-
-        if (text.Length == 0)
-            return false;
-
-        return !(text.StartsWith("0x", StringComparison.OrdinalIgnoreCase) && long.TryParse
-        (
-            text[2..],
-            NumberStyles.HexNumber,
-            CultureInfo.InvariantCulture,
-            out _
-        ));
     }
 
     private static InteropInvocation GetInvoker
@@ -249,7 +234,13 @@ internal static unsafe class InteropInvoker
             EmitLoadArgument(il, parameters[index].ParameterType);
         }
 
-        il.Emit(method.IsVirtual ? OpCodes.Callvirt : OpCodes.Call, method);
+        il.Emit
+        (
+            method.IsVirtual ?
+                OpCodes.Callvirt :
+                OpCodes.Call,
+            method
+        );
         EmitReturn(il, method.ReturnType);
 
         return dynamicMethod.CreateDelegate<InteropInvocation>();

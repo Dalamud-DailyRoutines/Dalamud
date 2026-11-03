@@ -1,4 +1,5 @@
 using Dalamud.Configuration.Internal;
+using ModelContextProtocol.Server;
 using Serilog;
 
 namespace Dalamud;
@@ -57,9 +58,21 @@ internal sealed class MCPHost : IInternalDisposableService
         int port
     )
     {
+        McpServerPrimitiveCollection<McpServerTool> tools;
+
         try
         {
-            this.server = new MCPHttpServer(port, ToolCatalog.Create());
+            tools = ToolCatalog.Create();
+        }
+        catch (Exception exception)
+        {
+            ReportFailure("创建工具目录失败", exception);
+            return;
+        }
+
+        try
+        {
+            this.server = new MCPHttpServer(port, tools);
         }
         catch (Exception exception)
         {
@@ -74,6 +87,7 @@ internal sealed class MCPHost : IInternalDisposableService
         }
         catch (Exception exception)
         {
+            this.server.Dispose();
             this.server = null;
             ReportFailure("启动监听失败", exception);
             return;

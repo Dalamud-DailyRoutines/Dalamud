@@ -1,106 +1,95 @@
-using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
+using ModelContextProtocol;
 
 namespace Dalamud;
 
-/// <summary>
-/// 在无状态 HTTP 传输之上维持跨请求可引用的托管对象与原生指针。
-/// </summary>
+/// <summary>可显式释放的有界强引用表，已有引用不会被自动淘汰。</summary>
 internal sealed class ReferenceTable
 {
-    private const int MAX_OBJECTS = 4096;
+    private const    int                        MAX_OBJECTS = 4096;
+    private readonly Lock                       gate        = new();
+    private readonly Dictionary<string, object> objects     = new(StringComparer.Ordinal);
+    private readonly Dictionary<object, string> identities  = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<string, nint>   pointers    = new(StringComparer.Ordinal);
+    private          int                        nextObjectId;
+    private          int                        nextPointerId;
 
-    private readonly ConcurrentDictionary<string, WeakReference> objects      = new(StringComparer.Ordinal);
-    private readonly ConcurrentQueue<string>                     objectOrder  = new();
-    private readonly ConcurrentDictionary<string, nint>          pointers     = new(StringComparer.Ordinal);
-    private readonly ConcurrentQueue<string>                     pointerOrder = new();
-    private          int                                         nextObjectId;
-    private          int                                         nextPointerId;
-
-    /// <summary>
-    /// 注册一个托管对象。
-    /// </summary>
-    /// <param name="value">要注册的对象。</param>
-    /// <returns>可用于后续请求的引用 id。</returns>
-    public string TrackObject
-    (
-        object value
-    )
+    public string TrackObject(object value)
     {
-        this.TrimObjects();
+        lock (this.gate)
+        {
+            if (this.identities.TryGetValue(value, out var existing))
+                return existing;
 
-        var id = $"o{Interlocked.Increment(ref this.nextObjectId)}";
-        this.objects[id] = new WeakReference(value);
-        this.objectOrder.Enqueue(id);
-        return id;
+            if (this.objects.Count >= MAX_OBJECTS)
+                throw new McpException("引用表已满，请使用 object_access release 释放引用。");
+
+            var id = $"o{++this.nextObjectId}";
+            this.objects.Add(id, value);
+            this.identities.Add(value, id);
+            return id;
+        }
     }
 
-    /// <summary>
-    /// 注册一个原生指针。
-    /// </summary>
-    /// <param name="address">要注册的地址。</param>
-    /// <returns>可用于后续请求的引用 id。</returns>
-    public string TrackPointer
-    (
-        nint address
-    )
+    public string TrackPointer(nint address)
     {
-        this.TrimPointers();
+        lock (this.gate)
+        {
+            if (this.pointers.Count >= MAX_OBJECTS)
+                throw new McpException("指针引用表已满，请释放引用。");
 
-        var id = $"p{Interlocked.Increment(ref this.nextPointerId)}";
-        this.pointers[id] = address;
-        this.pointerOrder.Enqueue(id);
-        return id;
+            var id = $"p{++this.nextPointerId}";
+            this.pointers.Add(id, address);
+            return id;
+        }
     }
 
-    /// <summary>
-    /// 按引用 id 取回托管对象。
-    /// </summary>
-    /// <param name="id">引用 id。</param>
-    /// <param name="value">取回的对象。</param>
-    /// <returns>是否取回成功。</returns>
-    public bool TryGetObject
-    (
-        string      id,
-        out object? value
-    )
+    public bool TryGetObject(string id, out object? value)
     {
-        value = null;
-
-        if (!this.objects.TryGetValue(id, out var reference))
-            return false;
-
-        value = reference.Target;
-        return value is not null;
+        lock (this.gate)
+            return this.objects.TryGetValue(id, out value);
     }
 
-    /// <summary>
-    /// 按引用 id 取回原生指针。
-    /// </summary>
-    /// <param name="id">引用 id。</param>
-    /// <param name="address">取回的地址。</param>
-    /// <returns>是否取回成功。</returns>
-    public bool TryGetPointer
-    (
-        string   id,
-        out nint address
-    ) => this.pointers.TryGetValue(id, out address);
-
-    private void TrimObjects()
+    public object GetObject(string id)
     {
-        while (this.objects.Count >= MAX_OBJECTS && this.objectOrder.TryDequeue(out var oldest))
-            this.objects.TryRemove(oldest, out _);
-
-        while (this.objectOrder.Count > MAX_OBJECTS)
-            this.objectOrder.TryDequeue(out _);
+        lock (this.gate)
+            return this.objects.TryGetValue(id, out var value) ?
+                       value :
+                       throw new McpException($"引用 {id} 不存在或已释放，请重新读取目标。");
     }
 
-    private void TrimPointers()
+    public bool TryGetPointer(string id, out nint address)
     {
-        while (this.pointers.Count >= MAX_OBJECTS && this.pointerOrder.TryDequeue(out var oldest))
-            this.pointers.TryRemove(oldest, out _);
-
-        while (this.pointerOrder.Count > MAX_OBJECTS)
-            this.pointerOrder.TryDequeue(out _);
+        lock (this.gate)
+            return this.pointers.TryGetValue(id, out address);
     }
+
+    public bool Release(string id)
+    {
+        lock (this.gate)
+        {
+            if (this.objects.Remove(id, out var value))
+            {
+                this.identities.Remove(value);
+                return true;
+            }
+
+            return this.pointers.Remove(id);
+        }
+    }
+
+    public void Clear()
+    {
+        lock (this.gate)
+        {
+            this.objects.Clear();
+            this.identities.Clear();
+            this.pointers.Clear();
+        }
+    }
+
+    public static bool IsObjectReference(string value) =>
+        value.Length > 1 && value[0] == 'o' && int.TryParse(value.AsSpan(1), NumberStyles.None, CultureInfo.InvariantCulture, out _);
 }

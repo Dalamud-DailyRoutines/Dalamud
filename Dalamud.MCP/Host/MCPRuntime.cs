@@ -8,8 +8,9 @@ namespace Dalamud;
 /// </summary>
 internal static class MCPRuntime
 {
-    private static MemoryWatcher? watcher;
-    private static int            nextScanSessionId;
+    private static readonly Lock           WatcherGate = new();
+    private static          MemoryWatcher? watcher;
+    private static          int            nextScanSessionId;
 
     /// <summary>Gets 引用表。</summary>
     public static ReferenceTable References { get; } = new();
@@ -46,11 +47,14 @@ internal static class MCPRuntime
     /// </summary>
     public static void EnsureWatcher()
     {
-        if (watcher is not null)
-            return;
+        lock (WatcherGate)
+        {
+            if (watcher is not null)
+                return;
 
-        watcher = new MemoryWatcher(Observations);
-        watcher.Start();
+            watcher = new MemoryWatcher(Observations);
+            watcher.Start();
+        }
     }
 
     /// <summary>
@@ -58,13 +62,30 @@ internal static class MCPRuntime
     /// </summary>
     public static void Shutdown()
     {
-        watcher?.Dispose();
-        watcher = null;
+        lock (WatcherGate)
+        {
+            watcher?.Dispose();
+            watcher = null;
+        }
 
-        foreach (var (id, hook) in Hooks)
-            HookBridge.Uninstall(id, hook);
+        foreach (var observation in Observations.List())
+        {
+            try
+            {
+                ObserveTool.Remove(observation.Id);
+            }
+            catch (Exception exception)
+            {
+                Trace.Write("shutdown_cleanup_failed", $"{observation.Id}: {exception.Message}");
+            }
+        }
 
-        Hooks.Clear();
+        InputSender.Stop();
+        CaptureStore.Clear();
         ManagedHookManager.Clear();
+        Hooks.Clear();
+        ScanSessions.Clear();
+        References.Clear();
+        Observations.Clear();
     }
 }

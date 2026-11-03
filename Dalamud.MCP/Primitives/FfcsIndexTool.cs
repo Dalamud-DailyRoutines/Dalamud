@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.ComponentModel;
+using System.Text.Json;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +16,16 @@ namespace Dalamud;
 /// </summary>
 internal static class FfcsIndexTool
 {
+    public enum Operation
+    {
+        Types,
+        Symbols,
+        Describe,
+        Layout,
+        Unresolved,
+        ByAddr
+    }
+
     private const           string FFCS_ASSEMBLY_PREFIX = "FFXIVClientStructs";
     private static readonly Type   ADDRESS_TYPE         = typeof(Address);
 
@@ -29,26 +41,31 @@ internal static class FfcsIndexTool
     /// <returns>JSON 文本。</returns>
     public static string Run
     (
-        string  action,
-        string? type    = null,
-        string? filter  = null,
-        string? address = null,
-        int     offset  = 0,
-        int     limit   = 50
+        [Description("types 搜索类型；symbols 查询符号；describe 返回完整方法、参数与成员 id；layout 返回字段布局；unresolved 查看失效签名；by_addr 定位地址。")]
+        Operation action,
+        [Description("类型全名或简单名，symbols 与 layout 需要。")]
+        string? type = null,
+        [Description("按名称做不区分大小写的包含匹配。")] string? filter  = null,
+        [Description("by_addr 时给出的地址。")]  string? address = null,
+        [Description("结果偏移。")]            int     offset  = 0,
+        [Description("最多返回的条目数。")]        int     limit   = 50
     )
     {
         var page = Math.Clamp(limit, 1, 500);
         var skip = Math.Max(offset, 0);
 
-        return action.ToLowerInvariant() switch
+        return action.ToString().ToLowerInvariant() switch
         {
-            "types"      => ListTypes(filter, skip, page),
-            "symbols"    => type is null ? SearchSymbols(filter, skip, page) : ListSymbols(RequireType(type), filter, skip, page),
+            "types" => ListTypes(filter, skip, page),
+            "symbols" => type is null ?
+                             SearchSymbols(filter, skip, page) :
+                             ListSymbols(RequireType(type), filter, skip, page),
             "layout"     => ListLayout(RequireType(type), skip, page),
+            "describe"   => MemberCatalog.Describe(RequireType(type), filter, skip, page, true),
             "unresolved" => ListUnresolved(filter, skip, page),
-            "by_addr" => string.IsNullOrWhiteSpace(address)
-                             ? throw new McpException("by_addr 需要提供 address。")
-                             : FindByAddress((nint)MemoryAccess.ParseAddress(address)),
+            "byaddr" => string.IsNullOrWhiteSpace(address) ?
+                            throw new McpException("by_addr 需要提供 address。") :
+                            FindByAddress((nint)MemoryAccess.ParseAddress(address)),
             _ => throw new McpException($"不支持的操作 \"{action}\"，可用值为 types、symbols、layout、unresolved、by_addr。")
         };
     }
@@ -57,9 +74,9 @@ internal static class FfcsIndexTool
     (
         string? name
     ) =>
-        string.IsNullOrWhiteSpace(name)
-            ? throw new McpException("该操作需要提供 type。")
-            : StructureLayout.FindType(name);
+        string.IsNullOrWhiteSpace(name) ?
+            throw new McpException("该操作需要提供 type。") :
+            StructureLayout.FindType(name);
 
     private static string ListTypes
     (
@@ -157,8 +174,17 @@ internal static class FfcsIndexTool
             var value = entry.Value!;
             builder.Append("{\"name\":").Append(ValueFormatter.Format(entry.Field.Name, 0));
             builder.Append(",\"address\":").Append(ValueFormatter.Format(value.Value,   0));
-            builder.Append(",\"resolved\":").Append(value.Value == 0 ? "false" : "true");
-            builder.Append(",\"signature\":").Append(ValueFormatter.Format(value.String, 0));
+            builder.Append(",\"resolved\":").Append
+            (
+                value.Value == 0 ?
+                    "false" :
+                    "true"
+            );
+            builder.Append(",\"pattern\":").Append(ValueFormatter.Format(value.String, 0));
+            var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                              .Where(method => method.Name == entry.Field.Name)
+                              .Select(method => MemberCatalog.DescribeMember(method, true));
+            builder.Append(",\"methods\":").Append(JsonSerializer.Serialize(methods));
             builder.Append('}');
         }
 
@@ -212,8 +238,13 @@ internal static class FfcsIndexTool
             builder.Append("{\"type\":").Append(ValueFormatter.Format(entry.TypeName,       0));
             builder.Append(",\"name\":").Append(ValueFormatter.Format(entry.Name,           0));
             builder.Append(",\"address\":").Append(ValueFormatter.Format(entry.Value.Value, 0));
-            builder.Append(",\"resolved\":").Append(entry.Value.Value == 0 ? "false" : "true");
-            builder.Append(",\"signature\":").Append(ValueFormatter.Format(entry.Value.String, 0));
+            builder.Append(",\"resolved\":").Append
+            (
+                entry.Value.Value == 0 ?
+                    "false" :
+                    "true"
+            );
+            builder.Append(",\"pattern\":").Append(ValueFormatter.Format(entry.Value.String, 0));
             builder.Append('}');
         }
 
@@ -237,7 +268,12 @@ internal static class FfcsIndexTool
         builder.Append("{\"type\":").Append(ValueFormatter.Format(type.FullName ?? type.Name, 0));
 
         var typeSize = StructureLayout.GetSize(type);
-        builder.Append(",\"size\":").Append(typeSize < 0 ? "null" : typeSize.ToString(CultureInfo.InvariantCulture));
+        builder.Append(",\"size\":").Append
+        (
+            typeSize < 0 ?
+                "null" :
+                typeSize.ToString(CultureInfo.InvariantCulture)
+        );
         builder.Append(",\"total\":").Append(fields.Count).Append(",\"fields\":[");
 
         var page = fields.Skip(skip).Take(limit).ToArray();
@@ -250,7 +286,12 @@ internal static class FfcsIndexTool
             var field = page[index];
             builder.Append("{\"name\":").Append(ValueFormatter.Format(field.Name, 0));
             builder.Append(",\"offset\":").Append(field.Offset);
-            builder.Append(",\"size\":").Append(field.Size < 0 ? "null" : field.Size.ToString(CultureInfo.InvariantCulture));
+            builder.Append(",\"size\":").Append
+            (
+                field.Size < 0 ?
+                    "null" :
+                    field.Size.ToString(CultureInfo.InvariantCulture)
+            );
             builder.Append(",\"type\":").Append(ValueFormatter.Format(field.FieldType.FullName ?? field.FieldType.Name, 0));
 
             if (StructureLayout.TryGetInlineArray(field.FieldType) is { } inlineArray)
@@ -288,7 +329,7 @@ internal static class FfcsIndexTool
             var value = Convert.ChangeType(Enum.Parse(type, names[index]), underlying, CultureInfo.InvariantCulture);
 
             builder.Append("{\"name\":").Append(ValueFormatter.Format(names[index], 0));
-            builder.Append(",\"value\":").Append(ValueFormatter.Format(value, 0));
+            builder.Append(",\"value\":").Append(ValueFormatter.Format(value,       0));
             builder.Append('}');
         }
 
@@ -321,8 +362,8 @@ internal static class FfcsIndexTool
                 builder.Append(',');
 
             var entry = page[index];
-            builder.Append("{\"name\":").Append(ValueFormatter.Format(entry.Name,        0));
-            builder.Append(",\"signature\":").Append(ValueFormatter.Format(entry.String, 0));
+            builder.Append("{\"name\":").Append(ValueFormatter.Format(entry.Name,      0));
+            builder.Append(",\"pattern\":").Append(ValueFormatter.Format(entry.String, 0));
             builder.Append('}');
         }
 
@@ -352,7 +393,12 @@ internal static class FfcsIndexTool
             var start = module.BaseAddress;
             var end   = start + module.ModuleMemorySize;
             builder.Append(",\"module\":").Append(ValueFormatter.Format(module.ModuleName, 0));
-            builder.Append(",\"inModule\":").Append(address >= start && address < end ? "true" : "false");
+            builder.Append(",\"inModule\":").Append
+            (
+                address >= start && address < end ?
+                    "true" :
+                    "false"
+            );
 
             if (address >= start && address < end)
                 builder.Append(",\"rva\":\"").Append(ToString(address - start)).Append('"');
@@ -385,7 +431,9 @@ internal static class FfcsIndexTool
         nint left,
         nint right
     ) =>
-        left > right ? left - right : right - left;
+        left > right ?
+            left  - right :
+            right - left;
 
     private static string ToString
     (

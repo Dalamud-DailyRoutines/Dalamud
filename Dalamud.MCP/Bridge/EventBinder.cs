@@ -72,16 +72,26 @@ internal static class EventBinder
         object?[]        arguments
     )
     {
-        var builder = new StringBuilder(128);
-        builder.Append("event=").Append(observation.EventName);
-
-        for (var index = 0; index < arguments.Length; index++)
+        try
         {
-            builder.Append(" arg").Append(index).Append('=');
-            builder.Append(ValueFormatter.Format(arguments[index], 1));
+            store.Record
+            (
+                observation.Id,
+                "hostevent",
+                observation.EventName ?? "事件",
+                null,
+                CaptureStack(),
+                new
+                {
+                    arguments = Array.ConvertAll(arguments, argument => ValueFormatter.Snapshot(argument)),
+                    threadId  = Environment.CurrentManagedThreadId
+                }
+            );
         }
-
-        store.Record(observation.Id, "hostevent", builder.ToString(), null, CaptureStack());
+        catch (Exception)
+        {
+            // ignored
+        }
     }
 
     private static string CaptureStack()

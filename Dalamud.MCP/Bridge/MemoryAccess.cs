@@ -38,9 +38,9 @@ internal static unsafe class MemoryAccess
             {
                 builder.Append
                 (
-                    column < rowLength
-                        ? bytes[row + column].ToString("x2", CultureInfo.InvariantCulture) + " "
-                        : "   "
+                    column < rowLength ?
+                        bytes[row + column].ToString("x2", CultureInfo.InvariantCulture) + " " :
+                        "   "
                 );
             }
 
@@ -49,7 +49,12 @@ internal static unsafe class MemoryAccess
             for (var column = 0; column < rowLength; column++)
             {
                 var value = bytes[row + column];
-                builder.Append(value is >= 32 and < 127 ? (char)value : '.');
+                builder.Append
+                (
+                    value is >= 32 and < 127 ?
+                        (char)value :
+                        '.'
+                );
             }
 
             builder.Append('\n');
@@ -188,9 +193,9 @@ internal static unsafe class MemoryAccess
         if (address == 0)
             throw new McpException("地址为 0。");
 
-        var size = type.IsPointer || type == typeof(nint) || type == typeof(IntPtr) || type == typeof(nuint) || type == typeof(UIntPtr)
-                       ? IntPtr.Size
-                       : StructureLayout.GetSize(type);
+        var size = type.IsPointer || type == typeof(nint) || type == typeof(IntPtr) || type == typeof(nuint) || type == typeof(UIntPtr) ?
+                       IntPtr.Size :
+                       StructureLayout.GetSize(type);
 
         if (size <= 0)
             throw new McpException($"无法确定 {type.Name} 的大小。");
@@ -243,9 +248,9 @@ internal static unsafe class MemoryAccess
         if (type == typeof(char))
             return *(char*)address;
 
-        return type.IsValueType
-                   ? Marshal.PtrToStructure(address, type)
-                   : throw new McpException($"暂不支持读取类型 {type.Name}。");
+        return type.IsValueType ?
+                   Marshal.PtrToStructure(address, type) :
+                   throw new McpException($"暂不支持读取类型 {type.Name}。");
     }
 
     /// <summary>
@@ -264,9 +269,9 @@ internal static unsafe class MemoryAccess
         if (address == 0)
             throw new McpException("地址为 0。");
 
-        var size = type.IsPointer || type == typeof(nint) || type == typeof(IntPtr) || type == typeof(nuint) || type == typeof(UIntPtr)
-                       ? IntPtr.Size
-                       : StructureLayout.GetSize(type);
+        var size = type.IsPointer || type == typeof(nint) || type == typeof(IntPtr) || type == typeof(nuint) || type == typeof(UIntPtr) ?
+                       IntPtr.Size :
+                       StructureLayout.GetSize(type);
 
         if (size <= 0)
             throw new McpException($"无法确定 {type.Name} 的大小。");
@@ -313,9 +318,13 @@ internal static unsafe class MemoryAccess
         else if (type == typeof(double))
             *(double*)address = double.Parse(raw, CultureInfo.InvariantCulture);
         else if (type == typeof(bool))
-            *(byte*)address = bool.Parse(raw) ? (byte)1 : (byte)0;
+            *(byte*)address = bool.Parse(raw) ?
+                                  (byte)1 :
+                                  (byte)0;
         else if (type == typeof(char))
-            *(char*)address = raw.Length > 0 ? raw[0] : throw new McpException("无法把空字符串转换为 char。");
+            *(char*)address = raw.Length > 0 ?
+                                  raw[0] :
+                                  throw new McpException("无法把空字符串转换为 char。");
         else
             throw new McpException($"暂不支持写入类型 {type.Name}。");
     }
@@ -332,8 +341,15 @@ internal static unsafe class MemoryAccess
     {
         var text = raw.Trim();
 
-        return text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
-                   ? long.Parse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture)
-                   : long.Parse(text,      NumberStyles.Integer,   CultureInfo.InvariantCulture);
+        if (text.StartsWith('p'))
+        {
+            return MCPRuntime.References.TryGetPointer(text, out var pointer) ?
+                       pointer :
+                       throw new McpException($"指针引用 {text} 不存在或已释放。");
+        }
+
+        return text.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ?
+                   long.Parse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture) :
+                   long.Parse(text,      NumberStyles.Integer,   CultureInfo.InvariantCulture);
     }
 }

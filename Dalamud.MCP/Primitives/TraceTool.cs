@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 
@@ -16,8 +17,8 @@ internal static class TraceTool
     /// <returns>JSON 文本。</returns>
     public static string Run
     (
-        int     maxLines = 50,
-        string? filter   = null
+        [Description("最多返回的记录条数。")]       int     maxLines = 50,
+        [Description("按内容做不区分大小写的包含匹配。")] string? filter   = null
     )
     {
         var lines = MCPRuntime.Trace.Tail(Math.Clamp(maxLines, 1, 2000));
