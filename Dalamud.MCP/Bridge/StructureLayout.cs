@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Loader;
 using System.Threading;
 using ModelContextProtocol;
 
@@ -18,9 +19,9 @@ internal static class StructureLayout
     private static readonly Dictionary<string, Type>                         TYPE_CACHE  = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// 按名称查找类型，优先在 FFXIVClientStructs 中查找。
+    /// 按名称查找类型，并合并程序集转发得到的同一类型。
     /// </summary>
-    /// <param name="name">类型全名或简单名。</param>
+    /// <param name="name">程序集限定名、类型全名或简单名。</param>
     /// <returns>类型。</returns>
     public static Type FindType
     (
@@ -33,9 +34,18 @@ internal static class StructureLayout
                 return cached;
         }
 
-        var matches = new List<Type>();
+        var matches = new HashSet<Type>();
 
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        if (name.Contains(',', StringComparison.Ordinal))
+        {
+            var qualified = Type.GetType(name, false, false);
+            if (qualified is not null)
+                matches.Add(qualified);
+        }
+
+        foreach (var assembly in name.Contains(',', StringComparison.Ordinal) ?
+                                     [] :
+                                     AppDomain.CurrentDomain.GetAssemblies())
         {
             if (assembly.IsDynamic)
                 continue;
@@ -45,7 +55,7 @@ internal static class StructureLayout
                 matches.Add(exact);
         }
 
-        if (matches.Count == 0)
+        if (matches.Count == 0 && !name.Contains(',', StringComparison.Ordinal))
         {
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -63,15 +73,18 @@ internal static class StructureLayout
                     types = [.. exception.Types.Where(type => type is not null).Select(type => type!)];
                 }
 
-                matches.AddRange(types.Where(type => string.Equals(type.Name, name, StringComparison.Ordinal)));
+                matches.UnionWith(types.Where(type => string.Equals(type.Name, name, StringComparison.Ordinal)));
             }
         }
 
         var resolved = matches.Count switch
         {
             0 => throw new McpException($"找不到类型 \"{name}\"。"),
-            1 => matches[0],
-            _ => throw new McpException($"类型名称 {name} 存在歧义，请使用全名：{string.Join(", ", matches.Select(type => type.FullName))}")
+            1 => matches.Single(),
+            _ => throw new McpException
+                 (
+                     $"类型名称 {name} 存在歧义，请使用程序集限定名；候选及加载上下文：{string.Join("; ", matches.Select(type => $"{type.AssemblyQualifiedName} [context={AssemblyLoadContext.GetLoadContext(type.Assembly)?.Name}]"))}"
+                 )
         };
 
         lock (CACHE_LOCK)

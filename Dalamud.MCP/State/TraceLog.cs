@@ -1,5 +1,7 @@
 using System.Linq;
+using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -20,13 +22,15 @@ internal sealed class TraceLog
     /// <summary>
     /// 初始化 <see cref="TraceLog"/> 类的新实例。
     /// </summary>
-    public TraceLog() => this.FilePath = Path.Combine
-                         (
-                             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                             "XIVLauncherCN",
-                             DIRECTORY_NAME,
-                             FILE_NAME
-                         );
+    /// <param name="filePath">日志路径，省略时使用运行时默认路径。</param>
+    public TraceLog(string? filePath = null) => this.FilePath = filePath ??
+                                                                Path.Combine
+                                                                (
+                                                                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                                                                    "XIVLauncherCN",
+                                                                    DIRECTORY_NAME,
+                                                                    FILE_NAME
+                                                                );
 
     /// <summary>
     /// Gets trace 文件的完整路径。
@@ -72,21 +76,95 @@ internal sealed class TraceLog
     }
 
     /// <summary>
-    /// 读取 trace 文件尾部的若干行。
+    /// 筛选日志并按行号向前分页，限制返回的 JSON 字符数。
     /// </summary>
     /// <param name="maxLines">最多返回的行数。</param>
-    /// <returns>按时间顺序排列的行。</returns>
-    public string[] Tail
+    /// <param name="filter">内容筛选条件。</param>
+    /// <param name="before">只读取此行号之前的记录，零表示从最新记录开始。</param>
+    /// <param name="maxCharacters">返回的 JSON 字符数上限。</param>
+    /// <returns>包含记录与分页游标的 JSON。</returns>
+    public string Tail
     (
-        int maxLines
+        int     maxLines,
+        string? filter,
+        int     before,
+        int     maxCharacters
     )
     {
         lock (this.writeLock)
         {
-            if (!File.Exists(this.FilePath))
-                return [];
+            var matches       = new Queue<(int Number, string Text)>();
+            var lineNumber    = 0;
+            var matchingCount = 0;
 
-            return [.. File.ReadLines(this.FilePath, Encoding.UTF8).TakeLast(maxLines)];
+            if (File.Exists(this.FilePath))
+            {
+                foreach (var line in File.ReadLines(this.FilePath, Encoding.UTF8))
+                {
+                    lineNumber++;
+                    if (before > 0 && lineNumber >= before)
+                        break;
+
+                    if (!string.IsNullOrWhiteSpace(filter) && !line.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    matchingCount++;
+                    matches.Enqueue((lineNumber, line));
+                    if (matches.Count > maxLines)
+                        matches.Dequeue();
+                }
+            }
+
+            var lines = new JsonArray();
+            var response = new JsonObject
+            {
+                ["file"]       = this.FilePath,
+                ["lines"]      = lines,
+                ["hasMore"]    = false,
+                ["nextBefore"] = null,
+                ["truncated"]  = false
+            };
+            var remaining    = maxCharacters - response.ToJsonString().Length - 128;
+            var recordBudget = Math.Min(2048, remaining - 64);
+            var oldest       = 0;
+
+            foreach (var match in matches.Reverse())
+            {
+                JsonNode record;
+
+                if (match.Text.Length > recordBudget)
+                {
+                    record = new JsonObject
+                    {
+                        ["line"]               = match.Number,
+                        ["truncated"]          = true,
+                        ["originalCharacters"] = match.Text.Length,
+                        ["preview"]            = match.Text[..Math.Min(match.Text.Length, (recordBudget - 128) / 6)]
+                    };
+                }
+                else
+                {
+                    record         = JsonNode.Parse(match.Text)!;
+                    record["line"] = match.Number;
+                }
+
+                var size = record.ToJsonString().Length + 1;
+                if (size > remaining)
+                    break;
+
+                lines.Insert(0, record);
+                remaining -= size;
+                oldest    =  match.Number;
+                if (match.Text.Length > recordBudget)
+                    response["truncated"] = true;
+            }
+
+            var hasMore = matchingCount > lines.Count;
+            response["hasMore"] = hasMore;
+            if (hasMore)
+                response["nextBefore"] = oldest;
+
+            return response.ToJsonString();
         }
     }
 }

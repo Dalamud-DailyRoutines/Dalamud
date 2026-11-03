@@ -1,6 +1,4 @@
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
 
 namespace Dalamud;
 
@@ -10,39 +8,22 @@ namespace Dalamud;
 internal static class TraceTool
 {
     /// <summary>
-    /// 读取 trace 文件尾部。
+    /// 筛选并分页读取 trace 文件，限制响应大小。
     /// </summary>
     /// <param name="maxLines">最多返回的记录条数。</param>
     /// <param name="filter">按内容做不区分大小写的包含匹配。</param>
+    /// <param name="before">上一页返回的 nextBefore，零表示读取最新记录。</param>
+    /// <param name="maxCharacters">返回的 JSON 字符数上限。</param>
     /// <returns>JSON 文本。</returns>
     public static string Run
     (
-        [Description("最多返回的记录条数。")]       int     maxLines = 50,
-        [Description("按内容做不区分大小写的包含匹配。")] string? filter   = null
-    )
-    {
-        var lines = MCPRuntime.Trace.Tail(Math.Clamp(maxLines, 1, 2000));
-
-        if (!string.IsNullOrWhiteSpace(filter))
-            lines = [.. lines.Where(line => line.Contains(filter, StringComparison.OrdinalIgnoreCase))];
-
-        var builder = new StringBuilder(1024);
-        builder.Append("{\"file\":\"").Append(Escape(MCPRuntime.Trace.FilePath)).Append("\",\"lines\":[");
-
-        for (var index = 0; index < lines.Length; index++)
-        {
-            if (index > 0)
-                builder.Append(',');
-            builder.Append(lines[index]);
-        }
-
-        builder.Append("]}");
-        return builder.ToString();
-    }
-
-    private static string Escape
-    (
-        string value
-    ) => value.Replace(@"\", @"\\", StringComparison.Ordinal)
-              .Replace("\"", "\\\"", StringComparison.Ordinal);
+        [Description("最多返回的记录条数，默认 20，最大 100。")]
+        int maxLines = 20,
+        [Description("先筛选整个当前日志文件，再分页；不区分大小写。")]
+        string? filter = null,
+        [Description("上一页的 nextBefore，零表示从最新记录开始；日志轮转后重新从零开始。")]
+        int before = 0,
+        [Description("结果 JSON 字符预算，默认 8192，范围 2048 至 16384；超长记录返回截断预览。")]
+        int maxCharacters = 8192
+    ) => MCPRuntime.Trace.Tail(Math.Clamp(maxLines, 1, 100), filter, Math.Max(before, 0), Math.Clamp(maxCharacters, 2048, 16384));
 }

@@ -1,6 +1,6 @@
 # Dalamud MCP
 
-服务运行于游戏进程内，仅在开发者模式启用时监听本机 MCP HTTP 端点。工具接口版本为 3，旧的调用参数不提供兼容处理。客户端应重新加载工具目录。
+服务运行于游戏进程内，仅在开发者模式启用时监听本机 MCP HTTP 端点。工具接口版本为 3；客户端连接后应加载工具目录，以获取当前参数定义。
 
 ## 发现与调用
 
@@ -8,13 +8,13 @@
 getter，返回字段、属性、方法、重载、事件及进程内成员标识。方法调用优先使用返回的 `m编号`，名称只有在目标唯一时才可调用。
 
 ```json
-{"action":"describe","root":"service:ClientState","filter":"LocalPlayer"}
+{"action":"describe","root":"service:ClientState","filter":"TerritoryType"}
 ```
 
 `read` 显式读取属性，默认仅返回浅层结果与可继续访问的对象引用。`paths` 可以在一次框架线程调度内顺序读取多个路径；这不意味着其他线程不会同时改变数据。
 
 ```json
-{"action":"read","root":"service:ClientState","paths":["TerritoryType","LocalPlayer"],"depth":0}
+{"action":"read","root":"service:ClientState","paths":["IsLoggedIn","TerritoryType","MapId"],"depth":0}
 ```
 
 `query` 负责集合分页、精确匹配和字段选择。`offset` 针对匹配结果计数，集合在分页期间仍可能变化；单次最多检查 8192 项。
@@ -29,6 +29,8 @@ getter，返回字段、属性、方法、重载、事件及进程内成员标�
 
 原生入口通过 `ffcs_index` 的 `types`、`describe`、`symbols`、`layout` 发现类型、调用签名、地址与字段。`symbols` 中的 `pattern`
 表示特征码；方法参数在 `methods` 内。原生调用通过 `ffcs_call` 使用方法标识和实例地址，统一在框架线程执行。
+
+类型参数支持简单名、全名和程序集限定名。名称存在歧义时，可根据错误列出的候选，使用程序集限定名指定目标。
 
 原生指针参数必须显式使用 `{"address":"0x..."}` 或 `{"text":"文本"}`。文本支持 `byte*`、`CStringPointer` 和 `Utf8String*`
 ；分配的内存会在调用结束或失败时释放，因此目标函数不得保留文本指针。需要保留的内存必须由调用者提供地址。暂不支持超过
@@ -74,7 +76,7 @@ Utf8String 内联缓冲容量的借用文本。
 
 ## 截图与输入
 
-`capture` 默认抓取新帧，包含游戏和主窗口内的插件界面。`region` 改为结构化矩形，越界直接拒绝。`maxDimension` 默认为 1600，0
+`capture` 默认抓取新帧，包含游戏和主窗口内的插件界面。`region` 使用结构化矩形，越界直接拒绝。`maxDimension` 默认为 1600，0
 表示原尺寸，正值将最长边缩放至指定像素数，最大为 4096。区域截图仅将对应区域复制到 CPU；PNG 编码在渲染回调之外执行。等待渲染最长
 5 秒，超时后尚未执行的回调不会继续抓帧。
 
@@ -122,18 +124,18 @@ Dalamud 命令管理器，不向聊天框发送文本。
 ## 操作状态与共享范围
 
 所有工具返回结构化内容及同内容的 JSON 文本，并带操作编号、状态和 `sharedRuntime`。日志在执行前记录 `begin`，结束后记录
-`completed` 或 `failed`，可通过 `trace` 按编号查找。
+`completed` 或 `failed`，可通过 `trace` 按编号查找。`trace` 查询本身不写入流水。
+
+`trace` 先在当前日志文件内执行 `filter` 筛选，再返回最新一页匹配记录，页内按时间顺序排列。`maxLines` 默认 20，最多 100；
+`maxCharacters` 限制结果 JSON 的字符数，默认 8192，范围为 2048 至 16384，不含统一响应外层。单条记录超过约 2048 个字符时返回
+`truncated`、`originalCharacters` 与 `preview`，完整内容保留在 `file` 指向的日志中。页级 `truncated` 表示本页存在截断预览。
+`hasMore=true` 时，将 `nextBefore` 作为下一次请求的 `before` 继续读取更早记录，并保持相同筛选条件。`line` 是当前文件内的行号；日志轮转后应从 `before=0` 重新查询。
+
+```json
+{"filter":"操作编号","maxLines":8,"maxCharacters":4096}
+```
 
 HTTP 请求具有 25 秒取消期限。尚未开始的框架调度、扫描及异步等待可以响应取消；已经进入的同步托管或原生函数不能强制中断。超时后应先按操作编号检查日志及目标状态，避免重复执行有副作用的方法。
 
 引用、扫描会话、观察点与证据在同一游戏进程内由全部客户端共享，不提供客户端隔离。`clear` 会影响其他客户端。`control`
 仅提供线程目录和运行状态，全进程暂停需要使用进程外调试器。
-
-## 验证范围
-
-回归用例位于 `Dalamud.Test/MCPTests.cs`，覆盖引用身份与释放、完整 64 位整数比较、等待前后的证据到达、缓冲淘汰归属、纯元数据发现、重载消歧及嵌套值类型写回。新增
-`Dalamud.Test/MCPInputCaptureTests.cs` 覆盖图像到渲染坐标映射、连续裁剪精度、拖动释放、组合键顺序及输入计划拒绝。原生
-ABI、实际游戏线程、后台设备更新及插件交互仍需游戏内验证。
-
-本次专项验证：修改文件的 Rider 风格检查无错误、警告或弱警告；通过解决方案编译 Dalamud 与测试项目；新增 5
-项截图与输入计划回归全部通过。编译仍报告现有依赖及文档警告。尚未执行游戏内现场验证。
