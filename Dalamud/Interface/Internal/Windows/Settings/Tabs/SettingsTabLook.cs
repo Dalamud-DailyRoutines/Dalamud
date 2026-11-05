@@ -197,19 +197,21 @@ internal sealed class SettingsTabLook : SettingsTab
         var interfaceManager = Service<InterfaceManager>.Get();
         var fontBuildTask = interfaceManager.FontBuildTask;
 
-        ImGui.AlignTextToFramePadding();
-        ImGui.Text(Loc.Localize("DalamudSettingsGlobalUiScale", "Global Font Scale"));
-        
-        ImGui.Spacing();
-        
+        ImGui.Text("全局字体缩放比例");
+
+        var isFirst = true;
+
         var buttonSize =
             GlobalUiScalePresets
                 .Select(x => ImGui.CalcTextSize(x.Item1, true))
-                .Aggregate(Vector2.Zero, Vector2.Max)
-            + (ImGui.GetStyle().FramePadding * 2);
+                .Aggregate(Vector2.Zero, Vector2.Max) +
+            (ImGui.GetStyle().FramePadding * 2);
         foreach (var (buttonLabel, scale) in GlobalUiScalePresets)
         {
-            ImGui.SameLine();
+            if (!isFirst)
+                ImGui.SameLine();
+            isFirst = false;
+            
             if (ImGui.Button(buttonLabel, buttonSize) && Math.Abs(this.globalUiScale - scale) > float.Epsilon)
             {
                 ImGui.GetIO().FontGlobalScale = this.globalUiScale = scale;
@@ -220,34 +222,48 @@ internal sealed class SettingsTabLook : SettingsTab
 
         if (!fontBuildTask.IsCompleted)
         {
-            ImGui.SameLine();
-            var buildingFonts = Loc.Localize("DalamudSettingsFontBuildInProgressWithEndingThreeDots", "Building fonts...");
+            const string BUILDING_FONTS = "正在构建字体……";
+            
             unsafe
             {
-                var len = Encoding.UTF8.GetByteCount(buildingFonts);
+                var len = Encoding.UTF8.GetByteCount(BUILDING_FONTS);
                 var p = stackalloc byte[len];
-                Encoding.UTF8.GetBytes(buildingFonts, new(p, len));
-                ImGui.Text(
-                    new ReadOnlySpan<byte>(p, len)[..(len + (Environment.TickCount / 200 % 3) - 2)]);
+                Encoding.UTF8.GetBytes(BUILDING_FONTS, new(p, len));
+                
+                ImGui.SameLine();
+                ImGui.Text
+                (
+                    new ReadOnlySpan<byte>(p, len)[..(len + (Environment.TickCount / 200 % 3) - 2)]
+                );
             }
         }
 
         var globalUiScaleInPct = 100f * this.globalUiScale;
-        if (ImGui.DragFloat("##DalamudSettingsGlobalUiScaleDrag"u8, ref globalUiScaleInPct, 1f, 80f, 300f, "%.0f%%", ImGuiSliderFlags.AlwaysClamp))
+        ImGui.DragFloat
+        (
+            "##DalamudSettingsGlobalUiScaleDrag"u8,
+            ref globalUiScaleInPct,
+            1f,
+            80f,
+            300f,
+            "%.0f%%",
+            ImGuiSliderFlags.AlwaysClamp
+        );
+        if (ImGui.IsItemDeactivatedAfterEdit())
         {
             this.globalUiScale = globalUiScaleInPct / 100f;
             ImGui.GetIO().FontGlobalScale = this.globalUiScale;
             interfaceManager.RebuildFonts();
             Service<InterfaceManager>.Get().InvokeGlobalScaleChanged();
         }
-
-        ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, Loc.Localize("DalamudSettingsGlobalUiScaleHint", "Scale text in all XIVLauncher UI elements - this is useful for 4K displays."));
-
+        
         if (fontBuildTask.IsFaulted || fontBuildTask.IsCanceled)
         {
-            ImGui.TextColored(
+            ImGui.TextColored
+            (
                 ImGuiColors.ErrorForeground,
-                Loc.Localize("DalamudSettingsFontBuildFaulted", "Failed to load fonts as requested."));
+                "加载字体失败。"
+            );
             if (fontBuildTask.Exception is not null
                 && ImGui.CollapsingHeader("##DalamudSetingsFontBuildFaultReason"u8))
             {
@@ -258,7 +274,7 @@ internal sealed class SettingsTabLook : SettingsTab
 
         ImGuiHelpers.ScaledDummy(5);
 
-        if (ImGui.Button(Loc.Localize("DalamudSettingChooseDefaultFont", "Choose Default Font")))
+        if (ImGui.Button("选择字体"))
         {
             var faf = Service<FontAtlasFactory>.Get();
             var fcd = new SingleFontChooserDialog(faf, $"{nameof(SettingsTabLook)}:Default");
@@ -287,7 +303,7 @@ internal sealed class SettingsTabLook : SettingsTab
 
         using (interfaceManager.MonoFontHandle?.Push())
         {
-            if (ImGui.Button(Loc.Localize("DalamudSettingResetDefaultFont", "Reset Default Font")))
+            if (ImGui.Button("重置字体"))
             {
                 var faf = Service<FontAtlasFactory>.Get();
                 faf.DefaultFontSpecOverride =
