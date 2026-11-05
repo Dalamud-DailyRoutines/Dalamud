@@ -1,13 +1,9 @@
 using System.Numerics;
-
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Utility;
-
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
-
 using Lumina.Text.ReadOnly;
-
 using CSFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
 
 namespace Dalamud.Game.ClientState.Objects.Types;
@@ -78,7 +74,10 @@ public interface IGameObject : IEquatable<IGameObject>
     /// <summary>
     /// Gets the Y distance from the local player in yalms.
     /// </summary>
-    [Obsolete("This property did not represent the Z-axis. It is the next distance value that will replace CurrentDistance on the next update tick. Use CurrentDistance instead.")]
+    [Obsolete
+    (
+        "This property did not represent the Z-axis. It is the next distance value that will replace CurrentDistance on the next update tick. Use CurrentDistance instead."
+    )]
     byte YalmDistanceZ { get; }
 
     /// <summary>
@@ -146,15 +145,13 @@ public interface IGameObject : IEquatable<IGameObject>
     /// Gets the current position of a GameObject as a <see cref="WorldCoordinate"/> (visible to players in the
     /// minimap or chat).
     /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown if ClientState is unavailable.</exception>
-    /// <returns>A MapCoordinate of this object.</returns>
+    /// <returns>A WorldCoordinate of this object.</returns>
     WorldCoordinate GetWorldCoordinate();
 
     /// <summary>
     /// Gets the current position of a GameObject as a <see cref="MapCoordinate"/> (visible to players in the
     /// minimap or chat).
     /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown if ClientState is unavailable.</exception>
     /// <returns>A MapCoordinate of this object.</returns>
     MapCoordinate GetMapCoordinate();
 }
@@ -168,10 +165,7 @@ internal partial class GameObject
     /// Initializes a new instance of the <see cref="GameObject"/> class.
     /// </summary>
     /// <param name="address">The address of this game object in memory.</param>
-    internal GameObject(nint address)
-    {
-        this.Address = address;
-    }
+    internal GameObject(nint address) => this.Address = address;
 
     /// <summary>
     /// Gets or sets the address of the game object in memory.
@@ -202,12 +196,7 @@ internal partial class GameObject
     /// <param name="actor">The actor to check.</param>
     /// <returns>True or false.</returns>
     public static bool IsValid(IGameObject? actor)
-    {
-        if (actor == null)
-            return false;
-
-        return Service<Player.PlayerState>.Get().IsLoaded;
-    }
+        => actor != null && Service<Player.PlayerState>.Get().IsLoaded;
 
     /// <summary>
     /// Gets a value indicating whether this actor is still valid in memory.
@@ -233,10 +222,7 @@ internal partial class GameObject
     }
 
     /// <inheritdoc/>
-    public virtual MapCoordinate GetMapCoordinate()
-    {
-        return this.GetWorldCoordinate().ToMapCoordinate();
-    }
+    public virtual MapCoordinate GetMapCoordinate() => this.GetWorldCoordinate().ToMapCoordinate();
 
     /// <inheritdoc/>
     bool IEquatable<IGameObject>.Equals(IGameObject other) => this.GameObjectId == other?.GameObjectId;

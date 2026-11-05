@@ -1,6 +1,4 @@
 using System.Linq;
-using System.Threading.Tasks;
-
 using Dalamud.Common;
 using Dalamud.Configuration.Internal;
 using Dalamud.Data;
@@ -14,7 +12,6 @@ using Dalamud.IoC.Internal;
 using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
-
 using FFXIVClientStructs.FFXIV.Application.Network;
 using FFXIVClientStructs.FFXIV.Client.Enums;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -22,9 +19,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Network;
 using FFXIVClientStructs.FFXIV.Client.Network;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-
 using Lumina.Excel;
-
 using Action = System.Action;
 using CSUIState = FFXIVClientStructs.FFXIV.Client.Game.UI.UIState;
 
@@ -53,35 +48,37 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
     [ServiceManager.ServiceDependency]
     private readonly ChatGui chatGui = Service<ChatGui>.Get();
 
-    private readonly Hook<UIModule.Delegates.HandlePacket> uiModuleHandlePacketHook;
+    private readonly Hook<UIModule.Delegates.HandlePacket>                                   uiModuleHandlePacketHook;
     private readonly Hook<PacketDispatcher.Delegates.HandleContentsFinderNotificationPacket> cfPopHook;
 
     private Hook<LogoutCallbackInterface.Delegates.OnLogout>? onLogoutHook;
-    private bool initialized;
-    private bool lastConditionNone = true;
+    private bool                                              initialized;
+    private bool                                              lastConditionNone = true;
 
     [ServiceManager.ServiceConstructor]
     private ClientState(Dalamud dalamud)
     {
         Log.Verbose("===== C L I E N T  S T A T E =====");
 
-        this.ClientLanguage = (ClientLanguage)dalamud.StartInfo.Language;
+        this.ClientLanguage = dalamud.StartInfo.Language;
 
-        this.uiModuleHandlePacketHook = Hook<UIModule.Delegates.HandlePacket>.FromAddress(
+        this.uiModuleHandlePacketHook = Hook<UIModule.Delegates.HandlePacket>.FromAddress
+        (
             (nint)UIModule.StaticVirtualTablePointer->HandlePacket,
-            this.UIModuleHandlePacketDetour);
+            this.UIModuleHandlePacketDetour
+        );
 
-        this.cfPopHook = Hook<PacketDispatcher.Delegates.HandleContentsFinderNotificationPacket>.FromAddress(
+        this.cfPopHook = Hook<PacketDispatcher.Delegates.HandleContentsFinderNotificationPacket>.FromAddress
+        (
             PacketDispatcher.Addresses.HandleContentsFinderNotificationPacket.Value,
-            this.HandleContentsFinderNotificationPacketDetour);
+            this.HandleContentsFinderNotificationPacketDetour
+        );
 
         this.uiModuleHandlePacketHook.Enable();
         this.cfPopHook.Enable();
 
         this.framework.RunOnTick(this.Setup);
     }
-
-    private delegate void SetCurrentInstanceDelegate(NetworkModuleProxy* thisPtr, short instanceId);
 
     /// <inheritdoc/>
     public event Action<ZoneInitEventArgs>? ZoneInit;
@@ -131,7 +128,7 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
 
                 if (this.initialized)
                 {
-                    Log.Debug("TerritoryType changed: {0}", value.RowId);
+                    Log.Debug("TerritoryType changed: {TerritoryType}", value.RowId);
                     this.TerritoryChanged?.InvokeSafely(value);
                 }
             }
@@ -150,7 +147,7 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
 
                 if (this.initialized)
                 {
-                    Log.Debug("MapId changed: {0}", value.RowId);
+                    Log.Debug("MapId changed: {MapId}", value.RowId);
                     this.MapChanged?.InvokeSafely(value);
                 }
             }
@@ -169,7 +166,7 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
 
                 if (this.initialized)
                 {
-                    Log.Debug("Instance changed: {0}", value);
+                    Log.Debug("Instance changed: {Instance}", value);
                     this.InstanceChanged?.InvokeSafely(value);
                 }
             }
@@ -228,16 +225,20 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
 
         var condition = Service<Conditions.Condition>.GetNullable();
 
-        var blockingConditions = condition.AsReadOnlySet().Except([
-            ConditionFlag.NormalConditions,
-            ConditionFlag.Emoting,
-            ConditionFlag.Jumping,
-            ConditionFlag.Mounted,
-            ConditionFlag.InFlight,
-            ConditionFlag.Swimming,
-            ConditionFlag.Diving,
-            ConditionFlag.UsingFashionAccessory,
-            ConditionFlag.OnFreeTrial]);
+        var blockingConditions = condition.AsReadOnlySet().Except
+        (
+            [
+                ConditionFlag.NormalConditions,
+                ConditionFlag.Emoting,
+                ConditionFlag.Jumping,
+                ConditionFlag.Mounted,
+                ConditionFlag.InFlight,
+                ConditionFlag.Swimming,
+                ConditionFlag.Diving,
+                ConditionFlag.UsingFashionAccessory,
+                ConditionFlag.OnFreeTrial
+            ]
+        );
 
         blockingFlag = blockingConditions.FirstOrDefault();
         return blockingFlag == 0;
@@ -260,21 +261,27 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
 
     private void Setup()
     {
-        this.onLogoutHook = Hook<LogoutCallbackInterface.Delegates.OnLogout>.FromAddress((nint)AgentLobby.Instance()->LogoutCallbackInterface.VirtualTable->OnLogout, this.OnLogoutDetour);
+        this.onLogoutHook = Hook<LogoutCallbackInterface.Delegates.OnLogout>.FromAddress
+            ((nint)AgentLobby.Instance()->LogoutCallbackInterface.VirtualTable->OnLogout, this.OnLogoutDetour);
         this.onLogoutHook.Enable();
 
-        this.IsPvP = GameMain.IsInPvPArea();
+        this.IsPvP         = GameMain.IsInPvPArea();
         this.TerritoryType = LuminaUtils.CreateRef<TerritoryType>(GameMain.Instance()->CurrentTerritoryTypeId);
-        this.Map = LuminaUtils.CreateRef<Map>(AgentMap.Instance()->CurrentMapId);
-        this.Instance = CSUIState.Instance()->PublicInstance.InstanceId;
+        this.Map           = LuminaUtils.CreateRef<Map>(AgentMap.Instance()->CurrentMapId);
+        this.Instance      = CSUIState.Instance()->PublicInstance.InstanceId;
 
         this.initialized = true;
 
         this.framework.Update += this.OnFrameworkUpdate;
     }
 
-    private void UIModuleHandlePacketDetour(
-        UIModule* thisPtr, UIModulePacketType type, uint uintParam, void* packet)
+    private void UIModuleHandlePacketDetour
+    (
+        UIModule*          thisPtr,
+        UIModulePacketType type,
+        uint               uintParam,
+        void*              packet
+    )
     {
         this.uiModuleHandlePacketHook.Original(thisPtr, type, uintParam, packet);
 
@@ -292,7 +299,7 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "Exception during raise of {handler}", action.Method);
+                        Log.Error(ex, "Exception during raise of {Handler}", action.Method.ToString());
                     }
                 }
 
@@ -302,7 +309,7 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
             case UIModulePacketType.LevelChange:
             {
                 var classJob = LuminaUtils.CreateRef<ClassJob>(*(uint*)packet);
-                var level = *(ushort*)((nint)packet + 4);
+                var level    = *(ushort*)((nint)packet + 4);
 
                 foreach (var action in Delegate.EnumerateInvocationList(this.LevelChanged))
                 {
@@ -312,7 +319,7 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "Exception during raise of {handler}", action.Method);
+                        Log.Error(ex, "Exception during raise of {Handler}", action.Method.ToString());
                     }
                 }
 
@@ -322,11 +329,11 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
             case UIModulePacketType.ZoneInit:
             {
                 var eventArgs = ZoneInitEventArgs.Read((ZoneInitPacket*)packet);
-                Log.Debug($"ZoneInit: {eventArgs}");
+                Log.Debug("ZoneInit: {EventArgs}", eventArgs);
                 this.ZoneInit?.InvokeSafely(eventArgs);
                 this.TerritoryType = eventArgs.TerritoryType;
-                this.Instance = eventArgs.Instance;
-                this.IsPvP = eventArgs.TerritoryType.Value.IsPvpZone;
+                this.Instance      = eventArgs.Instance;
+                this.IsPvP         = eventArgs.TerritoryType.Value.IsPvpZone;
                 break;
             }
         }
@@ -336,46 +343,42 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
     {
         this.cfPopHook.OriginalDisposeSafe(packet);
 
+        if (packet->QueueState != ContentsFinderQueueState.Ready)
+            return;
+
         try
         {
-            if (packet->QueueState != ContentsFinderQueueState.Ready)
-                return;
-
             if (this.configuration.DutyFinderTaskbarFlash)
                 Util.FlashWindow();
 
-            var cfcId = packet->ContentFinderConditionId;
-            var cfCondition = LuminaUtils.CreateRef<ContentFinderCondition>(cfcId);
+            var cfcId  = packet->ContentFinderConditionId;
+            var cfcRef = LuminaUtils.CreateRef<ContentFinderCondition>(cfcId);
 
-            if (!cfCondition.IsValid)
+            if (!cfcRef.TryGetValue(out var cfcRow))
             {
-                Log.Error("CFC key {cfcId} not found", cfcId);
+                Log.Error("CFC key {CfcId} not found", cfcId);
                 return;
             }
 
-            var cfcName = cfCondition.Value.Name;
-            if (cfcName.IsEmpty)
-                cfcName = "Duty Roulette";
-
-            Task.Run(() =>
+            if (this.configuration.DutyFinderChatMessage)
             {
-                if (this.configuration.DutyFinderChatMessage)
-                {
-                    using var rssb = new RentedSeStringBuilder();
-                    this.chatGui.Print(rssb.Builder
-                        .Append("Duty pop: ")
-                        .Append(cfcName)
-                        .ToReadOnlySeString());
-                }
+                using var rssb = new RentedSeStringBuilder();
 
-                this.CfPop.InvokeSafely(cfCondition);
-            }).ContinueWith(
-                task => Log.Error(task.Exception, "CfPop.Invoke failed"),
-                TaskContinuationOptions.OnlyOnFaulted);
+                rssb.Append("副本已就绪："u8);
+
+                if (cfcRow.Name is { IsEmpty: false } cfcName)
+                    rssb.Append(cfcName);
+                else
+                    rssb.Append("随机任务"u8);
+
+                this.chatGui.Print(rssb.ToReadOnlySeString());
+            }
+
+            this.CfPop.InvokeSafely(cfcRef);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "CfPopDetour threw an exception");
+            Log.Error(ex, "HandleContentsFinderNotificationPacketDetour threw an exception");
         }
     }
 
@@ -384,8 +387,8 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
         this.Map = LuminaUtils.CreateRef<Map>(AgentMap.Instance()->CurrentMapId);
 
         var condition = Service<Conditions.Condition>.GetNullable();
-        var gameGui = Service<GameGui>.GetNullable();
-        var data = Service<DataManager>.GetNullable();
+        var gameGui   = Service<GameGui>.GetNullable();
+        var data      = Service<DataManager>.GetNullable();
 
         if (condition == null || gameGui == null || data == null)
             return;
@@ -412,7 +415,7 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
                 var type = logoutParams->Type;
                 var code = logoutParams->Code;
 
-                Log.Debug("Logout: Type {type}, Code {code}", type, code);
+                Log.Debug("Logout: Type {Type}, Code {Code}", type, code);
 
                 foreach (var action in Delegate.EnumerateInvocationList(this.Logout))
                 {
@@ -422,7 +425,7 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "Exception during raise of {handler}", action.Method);
+                        Log.Error(ex, "Exception during raise of {Handler}", action.Method.ToString());
                     }
                 }
 
@@ -438,11 +441,6 @@ internal sealed unsafe class ClientState : IInternalDisposableService, IClientSt
         }
 
         this.onLogoutHook!.Original(thisPtr, logoutParams);
-    }
-
-    private void NetworkHandlersOnCfPop(RowRef<ContentFinderCondition> cfc)
-    {
-        this.CfPop?.InvokeSafely(cfc);
     }
 }
 
@@ -464,17 +462,17 @@ internal class ClientStatePluginScoped : IInternalDisposableService, IClientStat
     /// </summary>
     internal ClientStatePluginScoped()
     {
-        this.clientStateService.ZoneInit += this.ZoneInitForward;
+        this.clientStateService.ZoneInit         += this.ZoneInitForward;
         this.clientStateService.TerritoryChanged += this.TerritoryChangedForward;
-        this.clientStateService.MapChanged += this.MapChangedForward;
-        this.clientStateService.InstanceChanged += this.InstanceChangedForward;
-        this.clientStateService.ClassJobChanged += this.ClassJobChangedForward;
-        this.clientStateService.LevelChanged += this.LevelChangedForward;
-        this.clientStateService.Login += this.LoginForward;
-        this.clientStateService.Logout += this.LogoutForward;
-        this.clientStateService.EnterPvP += this.EnterPvPForward;
-        this.clientStateService.LeavePvP += this.ExitPvPForward;
-        this.clientStateService.CfPop += this.ContentFinderPopForward;
+        this.clientStateService.MapChanged       += this.MapChangedForward;
+        this.clientStateService.InstanceChanged  += this.InstanceChangedForward;
+        this.clientStateService.ClassJobChanged  += this.ClassJobChangedForward;
+        this.clientStateService.LevelChanged     += this.LevelChangedForward;
+        this.clientStateService.Login            += this.LoginForward;
+        this.clientStateService.Logout           += this.LogoutForward;
+        this.clientStateService.EnterPvP         += this.EnterPvPForward;
+        this.clientStateService.LeavePvP         += this.ExitPvPForward;
+        this.clientStateService.CfPop            += this.ContentFinderPopForward;
     }
 
     /// <inheritdoc/>
@@ -543,29 +541,29 @@ internal class ClientStatePluginScoped : IInternalDisposableService, IClientStat
     /// <inheritdoc/>
     void IInternalDisposableService.DisposeService()
     {
-        this.clientStateService.ZoneInit -= this.ZoneInitForward;
+        this.clientStateService.ZoneInit         -= this.ZoneInitForward;
         this.clientStateService.TerritoryChanged -= this.TerritoryChangedForward;
-        this.clientStateService.MapChanged -= this.MapChangedForward;
-        this.clientStateService.InstanceChanged -= this.InstanceChangedForward;
-        this.clientStateService.ClassJobChanged -= this.ClassJobChangedForward;
-        this.clientStateService.LevelChanged -= this.LevelChangedForward;
-        this.clientStateService.Login -= this.LoginForward;
-        this.clientStateService.Logout -= this.LogoutForward;
-        this.clientStateService.EnterPvP -= this.EnterPvPForward;
-        this.clientStateService.LeavePvP -= this.ExitPvPForward;
-        this.clientStateService.CfPop -= this.ContentFinderPopForward;
+        this.clientStateService.MapChanged       -= this.MapChangedForward;
+        this.clientStateService.InstanceChanged  -= this.InstanceChangedForward;
+        this.clientStateService.ClassJobChanged  -= this.ClassJobChangedForward;
+        this.clientStateService.LevelChanged     -= this.LevelChangedForward;
+        this.clientStateService.Login            -= this.LoginForward;
+        this.clientStateService.Logout           -= this.LogoutForward;
+        this.clientStateService.EnterPvP         -= this.EnterPvPForward;
+        this.clientStateService.LeavePvP         -= this.ExitPvPForward;
+        this.clientStateService.CfPop            -= this.ContentFinderPopForward;
 
-        this.ZoneInit = null;
+        this.ZoneInit         = null;
         this.TerritoryChanged = null;
-        this.MapChanged = null;
-        this.InstanceChanged = null;
-        this.ClassJobChanged = null;
-        this.LevelChanged = null;
-        this.Login = null;
-        this.Logout = null;
-        this.EnterPvP = null;
-        this.LeavePvP = null;
-        this.CfPop = null;
+        this.MapChanged       = null;
+        this.InstanceChanged  = null;
+        this.ClassJobChanged  = null;
+        this.LevelChanged     = null;
+        this.Login            = null;
+        this.Logout           = null;
+        this.EnterPvP         = null;
+        this.LeavePvP         = null;
+        this.CfPop            = null;
     }
 
     private void ZoneInitForward(ZoneInitEventArgs eventArgs) => this.ZoneInit?.Invoke(eventArgs);

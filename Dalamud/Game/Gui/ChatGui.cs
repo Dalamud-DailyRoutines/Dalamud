@@ -3,7 +3,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-
 using Dalamud.Configuration.Internal;
 using Dalamud.Game.Chat;
 using Dalamud.Game.Text;
@@ -14,13 +13,11 @@ using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Internal.Types;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
-
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-
 using Lumina.Text;
 using Lumina.Text.Payloads;
 using Lumina.Text.ReadOnly;
@@ -35,16 +32,16 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
 {
     private static readonly ModuleLog Log = ModuleLog.Create<ChatGui>();
 
-    private readonly Queue<IPrintableChatMessage> messageQueue = new();
-    private readonly Dictionary<(string PluginName, uint CommandId), Action<DalamudLinkPayload>> dalamudLinkHandlers = [];
-    private readonly Lock dalamudLinkHandlersLock = new();
-    private readonly List<nint> seenLogMessageObjects = [];
-    private readonly ChatMessage currentChatMessage = new();
+    private readonly Queue<IPrintableChatMessage>                                                messageQueue            = new();
+    private readonly Dictionary<(string PluginName, uint CommandId), Action<DalamudLinkPayload>> dalamudLinkHandlers     = [];
+    private readonly Lock                                                                        dalamudLinkHandlersLock = new();
+    private readonly List<nint>                                                                  seenLogMessageObjects   = [];
+    private readonly ChatMessage                                                                 currentChatMessage      = new();
 
     private readonly Hook<RaptureLogModule.Delegates.PrintMessage> printMessageHook;
-    private readonly Hook<InventoryItem.Delegates.Copy> inventoryItemCopyHook;
-    private readonly Hook<LogViewer.Delegates.HandleLinkClick> handleLinkClickHook;
-    private readonly Hook<RaptureLogModule.Delegates.Update> handleLogModuleUpdate;
+    private readonly Hook<InventoryItem.Delegates.Copy>            inventoryItemCopyHook;
+    private readonly Hook<LogViewer.Delegates.HandleLinkClick>     handleLinkClickHook;
+    private readonly Hook<RaptureLogModule.Delegates.Update>       handleLogModuleUpdate;
 
     [ServiceManager.ServiceDependency]
     private readonly Framework framework = Service<Framework>.Get();
@@ -53,14 +50,16 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
     private readonly DalamudConfiguration configuration = Service<DalamudConfiguration>.Get();
 
     private ImmutableDictionary<(string PluginName, uint CommandId), Action<DalamudLinkPayload>>? dalamudLinkHandlersCopy;
-    private uint dalamudChatHandlerId = 1000;
+    private uint                                                                                  dalamudChatHandlerId = 1000;
 
     [ServiceManager.ServiceConstructor]
     private ChatGui()
     {
-        this.printMessageHook = Hook<RaptureLogModule.Delegates.PrintMessage>.FromAddress(RaptureLogModule.Addresses.PrintMessage.Value, this.HandlePrintMessageDetour);
-        this.inventoryItemCopyHook = Hook<InventoryItem.Delegates.Copy>.FromAddress((nint)InventoryItem.StaticVirtualTablePointer->Copy, this.InventoryItemCopyDetour);
-        this.handleLinkClickHook = Hook<LogViewer.Delegates.HandleLinkClick>.FromAddress(LogViewer.Addresses.HandleLinkClick.Value, this.HandleLinkClickDetour);
+        this.printMessageHook = Hook<RaptureLogModule.Delegates.PrintMessage>.FromAddress
+            (RaptureLogModule.Addresses.PrintMessage.Value, this.HandlePrintMessageDetour);
+        this.inventoryItemCopyHook = Hook<InventoryItem.Delegates.Copy>.FromAddress
+            ((nint)InventoryItem.StaticVirtualTablePointer->Copy, this.InventoryItemCopyDetour);
+        this.handleLinkClickHook   = Hook<LogViewer.Delegates.HandleLinkClick>.FromAddress(LogViewer.Addresses.HandleLinkClick.Value, this.HandleLinkClickDetour);
         this.handleLogModuleUpdate = Hook<RaptureLogModule.Delegates.Update>.FromAddress(RaptureLogModule.Addresses.Update.Value, this.UpdateDetour);
 
         this.printMessageHook.Enable();
@@ -123,34 +122,23 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
     }
 
     /// <inheritdoc/>
-    public void Print(IPrintableChatMessage message)
-    {
-        this.messageQueue.Enqueue(message);
-    }
+    public void Print(IPrintableChatMessage message) => this.messageQueue.Enqueue(message);
 
     /// <inheritdoc/>
-    public void Print(ReadOnlySeString message, string? messageTag = null, ushort? tagColor = null)
-    {
-        this.PrintTagged(message.AsSpan(), this.configuration.GeneralChatType, messageTag, tagColor);
-    }
+    public void Print(ReadOnlySeString message, string? messageTag = null, ushort? tagColor = null) => this.PrintTagged
+        (message.AsSpan(), this.configuration.GeneralChatType, messageTag, tagColor);
 
     /// <inheritdoc/>
-    public void Print(ReadOnlySeStringSpan message, string? messageTag = null, ushort? tagColor = null)
-    {
-        this.PrintTagged(message, this.configuration.GeneralChatType, messageTag, tagColor);
-    }
+    public void Print(ReadOnlySeStringSpan message, string? messageTag = null, ushort? tagColor = null) => this.PrintTagged
+        (message, this.configuration.GeneralChatType, messageTag, tagColor);
 
     /// <inheritdoc/>
-    public void PrintError(ReadOnlySeString message, string? messageTag = null, ushort? tagColor = null)
-    {
-        this.PrintTagged(message.AsSpan(), XivChatType.Urgent, messageTag, tagColor);
-    }
+    public void PrintError(ReadOnlySeString message, string? messageTag = null, ushort? tagColor = null) => this.PrintTagged
+        (message.AsSpan(), XivChatType.Urgent, messageTag, tagColor);
 
     /// <inheritdoc/>
-    public void PrintError(ReadOnlySeStringSpan message, string? messageTag = null, ushort? tagColor = null)
-    {
-        this.PrintTagged(message, XivChatType.Urgent, messageTag, tagColor);
-    }
+    public void PrintError(ReadOnlySeStringSpan message, string? messageTag = null, ushort? tagColor = null) => this.PrintTagged
+        (message, XivChatType.Urgent, messageTag, tagColor);
 
     #region Chat Links
 
@@ -160,31 +148,21 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
     /// <remarks>Internal use only.</remarks>
     /// <param name="commandAction">The action to be executed.</param>
     /// <returns>Returns an SeString payload for the link.</returns>
-    public DalamudLinkPayload AddChatLinkHandler(Action<DalamudLinkPayload> commandAction)
-    {
-        return this.AddChatLinkHandler("Dalamud", this.dalamudChatHandlerId++, commandAction);
-    }
+    public DalamudLinkPayload AddChatLinkHandler(Action<DalamudLinkPayload> commandAction) => this.AddChatLinkHandler
+        ("Dalamud", this.dalamudChatHandlerId++, commandAction);
 
     /// <inheritdoc/>
     /// <remarks>Internal use only.</remarks>
-    public DalamudLinkPayload AddChatLinkHandler(uint commandId, Action<DalamudLinkPayload> commandAction)
-    {
-        return this.AddChatLinkHandler("Dalamud", commandId, commandAction);
-    }
+    public DalamudLinkPayload AddChatLinkHandler(uint commandId, Action<DalamudLinkPayload> commandAction) => this.AddChatLinkHandler
+        ("Dalamud", commandId, commandAction);
 
     /// <inheritdoc/>
     /// <remarks>Internal use only.</remarks>
-    public void RemoveChatLinkHandler(uint commandId)
-    {
-        this.RemoveChatLinkHandler("Dalamud", commandId);
-    }
+    public void RemoveChatLinkHandler(uint commandId) => this.RemoveChatLinkHandler("Dalamud", commandId);
 
     /// <inheritdoc/>
     /// <remarks>Internal use only.</remarks>
-    public void RemoveChatLinkHandler()
-    {
-        this.RemoveChatLinkHandler("Dalamud");
-    }
+    public void RemoveChatLinkHandler() => this.RemoveChatLinkHandler("Dalamud");
 
     #endregion
 
@@ -248,8 +226,8 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
         if (this.messageQueue.Count == 0)
             return;
 
-        using var rssb = new RentedSeStringBuilder();
-        using var sender = new Utf8String();
+        using var rssb    = new RentedSeStringBuilder();
+        using var sender  = new Utf8String();
         using var message = new Utf8String();
 
         while (this.messageQueue.TryDequeue(out var chat))
@@ -287,18 +265,20 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
                 message.SetString(rssb.Builder.GetViewAsSpan());
             }
 
-            this.HandlePrintMessageDetour(
+            this.HandlePrintMessageDetour
+            (
                 RaptureLogModule.Instance(),
                 new LogInfo
                 {
-                    LogKind = (ushort)chat.LogKind,
+                    LogKind    = (ushort)chat.LogKind,
                     SourceKind = (EntityRelationKind)chat.SourceKind,
-                    TargetKind = (EntityRelationKind)chat.TargetKind,
+                    TargetKind = (EntityRelationKind)chat.TargetKind
                 },
                 &sender,
                 &message,
                 chat.Timestamp,
-                chat.Silent);
+                chat.Silent
+            );
         }
     }
 
@@ -321,11 +301,14 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
             }
         }
 
-        this.Print(new PrintableChatMessage
-        {
-            LogKind = channel,
-            Message = rssb.Builder.Append(message).ToReadOnlySeString(),
-        });
+        this.Print
+        (
+            new PrintableChatMessage
+            {
+                LogKind = channel,
+                Message = rssb.Builder.Append(message).ToReadOnlySeString()
+            }
+        );
     }
 
     private void InventoryItemCopyDetour(InventoryItem* thisPtr, InventoryItem* otherPtr)
@@ -334,7 +317,7 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
 
         try
         {
-            this.LastLinkedItemId = otherPtr->ItemId;
+            this.LastLinkedItemId    = otherPtr->ItemId;
             this.LastLinkedItemFlags = (byte)otherPtr->Flags;
 
             // Log.Verbose($"InventoryItemCopyDetour {thisPtr} {otherPtr} - linked:{this.LastLinkedItemId}");
@@ -351,11 +334,11 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
 
         try
         {
-            var logKind = (XivChatType)logInfo.LogKind;
+            var logKind    = (XivChatType)logInfo.LogKind;
             var sourceKind = (XivChatRelationKind)logInfo.SourceKind;
             var targetKind = (XivChatRelationKind)logInfo.TargetKind;
 
-            var roSender = sender->AsReadOnlySeString();
+            var roSender  = sender->AsReadOnlySeString();
             var roMessage = message->AsReadOnlySeString();
 
             this.currentChatMessage.SetData(logKind, sourceKind, targetKind, roSender, roMessage, timestamp);
@@ -369,7 +352,7 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Could not invoke registered OnHandleableChatMessageDelegate for {Name}", action.Method);
+                    Log.Error(e, "Could not invoke registered OnHandleableChatMessageDelegate for {Name}", action.Method.ToString());
                 }
             }
 
@@ -384,7 +367,7 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
                     }
                     catch (Exception e)
                     {
-                        Log.Error(e, "Could not invoke registered OnHandleableChatMessageDelegate for {Name}", action.Method);
+                        Log.Error(e, "Could not invoke registered OnHandleableChatMessageDelegate for {Name}", action.Method.ToString());
                     }
                 }
             }
@@ -392,7 +375,12 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
             // Check for modifications
             if (this.currentChatMessage.SenderModified)
             {
-                Log.Verbose($"HandlePrintMessageDetour Sender modified: {sender->AsReadOnlySeStringSpan().ToMacroString()} -> {this.currentChatMessage.Sender.ToMacroString()}");
+                Log.Verbose
+                (
+                    "HandlePrintMessageDetour Sender modified: {OriginalSender} -> {ModifiedSender}",
+                    sender->AsReadOnlySeStringSpan().ToMacroString(),
+                    this.currentChatMessage.Sender.ToMacroString()
+                );
                 using var rssb = new RentedSeStringBuilder();
 
                 if (this.currentChatMessage.Sender.IsEmpty)
@@ -403,7 +391,12 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
 
             if (this.currentChatMessage.MessageModified)
             {
-                Log.Verbose($"HandlePrintMessageDetour Message modified: {message->AsReadOnlySeStringSpan().ToMacroString()} -> {this.currentChatMessage.Message.ToMacroString()}");
+                Log.Verbose
+                (
+                    "HandlePrintMessageDetour Message modified: {OriginalMessage} -> {ModifiedMessage}",
+                    message->AsReadOnlySeStringSpan().ToMacroString(),
+                    this.currentChatMessage.Message.ToMacroString()
+                );
                 using var rssb = new RentedSeStringBuilder();
 
                 if (this.currentChatMessage.Message.IsEmpty)
@@ -419,9 +412,9 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
             }
 
             // Third pass
-            var callback = this.currentChatMessage.IsHandled
-                ? this.ChatMessageHandled
-                : this.ChatMessageUnhandled;
+            var callback = this.currentChatMessage.IsHandled ?
+                               this.ChatMessageHandled :
+                               this.ChatMessageUnhandled;
 
             foreach (var action in Delegate.EnumerateInvocationList(callback))
             {
@@ -431,13 +424,13 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Could not invoke registered OnChatMessageDelegate for {Name}", action.Method);
+                    Log.Error(e, "Could not invoke registered OnChatMessageDelegate for {Name}", action.Method.ToString());
                 }
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Exception on OnChatMessage hook.");
+            Log.Error(ex, "Exception on OnChatMessage hook");
             messageId = this.printMessageHook.Original(manager, logInfo, sender, message, timestamp, silent);
         }
 
@@ -446,7 +439,7 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
 
     private void HandleLinkClickDetour(LogViewer* thisPtr, LinkData* linkData)
     {
-        if (linkData == null || linkData->Payload == null || (LinkMacroPayloadType)(linkData->LinkType + 1) != DalamudLinkPayload.LinkType)
+        if (linkData == null || linkData->Payload == null || (LinkMacroPayloadType)linkData->LinkType != DalamudLinkPayload.LinkType)
         {
             this.handleLinkClickHook.Original(thisPtr, linkData);
             return;
@@ -465,12 +458,12 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
                 {
                     if (this.RegisteredLinkHandlers.TryGetValue((dalamudLinkPayload.PluginName, dalamudLinkPayload.CommandId), out var value))
                     {
-                        Log.Verbose($"Sending DalamudLink to {dalamudLinkPayload.PluginName}: {dalamudLinkPayload.CommandId}");
+                        Log.Verbose("Sending DalamudLink to {PluginName}: {CommandId}", dalamudLinkPayload.PluginName, dalamudLinkPayload.CommandId);
                         value.Invoke(dalamudLinkPayload);
                     }
                     else
                     {
-                        Log.Debug($"No DalamudLink registered for {dalamudLinkPayload.PluginName} with ID of {dalamudLinkPayload.CommandId}");
+                        Log.Debug("No DalamudLink registered for {PluginName} with ID of {CommandId}", dalamudLinkPayload.PluginName, dalamudLinkPayload.CommandId);
                     }
 
                     break;
@@ -492,7 +485,7 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
         try
         {
             var sharedLogMessage = Chat.LogMessage.Instance;
-            var sharedParams = Chat.LogMessageParameterList.Instance;
+            var sharedParams     = LogMessageParameterList.Instance;
 
             foreach (ref var item in thisPtr->LogMessageQueue)
             {
@@ -503,7 +496,7 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
                     continue;
 
                 sharedLogMessage.Pointer = address;
-                sharedParams.Pointer = &address->Parameters;
+                sharedParams.Pointer     = &address->Parameters;
 
                 foreach (var action in Delegate.EnumerateInvocationList(this.LogMessage))
                 {
@@ -513,7 +506,7 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
                     }
                     catch (Exception e)
                     {
-                        Log.Error(e, "Could not invoke registered OnLogMessageDelegate for {Name}", action.Method);
+                        Log.Error(e, "Could not invoke registered OnLogMessageDelegate for {Name}", action.Method.ToString());
                     }
                 }
 
@@ -524,17 +517,18 @@ internal sealed unsafe class ChatGui : IInternalDisposableService, IChatGui
                     // setting a non-existent row would "properly" skip the entry,
                     // but the game attempts to read that row for 150 frames before
                     // continuing with the next item in the queue
-                    item.LogMessageId = 0;
+                    item.LogMessageId          = 0;
                 }
             }
 
             sharedLogMessage.Pointer = null;
-            sharedParams.Pointer = null;
+            sharedParams.Pointer     = null;
 
             this.handleLogModuleUpdate.Original(thisPtr);
 
             // record the log messages for that we already called the event, but are still in the queue
             this.seenLogMessageObjects.Clear();
+
             foreach (ref var item in thisPtr->LogMessageQueue)
             {
                 this.seenLogMessageObjects.Add((nint)Unsafe.AsPointer(ref item));
@@ -568,12 +562,12 @@ internal class ChatGuiPluginScoped : IInternalDisposableService, IChatGui
     /// <param name="plugin">The plugin.</param>
     internal ChatGuiPluginScoped(LocalPlugin plugin)
     {
-        this.plugin = plugin;
-        this.chatGuiService.ChatMessage += this.OnMessageForward;
-        this.chatGuiService.CheckMessageHandled += this.OnCheckMessageHandledForward;
-        this.chatGuiService.ChatMessageHandled += this.OnMessageHandledForward;
+        this.plugin                              =  plugin;
+        this.chatGuiService.ChatMessage          += this.OnMessageForward;
+        this.chatGuiService.CheckMessageHandled  += this.OnCheckMessageHandledForward;
+        this.chatGuiService.ChatMessageHandled   += this.OnMessageHandledForward;
         this.chatGuiService.ChatMessageUnhandled += this.OnMessageUnhandledForward;
-        this.chatGuiService.LogMessage += this.OnLogMessageForward;
+        this.chatGuiService.LogMessage           += this.OnLogMessageForward;
     }
 
     /// <inheritdoc/>
@@ -603,16 +597,16 @@ internal class ChatGuiPluginScoped : IInternalDisposableService, IChatGui
     /// <inheritdoc/>
     void IInternalDisposableService.DisposeService()
     {
-        this.chatGuiService.ChatMessage -= this.OnMessageForward;
-        this.chatGuiService.CheckMessageHandled -= this.OnCheckMessageHandledForward;
-        this.chatGuiService.ChatMessageHandled -= this.OnMessageHandledForward;
+        this.chatGuiService.ChatMessage          -= this.OnMessageForward;
+        this.chatGuiService.CheckMessageHandled  -= this.OnCheckMessageHandledForward;
+        this.chatGuiService.ChatMessageHandled   -= this.OnMessageHandledForward;
         this.chatGuiService.ChatMessageUnhandled -= this.OnMessageUnhandledForward;
-        this.chatGuiService.LogMessage -= this.OnLogMessageForward;
+        this.chatGuiService.LogMessage           -= this.OnLogMessageForward;
 
-        this.ChatMessage = null;
-        this.ChatMessageHandled = null;
+        this.ChatMessage          = null;
+        this.ChatMessageHandled   = null;
         this.ChatMessageUnhandled = null;
-        this.LogMessage = null;
+        this.LogMessage           = null;
     }
 
     /// <inheritdoc/>
@@ -659,6 +653,6 @@ internal class ChatGuiPluginScoped : IInternalDisposableService, IChatGui
     private void OnMessageUnhandledForward(IChatMessage message)
         => this.ChatMessageUnhandled?.Invoke(message);
 
-    private void OnLogMessageForward(Chat.ILogMessage message)
+    private void OnLogMessageForward(ILogMessage message)
         => this.LogMessage?.Invoke(message);
 }

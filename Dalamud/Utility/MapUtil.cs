@@ -1,9 +1,7 @@
 using System.Numerics;
-
 using Dalamud.Data;
 using Dalamud.Excel.Sheets;
 using Dalamud.Game.Text;
-
 using Lumina.Text.ReadOnly;
 
 namespace Dalamud.Utility;
@@ -25,11 +23,11 @@ public struct WorldCoordinate
     public WorldCoordinate(uint territoryId, uint mapId, float x, float y, float z, uint instanceId = 0)
     {
         this.TerritoryId = territoryId;
-        this.MapId = mapId;
-        this.X = x;
-        this.Y = y;
-        this.Z = z;
-        this.InstanceId = instanceId;
+        this.MapId       = mapId;
+        this.X           = x;
+        this.Y           = y;
+        this.Z           = z;
+        this.InstanceId  = instanceId;
     }
 
     /// <summary>
@@ -90,20 +88,27 @@ public struct WorldCoordinate
         if (mapId == 0 || !dataManager.GetExcelSheet<Map>().TryGetRow(mapId, out var mapRow))
             return default;
 
-        return new MapCoordinate(
+        float? z = null;
+
+        // ReSharper disable once CompareOfFloatsByEqualityOperator
+        if (this.Y != MapUtil.NoRawZ && MapUtil.TryGetOffsetZ(this.TerritoryId, out var offsetZ))
+        {
+            z = MapUtil.ConvertWorldCoordYToMapCoord(this.Y, offsetZ);
+        }
+
+        return new MapCoordinate
+        (
             this.TerritoryId,
             this.MapId,
             MapUtil.ConvertWorldCoordXZToMapCoord(this.X, mapRow.SizeFactor, mapRow.OffsetX),
             MapUtil.ConvertWorldCoordXZToMapCoord(this.Z, mapRow.SizeFactor, mapRow.OffsetY),
-            this.Y == MapUtil.NoRawZ ? null : this.Y / 100f,
-            this.InstanceId);
+            z,
+            this.InstanceId
+        );
     }
 
     /// <inheritdoc cref="SeString.CreateMapLink(WorldCoordinate, uint)"/>
-    public ReadOnlySeString ToMapLink()
-    {
-        return SeString.CreateMapLink(this);
-    }
+    public ReadOnlySeString ToMapLink(uint placeNameIdOverride = 0) => SeString.CreateMapLink(this, placeNameIdOverride);
 }
 
 /// <summary>
@@ -123,11 +128,11 @@ public struct MapCoordinate
     public MapCoordinate(uint territoryId, uint mapId, float x, float y, float? z = null, uint instanceId = 0)
     {
         this.TerritoryId = territoryId;
-        this.MapId = mapId;
-        this.X = x;
-        this.Y = y;
-        this.Z = z;
-        this.InstanceId = instanceId;
+        this.MapId       = mapId;
+        this.X           = x;
+        this.Y           = y;
+        this.Z           = z;
+        this.InstanceId  = instanceId;
     }
 
     /// <summary>
@@ -174,20 +179,27 @@ public struct MapCoordinate
         if (mapId == 0 || !Service<DataManager>.Get().GetExcelSheet<Map>().TryGetRow(mapId, out var mapRow))
             return default;
 
-        return new WorldCoordinate(
+        float y = MapUtil.NoRawZ;
+
+        if (this.Z.HasValue)
+        {
+            MapUtil.TryGetOffsetZ(this.TerritoryId, out var offsetZ);
+            y = MathF.Round(this.Z.Value * 100f, 2) + offsetZ;
+        }
+
+        return new WorldCoordinate
+        (
             this.TerritoryId,
             this.MapId,
             MapUtil.ConvertMapCoordXYToWorldCoord(this.X, mapRow.SizeFactor, mapRow.OffsetX),
-            this.Z.HasValue ? this.Z.Value * 100f : MapUtil.NoRawZ,
+            y,
             MapUtil.ConvertMapCoordXYToWorldCoord(this.Y, mapRow.SizeFactor, mapRow.OffsetY),
-            this.InstanceId);
+            this.InstanceId
+        );
     }
 
-    /// <inheritdoc cref="SeString.CreateMapLink(MapCoordinate)"/>
-    public ReadOnlySeString ToMapLink()
-    {
-        return SeString.CreateMapLink(this);
-    }
+    /// <inheritdoc cref="SeString.CreateMapLink(MapCoordinate, uint)"/>
+    public ReadOnlySeString ToMapLink(uint placeNameIdOverride = 0) => SeString.CreateMapLink(this, placeNameIdOverride);
 }
 
 /// <summary>
@@ -216,12 +228,10 @@ public static class MapUtil
     /// <param name="scale">The scale factor of the map, generally retrieved from Lumina.</param>
     /// <param name="offset">The dimension offset for either X or Z, generally retrieved from Lumina.</param>
     /// <returns>Returns a converted float for display to the player.</returns>
+    // ReSharper disable once InconsistentNaming
     public static float ConvertWorldCoordXZToMapCoord(float value, uint scale, int offset)
-    {
         // Derived from E8 ?? ?? ?? ?? 0F B7 4B 1C and simplified.
-
-        return (0.02f * offset) + (2048f / scale) + (0.02f * value) + 1.0f;
-    }
+        => (0.02f * offset) + (2048f / scale) + (0.02f * value) + 1.0f;
 
     /// <summary>
     /// Helper method to convert one of the map's X/Y coordinate to a world coordinate.
@@ -230,10 +240,8 @@ public static class MapUtil
     /// <param name="scale">The SizeFactor value of the Map row.</param>
     /// <param name="offset">The OffsetX/OffsetY value of the Map row.</param>
     /// <returns>A 3D world coordinate.</returns>
-    public static float ConvertMapCoordXYToWorldCoord(float value, float scale, short offset)
-    {
-        return (value - 1.0f - (0.02f * offset) - (2048.0f / scale)) * 50.0f;
-    }
+    // ReSharper disable once InconsistentNaming
+    public static float ConvertMapCoordXYToWorldCoord(float value, float scale, short offset) => (value - 1.0f - (0.02f * offset) - (2048.0f / scale)) * 50.0f;
 
     /// <summary>
     /// Helper method to convert a game Vector3 Y coordinate to a map coordinate suitable for display to the player.
@@ -259,32 +267,18 @@ public static class MapUtil
     /// <param name="territoryId">The TerritoryType Id.</param>
     /// <param name="y">The y-coordinate value.</param>
     /// <returns>An adjusted altitude.</returns>
-    public static int ApplyTerritoryOffsetToWorldCoordianteY(uint territoryId, float y)
+    public static int ApplyTerritoryOffsetToWorldCoordinateY(uint territoryId, float y)
     {
         if (!Service<DataManager>.Get().GetExcelSheet<TerritoryTypeTransient>().TryGetRow(territoryId, out var transientRow) || transientRow.OffsetZ == NoOffsetZ)
-            return MapUtil.NoRawZ;
+            return NoRawZ;
 
         var adjustedY = y - transientRow.OffsetZ;
-        var result = (int)adjustedY;
+        var result    = (int)adjustedY;
+
+        // ReSharper disable once CompareOfFloatsByEqualityOperator
         if (adjustedY < 0.0f && adjustedY != result)
             result -= 10;
         return result;
-    }
-
-    /// <summary>
-    /// Helper method to remove the <see cref="TerritoryTypeTransient.OffsetZ"/> from a Y (altitude) value of a coordinate.
-    /// </summary>
-    /// <param name="territoryId">The TerritoryType Id.</param>
-    /// <param name="y">The y-coordinate value.</param>
-    /// <returns>An adjusted altitude.</returns>
-    public static float RemoveTerritoryOffsetFromWorldCoordinateY(uint territoryId, float y)
-    {
-        if (!Service<DataManager>.Get().GetExcelSheet<TerritoryTypeTransient>().TryGetRow(territoryId, out var transientRow) || transientRow.OffsetZ == NoOffsetZ)
-            return y;
-
-        if (y < 0.0f)
-            y += 10;
-        return y + transientRow.OffsetZ;
     }
 
     /// <summary>
@@ -301,19 +295,21 @@ public static class MapUtil
     /// <param name="scale">The global scale to apply to the incoming X and Y parameters, generally Lumina's Map.SizeFactor.</param>
     /// <param name="correctZOffset">An optional mode to "correct" a Z offset of -10000 to be a more human-friendly value.</param>
     /// <returns>Returns a Vector3 representing visible map coordinates.</returns>
-    public static Vector3 WorldToMap(
+    public static Vector3 WorldToMap
+    (
         Vector3 worldCoordinates,
-        int xOffset = 0,
-        int yOffset = 0,
-        int zOffset = 0,
-        uint scale = 100,
-        bool correctZOffset = false)
-    {
-        return new Vector3(
+        int     xOffset        = 0,
+        int     yOffset        = 0,
+        int     zOffset        = 0,
+        uint    scale          = 100,
+        bool    correctZOffset = false
+    )
+        => new
+        (
             ConvertWorldCoordXZToMapCoord(worldCoordinates.X, scale, xOffset),
             ConvertWorldCoordXZToMapCoord(worldCoordinates.Z, scale, yOffset),
-            ConvertWorldCoordYToMapCoord(worldCoordinates.Y, zOffset, correctZOffset));
-    }
+            ConvertWorldCoordYToMapCoord(worldCoordinates.Y, zOffset, correctZOffset)
+        );
 
     /// <summary>
     /// All-in-one helper method to convert a World Coordinate (internal to the game) to a Map Coordinate (visible to
@@ -327,17 +323,22 @@ public static class MapUtil
     /// <param name="territoryTransient">A TerritoryTypeTransient to use for Z offset information.</param>
     /// <param name="correctZOffset">An optional mode to "correct" a Z offset of -10000 to be a more human-friendly value.</param>
     /// <returns>Returns a Vector3 representing visible map coordinates.</returns>
-    public static Vector3 WorldToMap(
-        Vector3 worldCoordinates, Map map, TerritoryTypeTransient territoryTransient, bool correctZOffset = false)
-    {
-        return WorldToMap(
+    public static Vector3 WorldToMap
+    (
+        Vector3                worldCoordinates,
+        Map                    map,
+        TerritoryTypeTransient territoryTransient,
+        bool                   correctZOffset = false
+    )
+        => WorldToMap
+        (
             worldCoordinates,
             map.OffsetX,
             map.OffsetY,
             territoryTransient.OffsetZ,
             map.SizeFactor,
-            correctZOffset);
-    }
+            correctZOffset
+        );
 
     /// <summary>
     /// All-in-one helper method to convert a World Coordinate (internal to the game) to a Map Coordinate (visible to
@@ -348,16 +349,18 @@ public static class MapUtil
     /// <param name="yOffset">The offset to apply to the incoming Y parameter, generally Lumina's Map.OffsetY.</param>
     /// <param name="scale">The global scale to apply to the incoming X and Y parameters, generally Lumina's Map.SizeFactor.</param>
     /// <returns>Returns a Vector2 representing visible map coordinates.</returns>
-    public static Vector2 WorldToMap(
+    public static Vector2 WorldToMap
+    (
         Vector2 worldCoordinates,
-        int xOffset = 0,
-        int yOffset = 0,
-        uint scale = 100)
-    {
-        return new Vector2(
+        int     xOffset = 0,
+        int     yOffset = 0,
+        uint    scale   = 100
+    )
+        => new
+        (
             ConvertWorldCoordXZToMapCoord(worldCoordinates.X, scale, xOffset),
-            ConvertWorldCoordXZToMapCoord(worldCoordinates.Y, scale, yOffset));
-    }
+            ConvertWorldCoordXZToMapCoord(worldCoordinates.Y, scale, yOffset)
+        );
 
     /// <summary>
     /// All-in-one helper method to convert a World Coordinate (internal to the game) to a Map Coordinate (visible to
@@ -366,10 +369,7 @@ public static class MapUtil
     /// <param name="worldCoordinates">A Vector2 of raw World coordinates from the game.</param>
     /// <param name="map">A Lumina map to use for offset/scale information.</param>
     /// <returns>Returns a Vector2 representing visible map coordinates.</returns>
-    public static Vector2 WorldToMap(Vector2 worldCoordinates, Map map)
-    {
-        return WorldToMap(worldCoordinates, map.OffsetX, map.OffsetY, map.SizeFactor);
-    }
+    public static Vector2 WorldToMap(Vector2 worldCoordinates, Map map) => WorldToMap(worldCoordinates, map.OffsetX, map.OffsetY, map.SizeFactor);
 
     /// <summary>
     /// Resolves the Map Id for a given TerritoryType Id, or returns the provided default Map Id if specified.
@@ -385,8 +385,36 @@ public static class MapUtil
         if (territoryTypeId == 0)
             return 0;
 
-        return Service<DataManager>.Get().GetExcelSheet<TerritoryType>().TryGetRow(territoryTypeId, out var territoryRow)
-            ? territoryRow.Map.RowId
-            : 0;
+        return Service<DataManager>.Get().GetExcelSheet<TerritoryType>().TryGetRow(territoryTypeId, out var territoryRow) ?
+                   territoryRow.Map.RowId :
+                   0;
+    }
+
+    /// <summary>
+    /// Converts a world X/Z coordinate to the raw integer used by map links, e.g. 123.4567 -> 123457.
+    /// </summary>
+    /// <param name="value">The world X or Z coordinate.</param>
+    /// <returns>The raw coordinate.</returns>
+    // ReSharper disable once InconsistentNaming
+    internal static int ConvertWorldCoordXZToRaw(float value) => (int)MathF.Round(value * 1000f);
+
+    /// <summary>
+    /// Gets the <see cref="TerritoryTypeTransient.OffsetZ"/> of a territory that displays a Z coordinate.
+    /// </summary>
+    /// <param name="territoryTypeId">The TerritoryType Id.</param>
+    /// <param name="offsetZ">The OffsetZ, or 0 if the territory displays no Z coordinate.</param>
+    /// <returns>Whether the territory displays a Z coordinate.</returns>
+    internal static bool TryGetOffsetZ(uint territoryTypeId, out int offsetZ)
+    {
+        offsetZ = 0;
+
+        if (!Service<DataManager>.Get().GetExcelSheet<TerritoryTypeTransient>().TryGetRow(territoryTypeId, out var transientRow) ||
+            transientRow.OffsetZ == NoOffsetZ)
+        {
+            return false;
+        }
+
+        offsetZ = transientRow.OffsetZ;
+        return true;
     }
 }

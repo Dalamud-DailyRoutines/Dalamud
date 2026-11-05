@@ -6,7 +6,6 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Dalamud.Configuration.Internal;
 using Dalamud.Game;
 using Dalamud.Interface.Internal;
@@ -41,11 +40,11 @@ internal class LocalPlugin : IAsyncDisposable
 
     private readonly SemaphoreSlim pluginLoadStateLock = new(1);
 
-    private bool disposed = false;
-    private PluginLoader? loader;
-    private Type? pluginType;
-    private object? instance;
-    private IServiceScope? serviceScope;
+    private bool                    disposed;
+    private PluginLoader?           loader;
+    private Type?                   pluginType;
+    private object?                 instance;
+    private IServiceScope?          serviceScope;
     private DalamudPluginInterface? dalamudInterface;
 
     /// <summary>
@@ -58,7 +57,7 @@ internal class LocalPlugin : IAsyncDisposable
         if (dllFile.Name == "FFXIVClientStructs.Generators.dll")
         {
             // 虽然可以用其他方式实现，但这是日志中极其常见的错误来源，并且不应该作为插件加载。
-            Log.Error($"不是插件: {dllFile.FullName}");
+            Log.Error("不是插件: {DllFileFullName}", dllFile.FullName);
             throw new InvalidPluginException(dllFile);
         }
 
@@ -66,7 +65,7 @@ internal class LocalPlugin : IAsyncDisposable
 
         // 虽然这里是有条件使用的，但我们需要无论如何都设置初始值。
         this.manifestFile = LocalPluginManifest.GetManifestFile(this.DllFile);
-        this.manifest = manifest;
+        this.manifest     = manifest;
 
         this.State = PluginState.Unloaded;
 
@@ -74,6 +73,7 @@ internal class LocalPlugin : IAsyncDisposable
 
         // 这将 ".disabled" 文件功能转换为清单。
         this.disabledFile = LocalPluginManifest.GetDisabledFile(this.DllFile);
+
         if (this.disabledFile.Exists)
         {
 #pragma warning disable CS0618
@@ -86,6 +86,7 @@ internal class LocalPlugin : IAsyncDisposable
 
         // 这将 ".testing" 文件功能转换为清单。
         this.testingFile = LocalPluginManifest.GetTestingFile(this.DllFile);
+
         if (this.testingFile.Exists)
         {
             this.manifest.Testing = true;
@@ -101,17 +102,17 @@ internal class LocalPlugin : IAsyncDisposable
 
             needsSaveDueToLegacyFiles = true;
         }
-        
+
         // 迁移旧的 `预装库`，保留一段时间待大部分用户迁移完成可删除
         if (this.manifest.InstalledFromUrl is PluginRepository.MainRepoUrlSoil or PluginRepository.MainRepoUrlGoatCorp)
         {
             this.manifest.InstalledFromUrl = SpecialPluginSource.MainRepo;
-            
+
             needsSaveDueToLegacyFiles = true;
         }
 
         var pluginManager = Service<PluginManager>.Get();
-        this.IsBanned = pluginManager.IsManifestBanned(this.manifest); // && !this.IsDev;
+        this.IsBanned  = pluginManager.IsManifestBanned(this.manifest); // && !this.IsDev;
         this.BanReason = pluginManager.GetBanReason(this.manifest);
 
         if (needsSaveDueToLegacyFiles)
@@ -222,9 +223,8 @@ internal class LocalPlugin : IAsyncDisposable
     /// Plugins whose last load attempt faulted are excluded here so that automatic load paths don't retry
     /// over and over. User can still reload/retry explicitly through the installer's enable toggle.
     /// </summary>
-    public bool ApplicableForAutomaticLoads => !this.IsBanned && !this.IsOutdated
-                                     && !(!this.IsDev && this.State is PluginState.UnloadError or PluginState.LoadError)
-                                     && this.CheckPolicy();
+    public bool ApplicableForAutomaticLoads =>
+        !this.IsBanned && !this.IsOutdated && !(!this.IsDev && this.State is PluginState.UnloadError or PluginState.LoadError) && this.CheckPolicy();
 
     /// <summary>
     /// 获取此插件的有效版本。
@@ -267,14 +267,15 @@ internal class LocalPlugin : IAsyncDisposable
             cts.CancelAfter(TimeSpan.FromSeconds(60));
         }
 
-        var ioc = await Service<ServiceContainer>.GetAsync();
+        var ioc           = await Service<ServiceContainer>.GetAsync();
         var pluginManager = await Service<PluginManager>.GetAsync();
-        var dalamud = await Service<Dalamud>.GetAsync();
+        var dalamud       = await Service<Dalamud>.GetAsync();
 
         if (this.manifest.LoadRequiredState == 0)
             _ = await Service<InterfaceManager.InterfaceManagerWithScene>.GetAsync();
 
         await this.pluginLoadStateLock.WaitAsync(cancellationToken);
+
         try
         {
             if (reloading)
@@ -298,24 +299,30 @@ internal class LocalPlugin : IAsyncDisposable
                     // so the retry must have come from user interaction in that case.
                     if (this.instance is not null)
                     {
-                        throw new InternalPluginStateException(
-                            "插件加载失败，但是其实例无法被清除");
+                        throw new InternalPluginStateException
+                        (
+                            "插件加载失败，但是其实例无法被清除"
+                        );
                     }
 
                     break;
                 case PluginState.UnloadError:
                     if (!this.IsDev)
                     {
-                        throw new InvalidPluginOperationException(
-                            $"无法加载 {this.Name}，卸载先前失败，请重启 Dalamud");
+                        throw new InvalidPluginOperationException
+                        (
+                            $"无法加载 {this.Name}，卸载先前失败，请重启 Dalamud"
+                        );
                     }
 
                     break;
                 case PluginState.Unloaded:
                     if (this.instance is not null)
                     {
-                        throw new InternalPluginStateException(
-                            "插件应该已卸载但实例未清除");
+                        throw new InternalPluginStateException
+                        (
+                            "插件应该已卸载但实例未清除"
+                        );
                     }
 
                     break;
@@ -327,7 +334,7 @@ internal class LocalPlugin : IAsyncDisposable
 
             // if (pluginManager.IsManifestBanned(this.Manifest) && !this.IsDev)
             if (pluginManager.IsManifestBanned(this.manifest))
-                    throw new BannedPluginException($"无法加载 {this.Name}，已被禁止");
+                throw new BannedPluginException($"无法加载 {this.Name}，已被禁止");
 
             if (this.manifest.ApplicableVersion < dalamud.StartInfo.GameVersion)
                 throw new PluginPreconditionFailedException($"无法加载 {this.Name}，游戏版本新于适用版本 {this.manifest.ApplicableVersion}");
@@ -350,7 +357,7 @@ internal class LocalPlugin : IAsyncDisposable
                 throw new PluginPreconditionFailedException($"U无法加载 {this.Name}, Dalamud 版本过低, 要求 {this.Manifest.MinimumDalamudVersion}");
 
             this.State = PluginState.Loading;
-            Log.Information($"正在加载 {this.DllFile.Name}");
+            Log.Information("正在加载 {DllFileName}", this.DllFile.Name);
 
             var hasExistingLoader = this.loader != null;
             this.EnsureLoader();
@@ -358,24 +365,35 @@ internal class LocalPlugin : IAsyncDisposable
             if (this.DllFile.DirectoryName != null &&
                 File.Exists(Path.Combine(this.DllFile.DirectoryName, "Dalamud.dll")))
             {
-                Log.Error(
-                    "==== 给 {0}，{1} 的开发者的重要信息 ====",
+                Log.Error
+                (
+                    "==== 给 {Author}，{InternalName} 的开发者的重要信息 ====",
                     this.manifest.Author!,
-                    this.manifest.InternalName);
-                Log.Error(
-                    "你在构建中包含了 DALAMUD 依赖项!!!");
-                Log.Error(
-                    "你可能无法加载你的插件。需要在你的 csproj 中设置 \"<Private>False</Private>\"。");
-                Log.Error(
-                    "如果你使用 ILMerge，请不要合并除了你的直接依赖项以外的任何内容。");
+                    this.manifest.InternalName
+                );
+                Log.Error
+                (
+                    "你在构建中包含了 DALAMUD 依赖项!!!"
+                );
+                Log.Error
+                (
+                    "你可能无法加载你的插件。需要在你的 csproj 中设置 \"<Private>False</Private>\"。"
+                );
+                Log.Error
+                (
+                    "如果你使用 ILMerge，请不要合并除了你的直接依赖项以外的任何内容。"
+                );
                 Log.Error("不要合并 FFXIVClientStructs.Generators.dll。");
-                Log.Error(
-                    "请参考 https://github.com/goatcorp/Dalamud/discussions/603 获取更多信息。");
+                Log.Error
+                (
+                    "请参考 https://github.com/goatcorp/Dalamud/discussions/603 获取更多信息。"
+                );
             }
 
             this.HasEverStartedLoad = true;
 
             var shouldReloadLoader = reloading || (this.IsDev && hasExistingLoader);
+
             if (shouldReloadLoader)
             {
                 if (this.IsDev)
@@ -384,7 +402,7 @@ internal class LocalPlugin : IAsyncDisposable
                     // time, we need to essentially "Unload" the plugin, but we can't call plugin.Unload because of the
                     // load state checks. Null any references to the assembly and types, then proceed with regular reload
                     // operations.
-                    this.Assembly = null;
+                    this.Assembly   = null;
                     this.pluginType = null;
                 }
 
@@ -396,6 +414,7 @@ internal class LocalPlugin : IAsyncDisposable
 
             // Check for any loaded plugins with the same assembly name
             var assemblyName = this.Assembly!.GetName().Name;
+
             foreach (var otherPlugin in pluginManager.InstalledPlugins)
             {
                 // 在热重载期间，这个插件将在插件列表中，并且实例将已被处置
@@ -404,12 +423,16 @@ internal class LocalPlugin : IAsyncDisposable
 
                 var otherPluginAssemblyName =
                     otherPlugin.instance.GetType().Assembly.GetName().Name;
+
                 if (otherPluginAssemblyName == assemblyName && otherPluginAssemblyName != null)
                 {
-                    Log.Warning("Loading {Name}, but another plugin with the same assembly name was already loaded (thisGuid={ThisGuid}, otherGuid={OtherGuid})",
-                                this.InternalName,
-                                this.EffectiveWorkingPluginId,
-                                otherPlugin.EffectiveWorkingPluginId);
+                    Log.Warning
+                    (
+                        "Loading {Name}, but another plugin with the same assembly name was already loaded (thisGuid={ThisGuid}, otherGuid={OtherGuid})",
+                        this.InternalName,
+                        this.EffectiveWorkingPluginId,
+                        otherPlugin.EffectiveWorkingPluginId
+                    );
                 }
             }
 
@@ -419,12 +442,14 @@ internal class LocalPlugin : IAsyncDisposable
             this.serviceScope.RegisterPrivateScopes(this); // 添加这个 LocalPlugin 作为私有作用域，以便服务可以获取它
 
             Log.Information("正在创建 {PluginName} 插件的实例 (异步={IsAsync})", this.InternalName, this.pluginType!.IsAssignableTo(typeof(IAsyncDalamudPlugin)));
-            this.instance = await CreatePluginInstance(
+            this.instance = await CreatePluginInstance
+                            (
                                 this.manifest,
                                 this.serviceScope,
                                 this.pluginType!,
                                 this.dalamudInterface,
-                                cancellationToken);
+                                cancellationToken
+                            );
             this.State = PluginState.Loaded;
             Log.Information("加载插件 {PluginName} 完成", this.InternalName);
 
@@ -445,7 +470,7 @@ internal class LocalPlugin : IAsyncDisposable
 
             // If a precondition fails, don't record it as an error, as it isn't really.
             if (ex is PluginPreconditionFailedException)
-                Log.Warning(ex.Message);
+                Log.Warning(ex, "{Message}", ex.Message);
             else
                 Log.Error(ex, "加载 {PluginName} 时出错", this.InternalName);
 
@@ -467,6 +492,7 @@ internal class LocalPlugin : IAsyncDisposable
         ObjectDisposedException.ThrowIf(this.disposed, nameof(LocalPlugin));
 
         await this.pluginLoadStateLock.WaitAsync();
+
         try
         {
             switch (this.State)
@@ -477,8 +503,10 @@ internal class LocalPlugin : IAsyncDisposable
                 case PluginState.UnloadError:
                     if (!this.IsDev)
                     {
-                        throw new InvalidPluginOperationException(
-                            $"无法卸载 {this.Name}，卸载先前失败，请重启 Dalamud");
+                        throw new InvalidPluginOperationException
+                        (
+                            $"无法卸载 {this.Name}，卸载先前失败，请重启 Dalamud"
+                        );
                     }
 
                     break;
@@ -548,15 +576,12 @@ internal class LocalPlugin : IAsyncDisposable
         ObjectDisposedException.ThrowIf(this.disposed, nameof(LocalPlugin));
 
         var startInfo = Service<Dalamud>.Get().StartInfo;
-        var manager = Service<PluginManager>.Get();
+        var manager   = Service<PluginManager>.Get();
 
         if (startInfo.NoLoadThirdPartyPlugins && this.manifest.IsThirdParty)
             return false;
 
-        if (manager.SafeMode)
-            return false;
-
-        return true;
+        return !manager.SafeMode;
     }
 
     /// <summary>
@@ -583,13 +608,15 @@ internal class LocalPlugin : IAsyncDisposable
             return null;
 
         var repos = Service<PluginManager>.Get().Repos;
-        return repos.FirstOrDefault(x =>
-        {
-            if (!x.IsThirdParty && !this.manifest.IsThirdParty)
-                return true;
+        return repos.FirstOrDefault
+        (x =>
+            {
+                if (!x.IsThirdParty && !this.manifest.IsThirdParty)
+                    return true;
 
-            return x.PluginMasterUrl == this.manifest.InstalledFromUrl;
-        });
+                return x.PluginMasterUrl == this.manifest.InstalledFromUrl;
+            }
+        );
     }
 
     /// <summary>
@@ -616,12 +643,11 @@ internal class LocalPlugin : IAsyncDisposable
     {
     }
 
-    private static Type? FindPluginImpl(Assembly assembly)
-    {
-        return assembly.GetTypes().FirstOrDefault(
-            type => type.IsAssignableTo(typeof(IDalamudPlugin)) ||
-                    type.IsAssignableTo(typeof(IAsyncDalamudPlugin)));
-    }
+    private static Type? FindPluginImpl(Assembly assembly) =>
+        assembly.GetTypes().FirstOrDefault
+        (type => type.IsAssignableTo(typeof(IDalamudPlugin)) ||
+                 type.IsAssignableTo(typeof(IAsyncDalamudPlugin))
+        );
 
     /// <summary>Creates a new instance of the plugin.</summary>
     /// <param name="manifest">Plugin manifest.</param>
@@ -630,19 +656,23 @@ internal class LocalPlugin : IAsyncDisposable
     /// <param name="dalamudInterface">Instance of <see cref="IDalamudPluginInterface"/>.</param>
     /// <param name="cancellationToken">Token that may be used to cancel the load.</param>
     /// <returns>A new instance of the plugin.</returns>
-    private static async Task<object> CreatePluginInstance(
-        LocalPluginManifest manifest,
-        IServiceScope scope,
-        Type type,
+    private static async Task<object> CreatePluginInstance
+    (
+        LocalPluginManifest    manifest,
+        IServiceScope          scope,
+        Type                   type,
         DalamudPluginInterface dalamudInterface,
-        CancellationToken cancellationToken = default)
+        CancellationToken      cancellationToken = default
+    )
     {
         if (type.IsAssignableTo(typeof(IDalamudPlugin)))
         {
             // Legacy load
-            var framework = await Service<Framework>.GetAsync();
+            var framework            = await Service<Framework>.GetAsync();
             var forceFrameworkThread = manifest.LoadSync && manifest.LoadRequiredState is 0 or 1;
-            var newInstanceTask = forceFrameworkThread ? framework.RunOnFrameworkThread(Create) : Create();
+            var newInstanceTask = forceFrameworkThread ?
+                                      framework.RunOnFrameworkThread(Create) :
+                                      Create();
             return await newInstanceTask.ConfigureAwait(false);
 
             async Task<IDalamudPlugin> Create() => (IDalamudPlugin)await scope.CreateAsync(type, ObjectInstanceVisibility.ExposedToPlugins, dalamudInterface);
@@ -666,8 +696,8 @@ internal class LocalPlugin : IAsyncDisposable
 
     private static void SetupLoaderConfig(LoaderConfig config)
     {
-        config.IsUnloadable = true;
-        config.LoadInMemory = true;
+        config.IsUnloadable      = true;
+        config.LoadInMemory      = true;
         config.PreferSharedTypes = false;
 
         // 确保插件不加载自己的 Dalamud 程序集。
@@ -680,6 +710,7 @@ internal class LocalPlugin : IAsyncDisposable
         // 对 Lumina 的更改应该尽可能地上游，如果有人想重新添加未固定的 Lumina，
         // 我们需要将其置于某种功能标志之后。
         config.SharedAssemblies.Add((typeof(Lumina.GameData).Assembly.GetName(), true));
+        config.SharedAssemblies.Add((typeof(Excel.Sheets.Action).Assembly.GetName(), true));
     }
 
     private void EnsureLoader()
@@ -717,7 +748,7 @@ internal class LocalPlugin : IAsyncDisposable
         catch (Exception ex)
         {
             this.ResetLoader();
-            Log.Error(ex, $"非插件: {this.DllFile.FullName}");
+            Log.Error(ex, "非插件: {DllFileFullName}", this.DllFile.FullName);
             throw new InvalidPluginException(this.DllFile);
         }
 
@@ -749,7 +780,7 @@ internal class LocalPlugin : IAsyncDisposable
 
     private void ResetLoader()
     {
-        this.Assembly = null;
+        this.Assembly   = null;
         this.pluginType = null;
         this.loader?.Dispose();
         this.loader = null;
@@ -760,40 +791,44 @@ internal class LocalPlugin : IAsyncDisposable
     private async Task<AggregateException?> ClearAndDisposeAllResources(PluginLoaderDisposalMode disposalMode)
     {
         List<Exception>? exceptions = null;
-        Log.Verbose(
-            "{name}({id}): {fn}(处置模式={disposalMode}) async={isAsync}",
+        Log.Verbose
+        (
+            "{Name}({Id}): {Fn}(处置模式={DisposalMode}) async={IsAsync}",
             this.InternalName,
             this.EffectiveWorkingPluginId,
             nameof(this.ClearAndDisposeAllResources),
             disposalMode,
-            this.pluginType == typeof(IAsyncDalamudPlugin));
+            this.pluginType == typeof(IAsyncDalamudPlugin)
+        );
 
         // 首先清除插件实例。
-        if (!await AttemptCleanup(
-            nameof(this.instance),
-            Interlocked.Exchange(ref this.instance, null),
-            this.manifest,
-            static async (inst, manifest) =>
-            {
-                var framework = Service<Framework>.GetNullable();
+        if (!await AttemptCleanup
+             (
+                 nameof(this.instance),
+                 Interlocked.Exchange(ref this.instance, null),
+                 this.manifest,
+                 static async (inst, manifest) =>
+                 {
+                     var framework = Service<Framework>.GetNullable();
 
-                switch (inst)
-                {
-                    // Sync plugins that can unload async will unload async, if we are in off the main thread.
-                    case IDalamudPlugin syncInstance when manifest.CanUnloadAsync || framework is null:
-                        syncInstance.Dispose();
-                        break;
+                     switch (inst)
+                     {
+                         // Sync plugins that can unload async will unload async, if we are in off the main thread.
+                         case IDalamudPlugin syncInstance when manifest.CanUnloadAsync || framework is null:
+                             syncInstance.Dispose();
+                             break;
 
-                    case IDalamudPlugin syncInstance:
-                        await framework.RunOnFrameworkThread(syncInstance.Dispose).ConfigureAwait(false);
-                        break;
+                         case IDalamudPlugin syncInstance:
+                             await framework.RunOnFrameworkThread(syncInstance.Dispose).ConfigureAwait(false);
+                             break;
 
-                    // Async plugins always unload async.
-                    case IAsyncDalamudPlugin asyncDalamudPlugin:
-                        await asyncDalamudPlugin.DisposeAsync().ConfigureAwait(false);
-                        break;
-                }
-            }))
+                         // Async plugins always unload async.
+                         case IAsyncDalamudPlugin asyncDalamudPlugin:
+                             await asyncDalamudPlugin.DisposeAsync().ConfigureAwait(false);
+                             break;
+                     }
+                 }
+             ))
         {
             // 插件未加载；加载器无论如何都不会被引用，所以不需要等待。
             disposalMode = PluginLoaderDisposalMode.ImmediateDispose;
@@ -802,15 +837,18 @@ internal class LocalPlugin : IAsyncDisposable
         // 下面的字段预期在插件被（尝试）处置之前保持活动状态。
         // 在此点之后清除它们。
         this.pluginType = null;
-        this.Assembly = null;
+        this.Assembly   = null;
 
-        await AttemptCleanup(
+        await AttemptCleanup
+        (
             nameof(this.serviceScope),
             Interlocked.Exchange(ref this.serviceScope, null),
             0,
-            static (x, _) => x.DisposeAsync());
+            static (x, _) => x.DisposeAsync()
+        );
 
-        await AttemptCleanup(
+        await AttemptCleanup
+        (
             nameof(this.dalamudInterface),
             Interlocked.Exchange(ref this.dalamudInterface, null),
             0,
@@ -818,17 +856,19 @@ internal class LocalPlugin : IAsyncDisposable
             {
                 x.Dispose();
                 return ValueTask.CompletedTask;
-            });
+            }
+        );
 
         if (disposalMode != PluginLoaderDisposalMode.None)
         {
-            await AttemptCleanup(
+            await AttemptCleanup
+            (
                 nameof(this.loader),
                 Interlocked.Exchange(ref this.loader, null),
-                disposalMode == PluginLoaderDisposalMode.WaitBeforeDispose
-                    ? Service<DalamudConfiguration>.Get().PluginWaitBeforeFree ??
-                      PluginManager.PluginWaitBeforeFreeDefault
-                    : 0,
+                disposalMode == PluginLoaderDisposalMode.WaitBeforeDispose ?
+                    Service<DalamudConfiguration>.Get().PluginWaitBeforeFree ??
+                    PluginManager.PluginWaitBeforeFreeDefault :
+                    0,
                 static async (ldr, waitBeforeDispose) =>
                 {
                     // 以防插件仍然有它们在本应该取消时没有取消的运行任务，
@@ -837,18 +877,21 @@ internal class LocalPlugin : IAsyncDisposable
                     await Task.Delay(waitBeforeDispose);
 
                     ldr.Dispose();
-                });
+                }
+            );
         }
 
-        return exceptions is not null
-                   ? (AggregateException)ExceptionDispatchInfo.SetCurrentStackTrace(new AggregateException(exceptions))
-                   : null;
+        return exceptions is not null ?
+                   (AggregateException)ExceptionDispatchInfo.SetCurrentStackTrace(new AggregateException(exceptions)) :
+                   null;
 
-        async ValueTask<bool> AttemptCleanup<T, TContext>(
-            string name,
-            T? what,
-            TContext context,
-            Func<T, TContext, ValueTask> cb)
+        async ValueTask<bool> AttemptCleanup<T, TContext>
+        (
+            string                       name,
+            T?                           what,
+            TContext                     context,
+            Func<T, TContext, ValueTask> cb
+        )
             where T : class
         {
             if (what is null)
@@ -857,18 +900,20 @@ internal class LocalPlugin : IAsyncDisposable
             try
             {
                 await cb.Invoke(what, context);
-                Log.Verbose("{name}({id}): {what} 已处置", this.InternalName, this.EffectiveWorkingPluginId, name);
+                Log.Verbose("{Name}({Id}): {What} 已处置", this.InternalName, this.EffectiveWorkingPluginId, name);
             }
             catch (Exception ex)
             {
                 exceptions ??= [];
                 exceptions.Add(ex);
-                Log.Error(
+                Log.Error
+                (
                     ex,
-                    "{name}({id}): 处置 {what} 失败",
+                    "{Name}({Id}): 处置 {What} 失败",
                     this.InternalName,
                     this.EffectiveWorkingPluginId,
-                    name);
+                    name
+                );
             }
 
             return true;

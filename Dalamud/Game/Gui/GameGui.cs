@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.NativeWrapper;
 using Dalamud.Hooking;
@@ -9,7 +8,6 @@ using Dalamud.IoC.Internal;
 using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
-
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Kernel;
@@ -18,7 +16,6 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Common.Component.BGCollision;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-
 using Vector2 = System.Numerics.Vector2;
 using Vector3 = System.Numerics.Vector3;
 using Vector4 = System.Numerics.Vector4;
@@ -35,14 +32,14 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
 
     private readonly GameGuiAddressResolver address;
 
-    private readonly Hook<AgentItemDetail.Delegates.Update> handleItemHoverHook;
-    private readonly Hook<AgentItemDetail.Delegates.ReceiveEvent> handleItemOutHook;
+    private readonly Hook<AgentItemDetail.Delegates.Update>              handleItemHoverHook;
+    private readonly Hook<AgentItemDetail.Delegates.ReceiveEvent>        handleItemOutHook;
     private readonly Hook<AgentActionDetail.Delegates.HandleActionHover> handleActionHoverHook;
-    private readonly Hook<AgentActionDetail.Delegates.ReceiveEvent> handleActionOutHook;
-    private readonly Hook<HandleImmDelegate> handleImmHook;
-    private readonly Hook<RaptureAtkModule.Delegates.SetUiVisibility> setUiVisibilityHook;
-    private readonly Hook<Utf8String.Delegates.Ctor_FromSequence> utf8StringFromSequenceHook;
-    private readonly Hook<RaptureAtkModule.Delegates.Update> raptureAtkModuleUpdateHook;
+    private readonly Hook<AgentActionDetail.Delegates.ReceiveEvent>      handleActionOutHook;
+    private readonly Hook<HandleImmDelegate>                             handleImmHook;
+    private readonly Hook<RaptureAtkModule.Delegates.SetUiVisibility>    setUiVisibilityHook;
+    private readonly Hook<Utf8String.Delegates.Ctor_FromSequence>        utf8StringFromSequenceHook;
+    private readonly Hook<RaptureAtkModule.Delegates.Update>             raptureAtkModuleUpdateHook;
 
     [ServiceManager.ServiceConstructor]
     private GameGui(TargetSigScanner sigScanner)
@@ -51,23 +48,31 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
         this.address.Setup(sigScanner);
 
         Log.Verbose("===== G A M E G U I =====");
-        Log.Verbose($"HandleImm address {Util.DescribeAddress(this.address.HandleImm)}");
+        Log.Verbose("HandleImm address {Address}", Util.DescribeAddress(this.address.HandleImm));
 
-        this.handleItemHoverHook = Hook<AgentItemDetail.Delegates.Update>.FromAddress((nint)AgentItemDetail.StaticVirtualTablePointer->Update, this.HandleItemHoverDetour);
-        this.handleItemOutHook = Hook<AgentItemDetail.Delegates.ReceiveEvent>.FromAddress((nint)AgentItemDetail.StaticVirtualTablePointer->ReceiveEvent, this.HandleItemOutDetour);
+        this.handleItemHoverHook = Hook<AgentItemDetail.Delegates.Update>.FromAddress
+            ((nint)AgentItemDetail.StaticVirtualTablePointer->Update, this.HandleItemHoverDetour);
+        this.handleItemOutHook = Hook<AgentItemDetail.Delegates.ReceiveEvent>.FromAddress
+            ((nint)AgentItemDetail.StaticVirtualTablePointer->ReceiveEvent, this.HandleItemOutDetour);
 
-        this.handleActionHoverHook = Hook<AgentActionDetail.Delegates.HandleActionHover>.FromAddress(AgentActionDetail.Addresses.HandleActionHover.Value, this.HandleActionHoverDetour);
-        this.handleActionOutHook = Hook<AgentActionDetail.Delegates.ReceiveEvent>.FromAddress((nint)AgentActionDetail.StaticVirtualTablePointer->ReceiveEvent, this.HandleActionOutDetour);
+        this.handleActionHoverHook = Hook<AgentActionDetail.Delegates.HandleActionHover>.FromAddress
+            (AgentActionDetail.Addresses.HandleActionHover.Value, this.HandleActionHoverDetour);
+        this.handleActionOutHook = Hook<AgentActionDetail.Delegates.ReceiveEvent>.FromAddress
+            ((nint)AgentActionDetail.StaticVirtualTablePointer->ReceiveEvent, this.HandleActionOutDetour);
 
         this.handleImmHook = Hook<HandleImmDelegate>.FromAddress(this.address.HandleImm, this.HandleImmDetour);
 
-        this.setUiVisibilityHook = Hook<RaptureAtkModule.Delegates.SetUiVisibility>.FromAddress((nint)RaptureAtkModule.StaticVirtualTablePointer->SetUiVisibility, this.SetUiVisibilityDetour);
+        this.setUiVisibilityHook = Hook<RaptureAtkModule.Delegates.SetUiVisibility>.FromAddress
+            ((nint)RaptureAtkModule.StaticVirtualTablePointer->SetUiVisibility, this.SetUiVisibilityDetour);
 
-        this.utf8StringFromSequenceHook = Hook<Utf8String.Delegates.Ctor_FromSequence>.FromAddress(Utf8String.Addresses.Ctor_FromSequence.Value, this.Utf8StringFromSequenceDetour);
+        this.utf8StringFromSequenceHook = Hook<Utf8String.Delegates.Ctor_FromSequence>.FromAddress
+            (Utf8String.Addresses.Ctor_FromSequence.Value, this.Utf8StringFromSequenceDetour);
 
-        this.raptureAtkModuleUpdateHook = Hook<RaptureAtkModule.Delegates.Update>.FromFunctionPointerVariable(
+        this.raptureAtkModuleUpdateHook = Hook<RaptureAtkModule.Delegates.Update>.FromFunctionPointerVariable
+        (
             new(&RaptureAtkModule.StaticVirtualTablePointer->Update),
-            this.RaptureAtkModuleUpdateDetour);
+            this.RaptureAtkModuleUpdateDetour
+        );
 
         this.handleItemHoverHook.Enable();
         this.handleItemOutHook.Enable();
@@ -103,11 +108,25 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
     public uint HoveredItem { get; set; }
 
     /// <inheritdoc/>
-    public HoveredAction HoveredAction { get; } = new HoveredAction();
+    public HoveredAction HoveredAction { get; } = new();
 
     /// <inheritdoc/>
     public bool OpenMapWithMapLink(uint territory, uint map, Vector3 worldPos)
-        => RaptureAtkModule.Instance()->OpenMapWithMapLink($"m:{territory},{map},{(int)worldPos.X * 1000},{(int)worldPos.Z * 1000}");
+        => this.OpenMapWithMapLink(new WorldCoordinate(territory, map, worldPos));
+
+    /// <inheritdoc/>
+    public bool OpenMapWithMapLink(WorldCoordinate worldPos)
+    {
+        var mapId = MapUtil.ResolveMapId(worldPos.TerritoryId, worldPos.MapId);
+        var rawX  = MapUtil.ConvertWorldCoordXZToRaw(worldPos.X);
+        var rawY  = MapUtil.ConvertWorldCoordXZToRaw(worldPos.Z);
+
+        return RaptureAtkModule.Instance()->OpenMapWithMapLink($"m:{worldPos.TerritoryId},{mapId},{rawX},{rawY}");
+    }
+
+    /// <inheritdoc/>
+    public bool OpenMapWithMapLink(MapCoordinate mapPos)
+        => this.OpenMapWithMapLink(mapPos.ToWorldCoordinate());
 
     /// <inheritdoc/>
     public bool WorldToScreen(Vector3 worldPos, out Vector2 screenPos)
@@ -117,11 +136,11 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
     public bool WorldToScreen(Vector3 worldPos, out Vector2 screenPos, out bool inView)
     {
         // Read current ViewProjectionMatrix plus game window size
-        var windowPos = ImGuiHelpers.MainViewport.Pos;
-        var viewProjectionMatrix = Control.Instance()->ViewProjectionMatrix;
-        var device = Device.Instance();
-        float width = device->Width;
-        float height = device->Height;
+        var   windowPos            = ImGuiHelpers.MainViewport.Pos;
+        var   viewProjectionMatrix = Control.Instance()->ViewProjectionMatrix;
+        var   device               = Device.Instance();
+        float width                = device->Width;
+        float height               = device->Height;
 
         var pCoords = Vector4.Transform(new Vector4(worldPos, 1.0f), viewProjectionMatrix);
         var inFront = pCoords.W > 0.0f;
@@ -129,19 +148,21 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
         if (Math.Abs(pCoords.W) < float.Epsilon)
         {
             screenPos = Vector2.Zero;
-            inView = false;
+            inView    = false;
             return false;
         }
 
-        pCoords *= MathF.Abs(1.0f / pCoords.W);
-        screenPos = new Vector2(pCoords.X, pCoords.Y);
+        pCoords   *= MathF.Abs(1.0f / pCoords.W);
+        screenPos =  new Vector2(pCoords.X, pCoords.Y);
 
-        screenPos.X = (0.5f * width * (screenPos.X + 1f)) + windowPos.X;
-        screenPos.Y = (0.5f * height * (1f - screenPos.Y)) + windowPos.Y;
+        screenPos.X = (0.5f * width  * (screenPos.X + 1f))          + windowPos.X;
+        screenPos.Y = (0.5f * height * (1f          - screenPos.Y)) + windowPos.Y;
 
-        inView = inFront &&
-                 screenPos.X > windowPos.X && screenPos.X < windowPos.X + width &&
-                 screenPos.Y > windowPos.Y && screenPos.Y < windowPos.Y + height;
+        inView = inFront                           &&
+                 screenPos.X > windowPos.X         &&
+                 screenPos.X < windowPos.X + width &&
+                 screenPos.Y > windowPos.Y         &&
+                 screenPos.Y < windowPos.Y + height;
 
         return inFront;
     }
@@ -151,34 +172,34 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
     {
         // The game is only visible in the main viewport, so if the cursor is outside
         // of the game window, do not bother calculating anything
-        var windowPos = ImGuiHelpers.MainViewport.Pos;
+        var windowPos  = ImGuiHelpers.MainViewport.Pos;
         var windowSize = ImGuiHelpers.MainViewport.Size;
 
-        if (screenPos.X < windowPos.X || screenPos.X > windowPos.X + windowSize.X ||
-            screenPos.Y < windowPos.Y || screenPos.Y > windowPos.Y + windowSize.Y)
+        if (screenPos.X < windowPos.X                ||
+            screenPos.X > windowPos.X + windowSize.X ||
+            screenPos.Y < windowPos.Y                ||
+            screenPos.Y > windowPos.Y + windowSize.Y)
         {
             worldPos = default;
             return false;
         }
 
         var camera = FFXIVClientStructs.FFXIV.Client.Graphics.Scene.CameraManager.Instance()->CurrentCamera;
+
         if (camera == null)
         {
             worldPos = Vector3.Zero;
             return false;
         }
 
-        var ray = camera->ScreenPointToRay(screenPos - windowPos);
+        var ray    = camera->ScreenPointToRay(screenPos - windowPos);
         var result = BGCollisionModule.RaycastMaterialFilter(ray.Origin, ray.Direction, out var hit);
         worldPos = hit.Point;
         return result;
     }
 
     /// <inheritdoc/>
-    public UIModulePtr GetUIModule()
-    {
-        return UIModule.Instance();
-    }
+    public UIModulePtr GetUIModule() => UIModule.Instance();
 
     /// <inheritdoc/>
     public AtkUnitBasePtr GetAddonByName(string name, int index = 1)
@@ -242,7 +263,9 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
         if (agentModule == null)
             return 0;
 
-        var addonId = addon.ParentId == 0 ? addon.Id : addon.ParentId;
+        var addonId = addon.ParentId == 0 ?
+                          addon.Id :
+                          addon.ParentId;
         if (addonId == 0)
             return 0;
 
@@ -292,10 +315,7 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
     /// <summary>
     /// Reset the stored "UI hide" state.
     /// </summary>
-    internal void ResetUiHideState()
-    {
-        this.GameUiHidden = false;
-    }
+    internal void ResetUiHideState() => this.GameUiHidden = false;
 
     private void HandleItemHoverDetour(AgentItemDetail* thisPtr, uint frameCount)
     {
@@ -325,12 +345,13 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
         return ret;
     }
 
-    private void HandleActionHoverDetour(AgentActionDetail* hoverState, FFXIVClientStructs.FFXIV.Client.Enums.DetailKind detailKind, uint actionId, int a4, bool a5, int a6, int a7)
+    private void HandleActionHoverDetour
+        (AgentActionDetail* hoverState, FFXIVClientStructs.FFXIV.Client.Enums.DetailKind detailKind, uint actionId, int a4, bool a5, int a6, int a7)
     {
         this.handleActionHoverHook.Original(hoverState, detailKind, actionId, a4, a5, a6, a7);
-        this.HoveredAction.DetailKind = (DetailKind)detailKind;
+        this.HoveredAction.DetailKind   = (DetailKind)detailKind;
         this.HoveredAction.BaseActionId = actionId;
-        this.HoveredAction.ActionId = hoverState->ActionId;
+        this.HoveredAction.ActionId     = hoverState->ActionId;
         this.HoveredActionChanged?.InvokeSafely(this.HoveredAction);
     }
 
@@ -344,9 +365,9 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
 
             if (a3Val == 255)
             {
-                this.HoveredAction.DetailKind = DetailKind.None;
+                this.HoveredAction.DetailKind   = DetailKind.None;
                 this.HoveredAction.BaseActionId = 0;
-                this.HoveredAction.ActionId = 0;
+                this.HoveredAction.ActionId     = 0;
                 this.HoveredActionChanged?.InvokeSafely(this.HoveredAction);
             }
         }
@@ -361,7 +382,7 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
         this.GameUiHidden = !RaptureAtkModule.Instance()->IsUiVisible;
         this.UiHideToggled?.InvokeSafely(this.GameUiHidden);
 
-        Log.Debug("GameUiHidden: {0}", this.GameUiHidden);
+        Log.Debug("GameUiHidden: {GameUiHidden}", this.GameUiHidden);
     }
 
     private char HandleImmDetour(IntPtr framework, char a2, byte a3)
@@ -370,9 +391,9 @@ internal sealed unsafe class GameGui : IInternalDisposableService, IGameGui
         if (!ImGuiHelpers.IsImGuiInitialized)
             return result;
 
-        return ImGui.GetIO().WantTextInput
-                   ? (char)0
-                   : result;
+        return ImGui.GetIO().WantTextInput ?
+                   (char)0 :
+                   result;
     }
 
     private Utf8String* Utf8StringFromSequenceDetour(Utf8String* thisPtr, byte* sourcePtr, nuint sourceLen)
@@ -419,10 +440,10 @@ internal class GameGuiPluginScoped : IInternalDisposableService, IGameGui
     /// </summary>
     internal GameGuiPluginScoped()
     {
-        this.gameGuiService.UiHideToggled += this.UiHideToggledForward;
-        this.gameGuiService.HoveredItemChanged += this.HoveredItemForward;
+        this.gameGuiService.UiHideToggled        += this.UiHideToggledForward;
+        this.gameGuiService.HoveredItemChanged   += this.HoveredItemForward;
         this.gameGuiService.HoveredActionChanged += this.HoveredActionForward;
-        this.gameGuiService.AgentUpdate += this.AgentUpdateForward;
+        this.gameGuiService.AgentUpdate          += this.AgentUpdateForward;
     }
 
     /// <inheritdoc/>
@@ -453,19 +474,27 @@ internal class GameGuiPluginScoped : IInternalDisposableService, IGameGui
     /// <inheritdoc/>
     void IInternalDisposableService.DisposeService()
     {
-        this.gameGuiService.UiHideToggled -= this.UiHideToggledForward;
-        this.gameGuiService.HoveredItemChanged -= this.HoveredItemForward;
+        this.gameGuiService.UiHideToggled        -= this.UiHideToggledForward;
+        this.gameGuiService.HoveredItemChanged   -= this.HoveredItemForward;
         this.gameGuiService.HoveredActionChanged -= this.HoveredActionForward;
-        this.gameGuiService.AgentUpdate -= this.AgentUpdateForward;
+        this.gameGuiService.AgentUpdate          -= this.AgentUpdateForward;
 
-        this.UiHideToggled = null;
-        this.HoveredItemChanged = null;
+        this.UiHideToggled        = null;
+        this.HoveredItemChanged   = null;
         this.HoveredActionChanged = null;
     }
 
     /// <inheritdoc/>
     public bool OpenMapWithMapLink(uint territory, uint map, Vector3 worldPos)
         => this.gameGuiService.OpenMapWithMapLink(territory, map, worldPos);
+
+    /// <inheritdoc/>
+    public bool OpenMapWithMapLink(WorldCoordinate worldPos)
+        => this.gameGuiService.OpenMapWithMapLink(worldPos);
+
+    /// <inheritdoc/>
+    public bool OpenMapWithMapLink(MapCoordinate mapPos)
+        => this.gameGuiService.OpenMapWithMapLink(mapPos);
 
     /// <inheritdoc/>
     public bool WorldToScreen(Vector3 worldPos, out Vector2 screenPos)
