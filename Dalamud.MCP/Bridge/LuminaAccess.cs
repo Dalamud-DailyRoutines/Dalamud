@@ -1,237 +1,160 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Text.Json;
+using System.Threading;
 using Dalamud.Data;
 using Lumina.Excel;
 using ModelContextProtocol;
 
 namespace Dalamud;
 
-/// <summary>
-/// 通过 Lumina 读取游戏数据表。
-/// </summary>
+/// <summary>按索引直接访问行，并提供列布局及连续分页。</summary>
 internal static class LuminaAccess
 {
-    /// <summary>
-    /// 列出表名。
-    /// </summary>
-    /// <param name="filter">按表名做不区分大小写的包含匹配。</param>
-    /// <param name="offset">偏移。</param>
-    /// <param name="limit">最多返回条数。</param>
-    /// <returns>JSON 文本。</returns>
-    public static string ListSheets
-    (
-        string? filter,
-        int     offset,
-        int     limit
-    )
+    public static string ListSheets(string? filter, int offset, int limit)
     {
-        var names = Service<DataManager>.Get().GameData.Excel.SheetNames;
-
-        var filtered = names
-                       .Where(name => string.IsNullOrWhiteSpace(filter) || name.Contains(filter, StringComparison.OrdinalIgnoreCase))
-                       .ToArray();
-
-        var builder = new StringBuilder(2048);
-        builder.Append("{\"total\":").Append(filtered.Length).Append(",\"sheets\":[");
-
-        var page = filtered.Skip(Math.Max(offset, 0)).Take(limit).ToArray();
-
-        for (var index = 0; index < page.Length; index++)
-        {
-            if (index > 0)
-                builder.Append(',');
-
-            builder.Append(ValueFormatter.Format(page[index], 0));
-        }
-
-        builder.Append("]}");
-        return builder.ToString();
-    }
-
-    /// <summary>
-    /// 列出表的行 id。
-    /// </summary>
-    /// <param name="sheetName">表名。</param>
-    /// <param name="offset">偏移。</param>
-    /// <param name="limit">最多返回条数。</param>
-    /// <returns>JSON 文本。</returns>
-    public static string ReadRows
-    (
-        string sheetName,
-        int    offset,
-        int    limit
-    )
-    {
-        var sheet = GetSheet(sheetName);
-        var ids   = new List<uint>();
-
-        foreach (var row in sheet)
-            ids.Add(row.RowId);
-
-        ids.Sort();
-
-        var builder = new StringBuilder(2048);
-        builder.Append("{\"sheet\":").Append(ValueFormatter.Format(sheetName, 0));
-        builder.Append(",\"count\":").Append(ids.Count).Append(",\"rowIds\":[");
-
-        var page = ids.Skip(Math.Max(offset, 0)).Take(limit).ToArray();
-
-        for (var index = 0; index < page.Length; index++)
-        {
-            if (index > 0)
-                builder.Append(',');
-
-            builder.Append(page[index]);
-        }
-
-        builder.Append("]}");
-        return builder.ToString();
-    }
-
-    /// <summary>
-    /// 读出一行。
-    /// </summary>
-    /// <param name="sheetName">表名。</param>
-    /// <param name="rowId">行 id。</param>
-    /// <param name="maxColumns">最多返回列数。</param>
-    /// <returns>JSON 文本。</returns>
-    public static string ReadRow
-    (
-        string sheetName,
-        uint   rowId,
-        int    maxColumns
-    )
-    {
-        var sheet = GetSheet(sheetName);
-
-        foreach (var row in sheet)
-        {
-            if (row.RowId != rowId)
-                continue;
-
-            var columns = row.Columns;
-            var builder = new StringBuilder(1024);
-            builder.Append("{\"sheet\":").Append(ValueFormatter.Format(sheetName, 0));
-            builder.Append(",\"rowId\":").Append(rowId);
-            builder.Append(",\"columns\":[");
-
-            var count = Math.Min(columns.Count, Math.Max(maxColumns, 1));
-
-            for (var index = 0; index < count; index++)
+        var names = Service<DataManager>.Get().GameData.Excel.SheetNames
+                                        .Where(name => filter is null || name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                                        .OrderBy(name => name, StringComparer.Ordinal).ToArray();
+        var page = names.Skip(offset).Take(limit).ToArray();
+        return JsonSerializer.Serialize
+        (
+            new
             {
-                if (index > 0)
-                    builder.Append(',');
+                total = names.Length, offset, nextOffset = offset + page.Length < names.Length ?
+                                                               (int?)(offset + page.Length) :
+                                                               null,
+                sheets = page
+            }
+        );
+    }
 
-                builder.Append('{');
-                builder.Append("\"index\":").Append(index);
-                builder.Append(",\"type\":").Append(ValueFormatter.Format(columns[index].Type.ToString(), 0));
+    public static string Schema(string sheetName, int offset, int limit)
+    {
+        var columns = GetSheet(sheetName).Columns;
+        return JsonSerializer.Serialize
+        (
+            new
+            {
+                sheet = sheetName,
+                total = columns.Count,
+                offset,
+                nextOffset = offset + limit < columns.Count ?
+                                 (int?)(offset + limit) :
+                                 null,
+                columns = columns.Skip(offset).Take(limit).Select
+                    ((column, index) => new { index = index + offset, type = column.Type.ToString(), offset = column.Offset }).ToArray()
+            }
+        );
+    }
 
-                object? value;
+    public static string ReadRows(string sheetName, int offset, int limit)
+    {
+        var ids = GetSheet(sheetName).Skip(offset).Take(limit + 1).Select(row => row.RowId).ToArray();
+        return JsonSerializer.Serialize
+        (
+            new
+            {
+                sheet = sheetName, offset, nextOffset = ids.Length > limit ?
+                                                            (int?)(offset + limit) :
+                                                            null,
+                rowIds = ids.Take(limit).ToArray()
+            }
+        );
+    }
+
+    public static string ReadRow(string sheetName, uint rowId, int offset, int limit)
+    {
+        var sheet = GetSheet(sheetName);
+        if (!sheet.TryGetRow(rowId, out var row))
+            throw new McpException($"表 {sheetName} 不包含行 {rowId}。");
+
+        var columns = row.Columns;
+        var page = columns.Skip(offset).Take(limit).Select
+        ((column, index) =>
+            {
+                var position = offset + index;
 
                 try
                 {
-                    value = row.ReadColumn(index);
+                    return new { index = position, type = column.Type.ToString(), value = FormatValue(row.ReadColumn(position)), error = (string?)null };
                 }
                 catch (Exception exception)
                 {
-                    value = "<读取失败: " + exception.GetType().Name + ">";
+                    return new { index = position, type = column.Type.ToString(), value = (object?)null, error = exception.GetBaseException().Message };
                 }
-
-                builder.Append(",\"value\":").Append(FormatValue(value));
-                builder.Append('}');
             }
-
-            builder.Append("]}");
-            return builder.ToString();
-        }
-
-        throw new McpException($"表 {sheetName} 中没有行 {rowId}。");
+        ).ToArray();
+        return JsonSerializer.Serialize
+        (
+            new
+            {
+                sheet = sheetName, rowId, totalColumns = columns.Count, offset, nextOffset = offset + page.Length < columns.Count ?
+                                                                                                 (int?)(offset + page.Length) :
+                                                                                                 null,
+                columns = page
+            }
+        );
     }
 
-    /// <summary>
-    /// 在指定列上做比较查找，列为负数时在全部列上查找。
-    /// </summary>
-    /// <param name="sheetName">表名。</param>
-    /// <param name="column">列索引，负数表示全部列。</param>
-    /// <param name="value">目标值文本。</param>
-    /// <param name="limit">最多返回条数。</param>
-    /// <returns>JSON 文本。</returns>
-    public static string Search
-    (
-        string sheetName,
-        int    column,
-        string value,
-        int    limit
-    )
+    public static string Search(string sheetName, int column, string value, int offset, int limit, CancellationToken cancellationToken)
     {
-        var sheet   = GetSheet(sheetName);
-        var matches = new List<(uint RowId, int Column)>();
+        var sheet = GetSheet(sheetName);
+        if (column >= sheet.Columns.Count)
+            throw new McpException($"列下标越界，表只有 {sheet.Columns.Count} 列。");
 
-        foreach (var row in sheet)
+        var matches   = new List<object>();
+        var examined  = 0;
+        var exhausted = true;
+
+        foreach (var row in sheet.Skip(offset))
         {
-            var columns = row.Columns.Count;
-            var from    = column >= 0 ? column : 0;
-            var to      = column >= 0 ? Math.Min(column + 1, columns) : columns;
-            var matched = -1;
+            cancellationToken.ThrowIfCancellationRequested();
+            examined++;
+            var from = column < 0 ?
+                           0 :
+                           column;
+            var to = column < 0 ?
+                         row.Columns.Count :
+                         column + 1;
 
             for (var candidate = from; candidate < to; candidate++)
             {
-                if (!FormatValue(row.ReadColumn(candidate)).Contains(value, StringComparison.OrdinalIgnoreCase))
+                var cell = FormatValue(row.ReadColumn(candidate));
+                if (!(cell?.ToString() ?? string.Empty).Contains(value, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                matched = candidate;
+                matches.Add(new { rowId = row.RowId, column = candidate, value = cell });
                 break;
             }
 
-            if (matched < 0)
-                continue;
-
-            matches.Add((row.RowId, matched));
-
-            if (matches.Count >= limit)
+            if (matches.Count >= limit || examined >= 10000)
+            {
+                exhausted = false;
                 break;
+            }
         }
 
-        var builder = new StringBuilder(1024);
-        builder.Append("{\"sheet\":").Append(ValueFormatter.Format(sheetName, 0));
-        builder.Append(",\"column\":").Append(column);
-        builder.Append(",\"count\":").Append(matches.Count).Append(",\"matches\":[");
-
-        for (var index = 0; index < matches.Count; index++)
-        {
-            if (index > 0)
-                builder.Append(',');
-
-            builder.Append('{');
-            builder.Append("\"rowId\":").Append(matches[index].RowId);
-            builder.Append(",\"column\":").Append(matches[index].Column);
-            builder.Append('}');
-        }
-
-        builder.Append("]}");
-        return builder.ToString();
+        return JsonSerializer.Serialize
+        (
+            new
+            {
+                sheet = sheetName, column, offset, examined, nextOffset = exhausted ?
+                                                                              (int?)null :
+                                                                              offset + examined,
+                matches
+            }
+        );
     }
 
-    private static ExcelSheet<RawRow> GetSheet
-    (
-        string sheetName
-    )
-    {
-        if (string.IsNullOrWhiteSpace(sheetName))
-            throw new McpException("需要提供表名。");
+    private static ExcelSheet<RawRow> GetSheet(string sheetName) =>
+        Service<DataManager>.Get().GameData.Excel.GetSheet<RawRow>(name: sheetName) ?? throw new McpException($"表 {sheetName} 不存在。");
 
-        return Service<DataManager>.Get().GameData.Excel.GetSheet<RawRow>(name: sheetName)
-               ?? throw new McpException($"表 \"{sheetName}\" 不存在。");
+    private static object? FormatValue(object? value)
+    {
+        if (value is null || value is string || value.GetType().IsPrimitive || value is decimal)
+            return value;
+
+        return value.ToString();
     }
-
-    private static string FormatValue
-    (
-        object? value
-    ) => value switch
-    {
-        null        => "null",
-        string text => ValueFormatter.Format(text,             0),
-        _           => ValueFormatter.Format(value.ToString(), 0)
-    };
 }

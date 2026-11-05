@@ -454,13 +454,15 @@ internal class ConsoleWindow : Window, IDisposable
 
         ImGui.SetClipboardText(sb.ToString());
         this.prevCopyNotification?.DismissNow();
-        this.prevCopyNotification = Service<NotificationManager>.Get().AddNotification(
+        this.prevCopyNotification = Service<NotificationManager>.Get().AddNotification
+        (
             new()
             {
-                Title = this.WindowName,
-                Content = $"复制了 {n:n0} 行日志",
-                Type = NotificationType.Success,
-            });
+                Title   = this.WindowName,
+                Content = $"复制了{n:n0}行日志。",
+                Type    = NotificationType.Success,
+            }
+        );
     }
 
     private void DrawOptionsToolbar()

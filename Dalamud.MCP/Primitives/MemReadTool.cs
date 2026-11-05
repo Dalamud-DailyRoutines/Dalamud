@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 
@@ -19,11 +20,12 @@ internal static class MemReadTool
     /// <returns>JSON 文本。</returns>
     public static string Run
     (
-        string  address,
-        int     length = 64,
-        string? type   = null,
-        string? path   = null,
-        int     depth  = 1
+        [Description("起始地址，支持十进制或 0x 前缀十六进制。")]
+        string address,
+        [Description("原始读取的字节数。")]        int     length = 64,
+        [Description("结构化读取时的类型全名或简单名。")] string? type   = null,
+        [Description("结构化读取时的字段路径。")]     string? path   = null,
+        [Description("结构化展开层数。")]         int     depth  = 1
     )
     {
         var baseAddress = (nint)MemoryAccess.ParseAddress(address);
@@ -52,9 +54,9 @@ internal static class MemReadTool
                      ",\"type\":"                                                     +
                      ValueFormatter.Format(targetType.FullName ?? targetType.Name, 0) +
                      ",\"value\":"                                                    +
-                     (elementCount is { } count
-                          ? count.ToString(CultureInfo.InvariantCulture)
-                          : StructuredReader.Render(target, targetType, depth))       +
+                     (elementCount is { } count ?
+                          count.ToString(CultureInfo.InvariantCulture) :
+                          StructuredReader.Render(target, targetType, depth)) +
                      "}";
         }
 

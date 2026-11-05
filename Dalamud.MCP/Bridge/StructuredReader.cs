@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Text;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using InteropGenerator.Runtime;
@@ -42,10 +41,9 @@ internal static unsafe class StructuredReader
                 if (string.Equals(segment, "Length", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(segment, "Count",  StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!isLast)
-                        throw new McpException($"\"{segment}\" 是内联数组的元素个数，后面不能再接路径段。");
-
-                    return (address, typeof(int), inlineArray.Count);
+                    return isLast ?
+                               (address, typeof(int), inlineArray.Count) :
+                               throw new McpException($"{segment} 后面不能再接路径段。");
                 }
 
                 if (!int.TryParse(segment, NumberStyles.Integer, CultureInfo.InvariantCulture, out var elementIndex))
@@ -70,7 +68,9 @@ internal static unsafe class StructuredReader
             if (isLast || !currentType.IsPointer)
                 continue;
 
-            address = MemoryAccess.ReadValue(address, currentType) is nint pointer ? pointer : 0;
+            address = MemoryAccess.ReadValue(address, currentType) is nint pointer ?
+                          pointer :
+                          0;
             if (address == 0)
                 throw new McpException($"路径段 \"{segment}\" 指向空指针。");
 
@@ -101,10 +101,10 @@ internal static unsafe class StructuredReader
 
     private static void WriteValue
     (
-        StringBuilder      builder,
-        nint               address,
-        Type               type,
-        int                depth,
+        StringBuilder builder,
+        nint          address,
+        Type          type,
+        int           depth,
         HashSet<nint> visited
     )
     {
@@ -130,6 +130,7 @@ internal static unsafe class StructuredReader
             }
 
             var itemSize = StructureLayout.GetSize(inlineArray.ElementType);
+
             if (itemSize <= 0)
             {
                 builder.Append(",\"__error__\":").Append(ValueFormatter.Format($"无法确定 {inlineArray.ElementType.Name} 的大小。", 0));
@@ -174,7 +175,12 @@ internal static unsafe class StructuredReader
         builder.Append(",\"__address__\":\"").Append(FormatAddress(address)).Append('"');
 
         var typeSize = StructureLayout.GetSize(type);
-        builder.Append(",\"__size__\":").Append(typeSize < 0 ? "null" : typeSize.ToString(CultureInfo.InvariantCulture));
+        builder.Append(",\"__size__\":").Append
+        (
+            typeSize < 0 ?
+                "null" :
+                typeSize.ToString(CultureInfo.InvariantCulture)
+        );
         builder.Append(",\"fields\":{");
 
         var written   = 0;
@@ -212,7 +218,7 @@ internal static unsafe class StructuredReader
     {
         if (type == typeof(CStringPointer))
         {
-            builder.Append(ValueFormatter.Format(ReadUtf8(*(byte**)address, null), 0));
+            builder.Append(ValueFormatter.Format(ReadUtf8((byte*)(nint)MemoryAccess.ReadValue(address, typeof(nint))!, null), 0));
             return true;
         }
 
@@ -223,11 +229,15 @@ internal static unsafe class StructuredReader
         var lengthField     = StructureLayout.FindField(type, "StringLength");
         var bufferField     = StructureLayout.FindField(type, "_inlineBuffer");
 
-        var length      = (int)*(long*)(address + lengthField.Offset);
-        var useInline   = *(byte*)(address + inlineFlagField.Offset) != 0;
-        var textPointer = useInline
-                              ? (byte*)(address + bufferField.Offset)
-                              : *(byte**)(address + StructureLayout.FindField(type, "StringPtr").Offset);
+        var rawLength = (long)MemoryAccess.ReadValue(address + lengthField.Offset, typeof(long))!;
+        if (rawLength is < 0 or > 65536)
+            throw new McpException("原生字符串长度超出 0 至 65536 字节范围。");
+
+        var length    = (int)rawLength;
+        var useInline = (byte)MemoryAccess.ReadValue(address + inlineFlagField.Offset, typeof(byte))! != 0;
+        var textPointer = useInline ?
+                              (byte*)(address + bufferField.Offset) :
+                              (byte*)(nint)MemoryAccess.ReadValue(address + StructureLayout.FindField(type, "StringPtr").Offset, typeof(nint))!;
 
         builder.Append(ValueFormatter.Format(ReadUtf8(textPointer, length), 0));
         return true;
@@ -243,10 +253,29 @@ internal static unsafe class StructuredReader
             return null;
 
         if (length is { } count)
-            return count <= 0 ? string.Empty : Encoding.UTF8.GetString(pointer, count);
+            return count <= 0 ?
+                       string.Empty :
+                       Encoding.UTF8.GetString(MemoryAccess.ReadBytes((nint)pointer, count));
 
-        var span = MemoryMarshal.CreateReadOnlySpanFromNullTerminated(pointer);
-        return span.IsEmpty ? string.Empty : Encoding.UTF8.GetString(span);
+        var bytes = new List<byte>();
+
+        while (bytes.Count < 65536)
+        {
+            var address     = (nint)pointer + bytes.Count;
+            var countToRead = Math.Min(256, 4096 - (int)((long)address & 4095));
+            var chunk       = MemoryAccess.ReadBytes(address, countToRead);
+            var terminator  = Array.IndexOf(chunk, (byte)0);
+
+            if (terminator >= 0)
+            {
+                bytes.AddRange([.. chunk.AsSpan(0, terminator)]);
+                return Encoding.UTF8.GetString(bytes.ToArray());
+            }
+
+            bytes.AddRange(chunk);
+        }
+
+        throw new McpException("原生字符串在 65536 字节内没有终止符。");
     }
 
     private static string FormatAddress

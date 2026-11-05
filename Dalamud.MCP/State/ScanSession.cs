@@ -17,11 +17,11 @@ internal sealed class ScanSession
     /// <param name="totalMatched">首次扫描命中的总数。</param>
     public ScanSession
     (
-        string       id,
-        string       valueType,
-        List<nint>   candidates,
-        List<double> values,
-        int          totalMatched
+        string             id,
+        string             valueType,
+        List<nint>         candidates,
+        List<NumericValue> values,
+        int                totalMatched
     )
     {
         this.Id           = id;
@@ -37,6 +37,8 @@ internal sealed class ScanSession
     /// </summary>
     public string Id { get; }
 
+    public object Gate { get; } = new();
+
     /// <summary>
     /// Gets 值的类型名。
     /// </summary>
@@ -50,7 +52,7 @@ internal sealed class ScanSession
     /// <summary>
     /// Gets 与候选一一对应的上次读到的数值。
     /// </summary>
-    public List<double> Values { get; }
+    public List<NumericValue> Values { get; }
 
     /// <summary>
     /// Gets 首次扫描命中的总数。

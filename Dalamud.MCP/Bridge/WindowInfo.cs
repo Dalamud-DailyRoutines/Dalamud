@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using Dalamud.Interface.Internal;
 using TerraFX.Interop.DirectX;
+using TerraFX.Interop.Windows;
 
 namespace Dalamud;
 
@@ -37,11 +38,21 @@ internal static unsafe class WindowInfo
         if (swapChain is null)
             return (0, 0);
 
-        var desc = default(DXGI_SWAP_CHAIN_DESC);
-        if (swapChain->GetDesc(&desc).FAILED)
+        ID3D11Texture2D* texture   = null;
+        var              textureId = IID.IID_ID3D11Texture2D;
+        if (swapChain->GetBuffer(0, &textureId, (void**)&texture).FAILED)
             return (0, 0);
 
-        return ((int)desc.BufferDesc.Width, (int)desc.BufferDesc.Height);
+        try
+        {
+            var desc = default(D3D11_TEXTURE2D_DESC);
+            texture->GetDesc(&desc);
+            return ((int)desc.Width, (int)desc.Height);
+        }
+        finally
+        {
+            texture->Release();
+        }
     }
 
     /// <summary>
@@ -100,8 +111,18 @@ internal static unsafe class WindowInfo
         builder.Append(",\"virtualScreenTop\":").Append(NativeApi.GetSystemMetrics(NativeApi.SM_YVIRTUALSCREEN));
         builder.Append(",\"virtualScreenWidth\":").Append(NativeApi.GetSystemMetrics(NativeApi.SM_CXVIRTUALSCREEN));
         builder.Append(",\"virtualScreenHeight\":").Append(NativeApi.GetSystemMetrics(NativeApi.SM_CYVIRTUALSCREEN));
-        builder.Append(",\"foreground\":").Append(NativeApi.GetForegroundWindow() == window ? "true" : "false");
-        builder.Append(",\"minimized\":").Append(NativeApi.IsIconic(window) ? "true" : "false");
+        builder.Append(",\"foreground\":").Append
+        (
+            NativeApi.GetForegroundWindow() == window ?
+                "true" :
+                "false"
+        );
+        builder.Append(",\"minimized\":").Append
+        (
+            NativeApi.IsIconic(window) ?
+                "true" :
+                "false"
+        );
         builder.Append('}');
 
         return builder.ToString();

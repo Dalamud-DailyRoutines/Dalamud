@@ -1,4 +1,7 @@
-using System.Globalization;
+using System.Linq;
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -19,16 +22,15 @@ internal sealed class TraceLog
     /// <summary>
     /// 初始化 <see cref="TraceLog"/> 类的新实例。
     /// </summary>
-    public TraceLog()
-    {
-        this.FilePath = Path.Combine
-        (
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "XIVLauncherCN",
-            DIRECTORY_NAME,
-            FILE_NAME
-        );
-    }
+    /// <param name="filePath">日志路径，省略时使用运行时默认路径。</param>
+    public TraceLog(string? filePath = null) => this.FilePath = filePath ??
+                                                                Path.Combine
+                                                                (
+                                                                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                                                                    "XIVLauncherCN",
+                                                                    DIRECTORY_NAME,
+                                                                    FILE_NAME
+                                                                );
 
     /// <summary>
     /// Gets trace 文件的完整路径。
@@ -48,22 +50,17 @@ internal sealed class TraceLog
         double? elapsedMilliseconds = null
     )
     {
-        var builder = new StringBuilder(256);
-        builder.Append("{\"t\":\"")
-               .Append(DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture))
-               .Append("\",\"category\":\"")
-               .Append(Escape(category))
-               .Append("\",\"message\":\"")
-               .Append(Escape(message))
-               .Append('"');
-
-        if (elapsedMilliseconds.HasValue)
-        {
-            builder.Append(",\"ms\":")
-                   .Append(elapsedMilliseconds.Value.ToString("F3", CultureInfo.InvariantCulture));
-        }
-
-        builder.Append("}\n");
+        var line = JsonSerializer.Serialize
+                   (
+                       new
+                       {
+                           t = DateTimeOffset.UtcNow,
+                           category,
+                           message,
+                           ms = elapsedMilliseconds
+                       }
+                   ) +
+                   "\n";
 
         lock (this.writeLock)
         {
@@ -74,70 +71,100 @@ internal sealed class TraceLog
             if (File.Exists(this.FilePath) && new FileInfo(this.FilePath).Length > MAX_FILE_BYTES)
                 File.Move(this.FilePath, this.FilePath + ".1", true);
 
-            File.AppendAllText(this.FilePath, builder.ToString(), Encoding.UTF8);
+            File.AppendAllText(this.FilePath, line, new UTF8Encoding(false));
         }
     }
 
     /// <summary>
-    /// 读取 trace 文件尾部的若干行。
+    /// 筛选日志并按行号向前分页，限制返回的 JSON 字符数。
     /// </summary>
     /// <param name="maxLines">最多返回的行数。</param>
-    /// <returns>按时间顺序排列的行。</returns>
-    public string[] Tail
+    /// <param name="filter">内容筛选条件。</param>
+    /// <param name="before">只读取此行号之前的记录，零表示从最新记录开始。</param>
+    /// <param name="maxCharacters">返回的 JSON 字符数上限。</param>
+    /// <returns>包含记录与分页游标的 JSON。</returns>
+    public string Tail
     (
-        int maxLines
+        int     maxLines,
+        string? filter,
+        int     before,
+        int     maxCharacters
     )
     {
         lock (this.writeLock)
         {
-            if (!File.Exists(this.FilePath))
-                return [];
+            var matches       = new Queue<(int Number, string Text)>();
+            var lineNumber    = 0;
+            var matchingCount = 0;
 
-            var lines = File.ReadAllLines(this.FilePath, Encoding.UTF8);
-            if (lines.Length <= maxLines)
-                return lines;
-
-            var result = new string[maxLines];
-            Array.Copy(lines, lines.Length - maxLines, result, 0, maxLines);
-            return result;
-        }
-    }
-
-    private static string Escape
-    (
-        string value
-    )
-    {
-        var builder = new StringBuilder(value.Length + 8);
-
-        foreach (var character in value)
-        {
-            switch (character)
+            if (File.Exists(this.FilePath))
             {
-                case '"':
-                    builder.Append("\\\"");
-                    break;
-                case '\\':
-                    builder.Append(@"\\");
-                    break;
-                case '\n':
-                    builder.Append("\\n");
-                    break;
-                case '\r':
-                    builder.Append("\\r");
-                    break;
-                case '\t':
-                    builder.Append("\\t");
-                    break;
-                default:
-                    if (character < ' ')
-                        builder.Append("\\u").Append(((int)character).ToString("x4", CultureInfo.InvariantCulture));
-                    else
-                        builder.Append(character);
-                    break;
-            }
-        }
+                foreach (var line in File.ReadLines(this.FilePath, Encoding.UTF8))
+                {
+                    lineNumber++;
+                    if (before > 0 && lineNumber >= before)
+                        break;
 
-        return builder.ToString();
+                    if (!string.IsNullOrWhiteSpace(filter) && !line.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    matchingCount++;
+                    matches.Enqueue((lineNumber, line));
+                    if (matches.Count > maxLines)
+                        matches.Dequeue();
+                }
+            }
+
+            var lines = new JsonArray();
+            var response = new JsonObject
+            {
+                ["file"]       = this.FilePath,
+                ["lines"]      = lines,
+                ["hasMore"]    = false,
+                ["nextBefore"] = null,
+                ["truncated"]  = false
+            };
+            var remaining    = maxCharacters - response.ToJsonString().Length - 128;
+            var recordBudget = Math.Min(2048, remaining - 64);
+            var oldest       = 0;
+
+            foreach (var match in matches.Reverse())
+            {
+                JsonNode record;
+
+                if (match.Text.Length > recordBudget)
+                {
+                    record = new JsonObject
+                    {
+                        ["line"]               = match.Number,
+                        ["truncated"]          = true,
+                        ["originalCharacters"] = match.Text.Length,
+                        ["preview"]            = match.Text[..Math.Min(match.Text.Length, (recordBudget - 128) / 6)]
+                    };
+                }
+                else
+                {
+                    record         = JsonNode.Parse(match.Text)!;
+                    record["line"] = match.Number;
+                }
+
+                var size = record.ToJsonString().Length + 1;
+                if (size > remaining)
+                    break;
+
+                lines.Insert(0, record);
+                remaining -= size;
+                oldest    =  match.Number;
+                if (match.Text.Length > recordBudget)
+                    response["truncated"] = true;
+            }
+
+            var hasMore = matchingCount > lines.Count;
+            response["hasMore"] = hasMore;
+            if (hasMore)
+                response["nextBefore"] = oldest;
+
+            return response.ToJsonString();
+        }
     }
 }

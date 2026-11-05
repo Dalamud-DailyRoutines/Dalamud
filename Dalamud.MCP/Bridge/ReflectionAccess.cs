@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
+using System.Text.Json;
 using ModelContextProtocol;
 
 namespace Dalamud;
@@ -15,8 +15,6 @@ internal static class ReflectionAccess
 {
     private const BindingFlags MEMBER_FLAGS =
         BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
-
-    private const int MAX_ELEMENTS = 512;
 
     /// <summary>
     /// 沿路径取回值。
@@ -43,7 +41,11 @@ internal static class ReflectionAccess
                 continue;
             }
 
-            var member = FindMember(current.GetType(), segment);
+            var member = FindMember
+            (
+                current as Type ?? current.GetType(),
+                segment
+            );
 
             if (member is PropertyInfo { CanRead: true } indexer && indexer.GetIndexParameters().Length > 0)
                 continue;
@@ -61,57 +63,104 @@ internal static class ReflectionAccess
     /// <param name="segments">路径段。</param>
     /// <param name="rawValue">以文本形式给出的新值。</param>
     /// <returns>写入结果描述。</returns>
-    public static string SetValue
-    (
-        object   root,
-        string[] segments,
-        string   rawValue
-    )
+    public static string SetValue(object root, string[] segments, JsonElement rawValue)
     {
         if (segments.Length == 0)
             throw new McpException("写入操作需要至少一个路径段。");
 
-        var target = root;
+        SetPath(root, segments, 0, rawValue);
+        return "已写入目标成员";
+    }
 
-        for (var index = 0; index < segments.Length - 1; index++)
+    private static void SetPath(object target, string[] segments, int index, JsonElement value)
+    {
+        var segment = segments[index];
+
+        if (TryIndex(target, segment, out var indexed))
         {
-            var segment = segments[index];
-
-            if (TryIndex(target, segment, out var indexed))
+            if (index == segments.Length - 1)
             {
-                target = indexed;
-                continue;
+                var elementType = indexed?.GetType() ?? typeof(object);
+                WriteIndex(target, segment, RuntimeArguments.Bind(value, elementType));
+                return;
             }
 
-            var member = FindMember(target.GetType(), segment);
-            target = ReadMember(target, member) ?? throw new McpException($"路径段 \"{segment}\" 的值为空，无法继续写入。");
+            if (indexed is null)
+                throw new McpException($"路径段 {segment} 指向 null。");
+
+            SetPath(indexed, segments, index + 1, value);
+            if (indexed.GetType().IsValueType)
+                WriteIndex(target, segment, indexed);
+
+            return;
         }
 
-        var lastSegment = segments[^1];
-        var targetType  = target.GetType();
+        var member = FindMember(target.GetType(), segment);
 
-        switch (FindMember(targetType, lastSegment))
+        if (member is PropertyInfo property && property.GetIndexParameters().Length > 0)
         {
-            case FieldInfo field:
-            {
-                var converted = ConvertArgument(rawValue, field.FieldType);
-                field.SetValue(target, converted);
-                return $"已写入 {targetType.Name}.{field.Name}";
-            }
+            SetPath(target, segments, index + 1, value);
+            return;
+        }
 
-            case PropertyInfo property:
-            {
-                if (!property.CanWrite)
-                    throw new McpException($"{targetType.Name}.{property.Name} 没有 setter。");
+        if (index == segments.Length - 1)
+        {
+            var memberType = member is FieldInfo field ?
+                                 field.FieldType :
+                                 ((PropertyInfo)member).PropertyType;
+            WriteMember(target, member, RuntimeArguments.Bind(value, memberType));
+            return;
+        }
 
-                var converted = ConvertArgument(rawValue, property.PropertyType);
-                property.SetValue(target, converted);
-                return $"已写入 {targetType.Name}.{property.Name}";
-            }
+        var child = ReadMember(target, member) ?? throw new McpException($"路径段 {segment} 指向 null。");
+        SetPath(child, segments, index + 1, value);
+        if (child.GetType().IsValueType)
+            WriteMember(target, member, child);
+    }
 
+    private static void WriteMember(object target, MemberInfo member, object? value)
+    {
+        switch (member)
+        {
+            case FieldInfo { IsInitOnly: false, IsLiteral: false } field:
+                field.SetValue(target, value);
+                return;
+            case PropertyInfo { CanWrite: true } property:
+                property.SetValue(target, value);
+                return;
             default:
-                throw new McpException($"{targetType.Name} 上找不到可写成员 \"{lastSegment}\"。");
+                throw new McpException($"成员 {member.Name} 不可写入或无法回写值类型。");
         }
+    }
+
+    private static void WriteIndex(object target, string segment, object? value)
+    {
+        switch (target)
+        {
+            case Array array:
+                array.SetValue(value, int.Parse(segment, CultureInfo.InvariantCulture));
+                return;
+            case IList list:
+                list[int.Parse(segment, CultureInfo.InvariantCulture)] = value;
+                return;
+            case IDictionary dictionary:
+                foreach (var key in dictionary.Keys)
+                {
+                    if (Convert.ToString(key, CultureInfo.InvariantCulture) != segment)
+                        continue;
+
+                    dictionary[key] = value;
+                    return;
+                }
+
+                break;
+        }
+
+        var indexer = target.GetType().GetProperty("Item", MEMBER_FLAGS, null, null, [typeof(int)], null);
+        if (indexer is not { CanWrite: true })
+            throw new McpException("目标没有可写索引器。");
+
+        indexer.SetValue(target, value, [int.Parse(segment, CultureInfo.InvariantCulture)]);
     }
 
     /// <summary>
@@ -122,156 +171,44 @@ internal static class ReflectionAccess
     /// <param name="memberName">方法名。</param>
     /// <param name="arguments">以文本形式给出的实参。</param>
     /// <returns>返回值。</returns>
-    public static object? Invoke
-    (
-        object   root,
-        string[] path,
-        string   memberName,
-        string[] arguments
-    )
+    public static object? Invoke(object root, string[] path, string memberName, JsonElement[] arguments)
     {
-        var target = path.Length == 0 ? root : Resolve(root, path) ?? throw new McpException("调用目标为空。");
+        var target = path.Length == 0 ?
+                         root :
+                         Resolve(root, path) ?? throw new McpException("调用目标为空。");
+        var method = MemberCatalog.ResolveMethod
+        (
+            target as Type ?? target.GetType(),
+            memberName,
+            arguments.Length
+        );
+        if (target is Type && !method.IsStatic)
+            throw new McpException("实例方法需要对象引用。");
+        var parameters = method.GetParameters();
+        var converted  = new object?[parameters.Length];
 
-        var candidates = target.GetType()
-                               .GetMember(memberName, MemberTypes.Method, MEMBER_FLAGS)
-                               .Cast<MethodInfo>()
-                               .Where(method => method.GetParameters().Length == arguments.Length)
-                               .ToArray();
-
-        if (candidates.Length == 0)
-            throw new McpException($"{target.GetType().Name} 上找不到接受 {arguments.Length} 个参数的方法 \"{memberName}\"。");
-
-        McpException? lastError = null;
-
-        foreach (var candidate in candidates)
+        for (var index = 0; index < parameters.Length; index++)
         {
-            try
-            {
-                var parameters = candidate.GetParameters();
-                var converted  = new object?[arguments.Length];
-                for (var index = 0; index < arguments.Length; index++)
-                    converted[index] = ConvertArgument(arguments[index], parameters[index].ParameterType);
-
-                return candidate.Invoke(target, converted);
-            }
-            catch (McpException exception)
-            {
-                lastError = exception;
-            }
-            catch (TargetInvocationException exception)
-            {
-                throw new McpException($"调用 {memberName} 时抛出 {exception.InnerException?.GetType().Name}: {exception.InnerException?.Message}");
-            }
+            converted[index] = index < arguments.Length ?
+                                   RuntimeArguments.Bind(arguments[index], parameters[index].ParameterType) :
+                                   parameters[index].DefaultValue;
         }
 
-        throw lastError ?? new McpException($"调用 {memberName} 失败。");
-    }
-
-    /// <summary>
-    /// 列出对象上的字段与属性以及它们的当前值。
-    /// </summary>
-    /// <param name="instance">目标对象。</param>
-    /// <param name="depth">值的展开层数。</param>
-    /// <returns>JSON 文本。</returns>
-    public static string DescribeMembers
-    (
-        object instance,
-        int    depth
-    )
-    {
-        if (instance is IEnumerable enumerable and not string)
-            return DescribeElements(enumerable, depth);
-
-        var type    = instance.GetType();
-        var builder = new StringBuilder(2048);
-
-        builder.Append("{\"type\":").Append(ValueFormatter.Format(type.FullName ?? type.Name, 0));
-        builder.Append(",\"members\":[");
-
-        var members = type.GetMembers(MEMBER_FLAGS)
-                          .Where(member => member is FieldInfo or PropertyInfo)
-                          .OrderBy(member => member.Name, StringComparer.Ordinal)
-                          .ToArray();
-
-        for (var index = 0; index < members.Length; index++)
+        try
         {
-            if (index > 0)
-                builder.Append(',');
-
-            var member = members[index];
-
-            string? value = null;
-            string? error = null;
-
-            try
-            {
-                value = ValueFormatter.Format(ReadMember(instance, member), depth);
-            }
-            catch (Exception exception)
-            {
-                error = $"{exception.GetType().Name}: {exception.Message}";
-            }
-
-            builder.Append("{\"name\":").Append(ValueFormatter.Format(member.Name,                                0));
-            builder.Append(",\"kind\":").Append(ValueFormatter.Format(member is FieldInfo ? "field" : "property", 0));
-            builder.Append(",\"declaredType\":").Append(ValueFormatter.Format(DeclaredTypeName(member),           0));
-            builder.Append(",\"value\":").Append(value ?? "null");
-            builder.Append(",\"error\":").Append(ValueFormatter.Format(error, 0));
-            builder.Append('}');
+            return method.Invoke
+            (
+                method.IsStatic ?
+                    null :
+                    target,
+                converted
+            );
         }
-
-        builder.Append("]}");
-        return builder.ToString();
-    }
-
-    private static string DescribeElements
-    (
-        IEnumerable enumerable,
-        int         depth
-    )
-    {
-        var type    = enumerable.GetType();
-        var builder = new StringBuilder(4096);
-
-        builder.Append("{\"type\":").Append(ValueFormatter.Format(type.FullName ?? type.Name, 0));
-        builder.Append(",\"elements\":[");
-
-        var total     = 0;
-        var truncated = false;
-
-        foreach (var element in enumerable)
+        catch (TargetInvocationException exception)
         {
-            if (total >= MAX_ELEMENTS)
-            {
-                truncated = true;
-                break;
-            }
-
-            if (total > 0)
-                builder.Append(',');
-
-            builder.Append("{\"index\":").Append(total);
-            builder.Append(",\"value\":").Append(ValueFormatter.Format(element, depth));
-            builder.Append('}');
-
-            total++;
+            throw new McpException($"目标方法抛出 {exception.InnerException?.GetType().Name}: {exception.InnerException?.Message}");
         }
-
-        builder.Append("],\"count\":").Append(total);
-        builder.Append(",\"truncated\":").Append(truncated ? "true" : "false");
-        builder.Append('}');
-        return builder.ToString();
     }
-
-    private static string DeclaredTypeName
-    (
-        MemberInfo member
-    ) => member switch
-    {
-        FieldInfo field       => field.FieldType.FullName       ?? field.FieldType.Name,
-        PropertyInfo property => property.PropertyType.FullName ?? property.PropertyType.Name,
-        _                     => member.Name
-    };
 
     private static bool TryIndex
     (
@@ -342,8 +279,7 @@ internal static class ReflectionAccess
         if (indexer is null || !indexer.CanRead)
             return false;
 
-        var count = currentType.GetProperty("Count",  MEMBER_FLAGS)?.GetValue(current)
-                 ?? currentType.GetProperty("Length", MEMBER_FLAGS)?.GetValue(current);
+        var count = currentType.GetProperty("Count", MEMBER_FLAGS)?.GetValue(current) ?? currentType.GetProperty("Length", MEMBER_FLAGS)?.GetValue(current);
 
         if (count is int length && (index < 0 || index >= length))
             throw new McpException($"下标 {index} 越界，元素个数为 {length}。");
@@ -392,50 +328,4 @@ internal static class ReflectionAccess
         PropertyInfo property                   => throw new McpException($"{property.Name} 没有 getter。"),
         _                                       => throw new McpException($"不支持的成员类型 {member.MemberType}。")
     };
-
-    private static object? ConvertArgument
-    (
-        string raw,
-        Type   targetType
-    )
-    {
-        if (targetType == typeof(string))
-            return raw;
-
-        var underlying = Nullable.GetUnderlyingType(targetType) ?? targetType;
-
-        if (underlying == typeof(nint) || underlying == typeof(IntPtr))
-            return (nint)ParseAddress(raw);
-
-        if (underlying == typeof(nuint) || underlying == typeof(UIntPtr))
-            return (nuint)ParseAddress(raw);
-
-        if (underlying == typeof(bool))
-            return bool.Parse(raw);
-
-        if (underlying.IsEnum)
-            return Enum.Parse(underlying, raw, true);
-
-        if (underlying == typeof(char))
-            return raw.Length > 0 ? raw[0] : throw new McpException("无法把空字符串转换为 char。");
-
-        if (underlying == typeof(object))
-            return raw;
-
-        return underlying.IsPrimitive
-                   ? Convert.ChangeType(raw, underlying, CultureInfo.InvariantCulture)
-                   : throw new McpException($"暂不支持把文本转换为 {targetType.Name}。");
-    }
-
-    private static long ParseAddress
-    (
-        string raw
-    )
-    {
-        var text = raw.Trim();
-
-        return text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
-                   ? long.Parse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture)
-                   : long.Parse(text,      NumberStyles.Integer,   CultureInfo.InvariantCulture);
-    }
 }

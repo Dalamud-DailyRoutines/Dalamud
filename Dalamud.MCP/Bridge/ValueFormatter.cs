@@ -2,347 +2,133 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
-using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace Dalamud;
 
-/// <summary>
-/// 把任意托管值格式化成便于模型阅读的 JSON 文本。
-/// </summary>
+/// <summary>使用共享节点预算展开值，属性只通过显式路径读取。</summary>
 internal static class ValueFormatter
 {
-    private const int MAX_COLLECTION_ITEMS = 256;
+    public static string Format(object? value, int depth) => Snapshot(value, depth)?.ToJsonString() ?? "null";
 
-    /// <summary>
-    /// 格式化一个值。
-    /// </summary>
-    /// <param name="value">要格式化的值。</param>
-    /// <param name="depth">引用类型向下展开的层数。</param>
-    /// <returns>JSON 文本。</returns>
-    public static string Format
-    (
-        object? value,
-        int     depth
-    )
+    public static JsonNode? Snapshot(object? value, int depth = 0)
     {
-        var builder = new StringBuilder(256);
-        Write(builder, value, depth, []);
-        return builder.ToString();
+        var          budget  = 256;
+        List<object> visited = [];
+        return Write(value, Math.Clamp(depth, 0, 4), visited, ref budget);
     }
 
-    private static void Write
-    (
-        StringBuilder   builder,
-        object?         value,
-        int             depth,
-        HashSet<object> visited
-    )
+    private static JsonNode? Write(object? value, int depth, List<object> visited, ref int budget)
     {
         if (value is null)
-        {
-            builder.Append("null");
-            return;
-        }
+            return null;
+
+        if (--budget < 0)
+            return new JsonObject { ["truncated"] = true };
+
+        var type = value.GetType();
 
         switch (value)
         {
+            case IntPtr pointer:
+                return JsonValue.Create("0x" + pointer.ToInt64().ToString("X", CultureInfo.InvariantCulture));
+            case UIntPtr pointer:
+                return JsonValue.Create("0x" + pointer.ToUInt64().ToString("X", CultureInfo.InvariantCulture));
+            case Type reflectedType:
+                return JsonValue.Create(reflectedType.FullName);
+            case Enum enumeration:
+                return JsonValue.Create(enumeration.ToString());
             case string text:
-                WriteString(builder, text);
-                return;
-            case bool flag:
-                builder.Append(flag ? "true" : "false");
-                return;
-            case char character:
-                WriteString(builder, character.ToString());
-                return;
-            case IntPtr intPtr:
-                WriteString(builder, FormatPointer(intPtr.ToInt64()));
-                return;
-            case UIntPtr unsignedIntPtr:
-                WriteString(builder, FormatPointer((long)unsignedIntPtr.ToUInt64()));
-                return;
-            case Type type:
-                WriteString(builder, type.FullName ?? type.Name);
-                return;
-            case Enum enumValue:
-                WriteString(builder, enumValue.ToString());
-                return;
-            case DateTime time:
-                WriteString(builder, time.ToString("O", CultureInfo.InvariantCulture));
-                return;
-            case DateTimeOffset offset:
-                WriteString(builder, offset.ToString("O", CultureInfo.InvariantCulture));
-                return;
-            case TimeSpan span:
-                WriteString(builder, span.ToString("c", CultureInfo.InvariantCulture));
-                return;
-            case Guid identifier:
-                WriteString(builder, identifier.ToString("D"));
-                return;
-            case Task task:
-                WriteString(builder, $"Task:{task.Status}");
-                return;
+                return JsonValue.Create
+                (
+                    text.Length <= 8192 ?
+                        text :
+                        text[..8192]
+                );
+            case float number when !float.IsFinite(number):
+                return JsonValue.Create(number.ToString(CultureInfo.InvariantCulture));
+            case double number when !double.IsFinite(number):
+                return JsonValue.Create(number.ToString(CultureInfo.InvariantCulture));
         }
 
-        var valueType = value.GetType();
+        if (type.IsPrimitive || value is decimal or DateTime or DateTimeOffset or TimeSpan or Guid)
+            return JsonSerializer.SerializeToNode(value, type);
 
-        if (valueType.IsPrimitive || value is decimal)
-        {
-            builder.Append(Convert.ToString(value, CultureInfo.InvariantCulture));
-            return;
-        }
+        var result = new JsonObject { ["type"] = type.FullName };
+        if (!type.IsValueType)
+            result["ref"] = MCPRuntime.References.TrackObject(value);
 
         switch (value)
         {
-            case IDictionary dictionary:
-                WriteDictionary(builder, dictionary, depth, visited);
-                return;
-
-            case IEnumerable enumerable and not string:
-                WriteEnumerable(builder, enumerable, depth, visited);
-                return;
-
-            default:
-                WriteObject(builder, value, valueType, depth, visited);
-                return;
+            case Task task:
+                result["status"]    = task.Status.ToString();
+                result["completed"] = task.IsCompleted;
+                return result;
+            case ICollection collection:
+                result["count"] = collection.Count;
+                break;
         }
-    }
-
-    private static void WriteDictionary
-    (
-        StringBuilder   builder,
-        IDictionary     dictionary,
-        int             depth,
-        HashSet<object> visited
-    )
-    {
-        if (!visited.Add(dictionary))
-        {
-            WriteString(builder, "<循环引用>");
-            return;
-        }
-
-        try
-        {
-            builder.Append('{');
-            var written   = 0;
-            var truncated = false;
-
-            foreach (DictionaryEntry entry in dictionary)
-            {
-                if (written >= MAX_COLLECTION_ITEMS)
-                {
-                    truncated = true;
-                    break;
-                }
-
-                if (written > 0)
-                    builder.Append(',');
-
-                WriteString(builder, Convert.ToString(entry.Key, CultureInfo.InvariantCulture) ?? "null");
-                builder.Append(':');
-                Write(builder, entry.Value, depth - 1, visited);
-                written++;
-            }
-
-            if (truncated)
-                builder.Append(",\"__truncated__\":true");
-
-            builder.Append('}');
-        }
-        finally
-        {
-            visited.Remove(dictionary);
-        }
-    }
-
-    private static void WriteEnumerable
-    (
-        StringBuilder   builder,
-        IEnumerable     enumerable,
-        int             depth,
-        HashSet<object> visited
-    )
-    {
-        if (!visited.Add(enumerable))
-        {
-            WriteString(builder, "<循环引用>");
-            return;
-        }
-
-        try
-        {
-            builder.Append('[');
-            var written   = 0;
-            var truncated = false;
-
-            foreach (var item in enumerable)
-            {
-                if (written >= MAX_COLLECTION_ITEMS)
-                {
-                    truncated = true;
-                    break;
-                }
-
-                if (written > 0)
-                    builder.Append(',');
-
-                Write(builder, item, depth - 1, visited);
-                written++;
-            }
-
-            if (truncated)
-                builder.Append(written > 0 ? ",\"__truncated__\"" : "\"__truncated__\"");
-
-            builder.Append(']');
-        }
-        finally
-        {
-            visited.Remove(enumerable);
-        }
-    }
-
-    private static void WriteObject
-    (
-        StringBuilder   builder,
-        object          value,
-        Type            valueType,
-        int             depth,
-        HashSet<object> visited
-    )
-    {
-        var typeName = valueType.FullName ?? valueType.Name;
 
         if (depth <= 0)
+            return result;
+
+        if (visited.Exists(ancestor => ReferenceEquals(ancestor, value)))
         {
-            builder.Append("{\"__type__\":");
-            WriteString(builder, typeName);
-            builder.Append('}');
-            return;
+            result["cycle"] = true;
+            return result;
         }
 
-        if (!visited.Add(value))
-        {
-            WriteString(builder, "<循环引用>");
-            return;
-        }
+        visited.Add(value);
 
         try
         {
-            builder.Append("{\"__type__\":");
-            WriteString(builder, typeName);
-            builder.Append(",\"members\":{");
-
-            var written   = 0;
-            var truncated = false;
-
-            foreach (var member in EnumerateMembers(valueType))
+            if (value is IEnumerable enumerable)
             {
-                if (written >= MAX_COLLECTION_ITEMS)
+                var items = new JsonArray();
+
+                foreach (var item in enumerable)
                 {
-                    truncated = true;
-                    break;
+                    if (items.Count >= 32 || budget <= 0)
+                    {
+                        result["truncated"] = true;
+                        break;
+                    }
+
+                    items.Add(Write(item, depth - 1, visited, ref budget));
                 }
 
-                object? memberValue;
+                result["items"] = items;
+                return result;
+            }
+
+            var fields = new JsonObject();
+
+            foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public))
+            {
+                if (fields.Count >= 32 || budget <= 0)
+                {
+                    result["truncated"] = true;
+                    break;
+                }
 
                 try
                 {
-                    memberValue = member switch
-                    {
-                        FieldInfo field                                                      => field.GetValue(value),
-                        PropertyInfo property when property.GetIndexParameters().Length == 0 => property.GetValue(value),
-                        _                                                                    => null
-                    };
+                    fields[field.Name] = Write(field.GetValue(value), depth - 1, visited, ref budget);
                 }
                 catch (Exception exception)
                 {
-                    memberValue = $"<读取失败: {exception.GetType().Name}>";
+                    fields[field.Name] = new JsonObject { ["error"] = exception.GetBaseException().Message };
                 }
-
-                if (written > 0)
-                    builder.Append(',');
-
-                WriteString(builder, member.Name);
-                builder.Append(':');
-                Write(builder, memberValue, depth - 1, visited);
-                written++;
             }
 
-            if (truncated)
-                builder.Append(",\"__truncated__\":true");
-
-            builder.Append("}}");
+            result["fields"] = fields;
+            return result;
         }
         finally
         {
-            visited.Remove(value);
+            visited.RemoveAt(visited.Count - 1);
         }
-    }
-
-    private static IEnumerable<MemberInfo> EnumerateMembers
-    (
-        Type type
-    )
-    {
-        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly;
-
-        for (var current = type; current is not null && current != typeof(object); current = current.BaseType)
-        {
-            foreach (var field in current.GetFields(flags))
-                yield return field;
-
-            foreach (var property in current.GetProperties(flags))
-            {
-                if (property.GetIndexParameters().Length == 0 && property.CanRead)
-                    yield return property;
-            }
-        }
-    }
-
-    private static string FormatPointer
-    (
-        long address
-    ) =>
-        "0x" + address.ToString("X", CultureInfo.InvariantCulture);
-
-    private static void WriteString
-    (
-        StringBuilder builder,
-        string        value
-    )
-    {
-        builder.Append('"');
-
-        foreach (var character in value)
-        {
-            switch (character)
-            {
-                case '"':
-                    builder.Append("\\\"");
-                    break;
-                case '\\':
-                    builder.Append(@"\\");
-                    break;
-                case '\n':
-                    builder.Append("\\n");
-                    break;
-                case '\r':
-                    builder.Append("\\r");
-                    break;
-                case '\t':
-                    builder.Append("\\t");
-                    break;
-                default:
-                    if (character < ' ')
-                        builder.Append("\\u").Append(((int)character).ToString("x4", CultureInfo.InvariantCulture));
-                    else
-                        builder.Append(character);
-                    break;
-            }
-        }
-
-        builder.Append('"');
     }
 }

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using ModelContextProtocol;
@@ -20,11 +21,14 @@ internal static class MemWriteTool
     /// <returns>JSON 文本。</returns>
     public static string Run
     (
-        string  address,
-        string? hex   = null,
-        string? type  = null,
-        string? path  = null,
-        string? value = null
+        [Description("起始地址，支持十进制或 0x 前缀十六进制。")]
+        string address,
+        [Description("要写入的原始字节，以十六进制文本给出，可含空格或短横线。")]
+        string? hex = null,
+        [Description("结构化写入时的类型全名或简单名。")] string? type = null,
+        [Description("结构化写入时的字段路径，最后一段为目标字段。")]
+        string? path = null,
+        [Description("结构化写入时以文本给出的新值。")] string? value = null
     )
     {
         var baseAddress = (nint)MemoryAccess.ParseAddress(address);

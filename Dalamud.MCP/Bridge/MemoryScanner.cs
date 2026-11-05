@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading;
 using Dalamud.Memory;
 using ModelContextProtocol;
 
@@ -20,12 +21,14 @@ internal static class MemoryScanner
     /// <param name="pattern">特征码文本，支持 <c>??</c> 通配。</param>
     /// <param name="regions">扫描区域。</param>
     /// <param name="limit">命中数量上限。</param>
+    /// <param name="cancellationToken">取消尚未执行的操作或异步等待。</param>
     /// <returns>命中地址。</returns>
     public static List<nint> ScanPattern
     (
         string                      pattern,
         IReadOnlyList<MemoryRegion> regions,
-        int                         limit
+        int                         limit,
+        CancellationToken           cancellationToken = default
     )
     {
         var (bytes, wildcard) = ParsePattern(pattern);
@@ -40,15 +43,18 @@ internal static class MemoryScanner
 
             for (ulong offset = 0; offset < region.Size; offset += BLOCK_SIZE)
             {
-                var remaining   = region.Size - offset;
-                var wanted      = BLOCK_SIZE  + overlap;
-                var chunkLength = (int)(remaining < wanted ? remaining : wanted);
+                cancellationToken.ThrowIfCancellationRequested();
+                var remaining = region.Size - offset;
+                var wanted    = BLOCK_SIZE  + overlap;
+                var chunkLength = (int)(remaining < wanted ?
+                                            remaining :
+                                            wanted);
                 if (chunkLength < bytes.Length)
                     break;
 
                 var buffer = ReadBlock((nint)(region.Start + offset), chunkLength);
 
-                for (var index = 0; index + bytes.Length <= buffer.Length; index++)
+                for (var index = 0; index < BLOCK_SIZE && index + bytes.Length <= buffer.Length; index++)
                 {
                     if (!Matches(buffer, index, bytes, wildcard))
                         continue;
@@ -71,36 +77,43 @@ internal static class MemoryScanner
     /// <param name="upper">上界，省略时按精确值处理。</param>
     /// <param name="regions">扫描区域。</param>
     /// <param name="alignment">对齐步长，0 表示按类型自然对齐。</param>
+    /// <param name="cancellationToken">取消尚未执行的操作或异步等待。</param>
     /// <returns>候选地址、对应数值、命中总数与截断标记。</returns>
-    public static (List<nint> Candidates, List<double> Values, int Total, bool Truncated) ScanValue
+    public static MemoryScanResult ScanValue
     (
         string                      valueType,
-        double                      lower,
-        double?                     upper,
+        NumericValue                lower,
+        NumericValue?               upper,
         IReadOnlyList<MemoryRegion> regions,
-        int                         alignment
+        int                         alignment,
+        CancellationToken           cancellationToken = default
     )
     {
         var size = GetValueSize(valueType);
-        var step = alignment > 0 ? alignment : size;
+        var step = alignment > 0 ?
+                       alignment :
+                       size;
 
         var candidates = new List<nint>();
-        var values     = new List<double>();
+        var values     = new List<NumericValue>();
         var total      = 0;
 
         foreach (var region in regions)
         {
             for (ulong offset = 0; offset < region.Size; offset += BLOCK_SIZE)
             {
-                var remaining   = region.Size - offset;
-                var wanted      = BLOCK_SIZE  + (ulong)size;
-                var chunkLength = (int)(remaining < wanted ? remaining : wanted);
+                cancellationToken.ThrowIfCancellationRequested();
+                var remaining = region.Size - offset;
+                var wanted    = BLOCK_SIZE  + (ulong)size;
+                var chunkLength = (int)(remaining < wanted ?
+                                            remaining :
+                                            wanted);
                 if (chunkLength < size)
                     break;
 
                 var buffer = ReadBlock((nint)(region.Start + offset), chunkLength);
 
-                for (var index = 0; index + size <= buffer.Length; index += step)
+                for (var index = 0; index < BLOCK_SIZE && index + size <= buffer.Length; index += step)
                 {
                     var numeric = ReadNumeric(buffer, index, valueType);
                     if (!InRange(numeric, lower, upper))
@@ -109,7 +122,7 @@ internal static class MemoryScanner
                     total++;
 
                     if (candidates.Count >= MAX_CANDIDATES)
-                        return (candidates, values, total, true);
+                        return new MemoryScanResult(candidates, values, total, true);
 
                     candidates.Add((nint)(region.Start + offset + (ulong)index));
                     values.Add(numeric);
@@ -117,7 +130,7 @@ internal static class MemoryScanner
             }
         }
 
-        return (candidates, values, total, false);
+        return new MemoryScanResult(candidates, values, total, false);
     }
 
     /// <summary>
@@ -127,32 +140,34 @@ internal static class MemoryScanner
     /// <param name="filter">过滤条件。</param>
     /// <param name="target">equals 或 between 的目标值。</param>
     /// <param name="upper">between 的上界。</param>
+    /// <param name="cancellationToken">取消尚未完成的扫描。</param>
     public static void ApplyFilter
     (
-        ScanSession session,
-        string      filter,
-        double?     target,
-        double?     upper
+        ScanSession       session,
+        string            filter,
+        NumericValue?     target,
+        NumericValue?     upper,
+        CancellationToken cancellationToken = default
     )
     {
         var kept       = new List<nint>();
-        var keptValues = new List<double>();
-        var isFloat    = IsFloatType(session.ValueType);
+        var keptValues = new List<NumericValue>();
         var normalized = filter.ToLowerInvariant();
 
         for (var index = 0; index < session.Candidates.Count; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var address  = session.Candidates[index];
             var previous = session.Values[index];
             var current  = ReadNumericAt(address, session.ValueType);
 
             var keep = normalized switch
             {
-                "changed"   => !NearlyEqual(current, previous, isFloat),
-                "unchanged" => NearlyEqual(current, previous, isFloat),
+                "changed"   => current != previous,
+                "unchanged" => current == previous,
                 "increased" => current > previous,
                 "decreased" => current < previous,
-                "equals"    => target.HasValue && NearlyEqual(current, target.Value, isFloat),
+                "equals"    => target.HasValue && current                   == target.Value,
                 "between"   => target.HasValue && upper.HasValue && current >= target.Value && current <= upper.Value,
                 _           => throw new McpException($"不支持的过滤条件 \"{filter}\"，可用值为 changed、unchanged、increased、decreased、equals、between。")
             };
@@ -200,7 +215,7 @@ internal static class MemoryScanner
     /// <param name="address">地址。</param>
     /// <param name="valueType">值类型名。</param>
     /// <returns>数值。</returns>
-    public static double ReadNumericAt
+    public static NumericValue ReadNumericAt
     (
         nint   address,
         string valueType
@@ -289,7 +304,7 @@ internal static class MemoryScanner
         }
     }
 
-    private static double ReadNumeric
+    private static NumericValue ReadNumeric
     (
         byte[] buffer,
         int    offset,
@@ -300,43 +315,28 @@ internal static class MemoryScanner
 
         return valueType.ToLowerInvariant() switch
         {
-            "byte" or "u8" or "uint8"     => span[0],
-            "sbyte" or "i8" or "int8"     => (sbyte)span[0],
-            "short" or "i16" or "int16"   => BinaryPrimitives.ReadInt16LittleEndian(span),
-            "ushort" or "u16" or "uint16" => BinaryPrimitives.ReadUInt16LittleEndian(span),
-            "int" or "i32" or "int32"     => BinaryPrimitives.ReadInt32LittleEndian(span),
-            "uint" or "u32" or "uint32"   => BinaryPrimitives.ReadUInt32LittleEndian(span),
-            "float" or "f32" or "single"  => BinaryPrimitives.ReadSingleLittleEndian(span),
-            "long" or "i64" or "int64"    => BinaryPrimitives.ReadInt64LittleEndian(span),
-            "ulong" or "u64" or "uint64"  => BinaryPrimitives.ReadUInt64LittleEndian(span),
-            "double" or "f64"             => BinaryPrimitives.ReadDoubleLittleEndian(span),
-            "bool"                        => span[0] != 0 ? 1d : 0d,
-            _                             => throw new McpException($"不支持的值类型 \"{valueType}\"。")
+            "byte" or "u8" or "uint8"     => NumericValue.FromInteger(span[0]),
+            "sbyte" or "i8" or "int8"     => NumericValue.FromInteger((sbyte)span[0]),
+            "short" or "i16" or "int16"   => NumericValue.FromInteger(BinaryPrimitives.ReadInt16LittleEndian(span)),
+            "ushort" or "u16" or "uint16" => NumericValue.FromInteger(BinaryPrimitives.ReadUInt16LittleEndian(span)),
+            "int" or "i32" or "int32"     => NumericValue.FromInteger(BinaryPrimitives.ReadInt32LittleEndian(span)),
+            "uint" or "u32" or "uint32"   => NumericValue.FromInteger(BinaryPrimitives.ReadUInt32LittleEndian(span)),
+            "float" or "f32" or "single"  => NumericValue.FromFloat(BinaryPrimitives.ReadSingleLittleEndian(span)),
+            "long" or "i64" or "int64"    => NumericValue.FromInteger(BinaryPrimitives.ReadInt64LittleEndian(span)),
+            "ulong" or "u64" or "uint64"  => NumericValue.FromInteger(BinaryPrimitives.ReadUInt64LittleEndian(span)),
+            "double" or "f64"             => NumericValue.FromFloat(BinaryPrimitives.ReadDoubleLittleEndian(span)),
+            "bool" => NumericValue.FromInteger
+            (
+                span[0] != 0 ?
+                    1 :
+                    0
+            ),
+            _ => throw new McpException($"不支持的值类型 \"{valueType}\"。")
         };
     }
 
-    private static bool IsFloatType
-    (
-        string valueType
-    ) => valueType.ToLowerInvariant() switch
-    {
-        "float" or "f32" or "single" or "double" or "f64" => true,
-        _                                                 => false
-    };
-
-    private static bool NearlyEqual
-    (
-        double left,
-        double right,
-        bool   isFloat
-    ) =>
-        isFloat ? Math.Abs(left - right) <= 1e-6 : (long)left == (long)right;
-
-    private static bool InRange
-    (
-        double  value,
-        double  lower,
-        double? upper
-    ) =>
-        upper.HasValue ? value >= lower && value <= upper.Value : Math.Abs(value - lower) <= 1e-6;
+    private static bool InRange(NumericValue value, NumericValue lower, NumericValue? upper) =>
+        upper.HasValue ?
+            value >= lower && value <= upper.Value :
+            value == lower;
 }

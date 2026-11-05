@@ -1,22 +1,16 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-
 using Dalamud.Bindings.ImGui;
 using Dalamud.Console;
 using Dalamud.Memory;
 using Dalamud.Utility;
-
 using Serilog;
-
 using TerraFX.Interop.Windows;
-
 using static TerraFX.Interop.Windows.Windows;
-
 using ERROR = TerraFX.Interop.Windows.ERROR;
 
 namespace Dalamud.Interface.ImGuiBackend.InputHandler;
@@ -26,23 +20,25 @@ namespace Dalamud.Interface.ImGuiBackend.InputHandler;
 /// Largely a port of https://github.com/ocornut/imgui/blob/master/examples/imgui_impl_win32.cpp,
 /// though some changes and wndproc hooking.
 /// </summary>
-[SuppressMessage(
+[SuppressMessage
+(
     "StyleCop.CSharp.LayoutRules",
     "SA1519:Braces should not be omitted from multi-line child statement",
-    Justification = "Multiple fixed/using scopes")]
+    Justification = "Multiple fixed/using scopes"
+)]
 internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
 {
-    private readonly HWND hWnd;
+    private readonly HWND      hWnd;
     private readonly HCURSOR[] cursors;
 
     private readonly WndProcDelegate wndProcDelegate;
-    private readonly nint platformNamePtr;
+    private readonly nint            platformNamePtr;
 
     private readonly IConsoleVariable<bool> cvLogMouseEvents;
 
     private ViewportHandler viewportHandler;
 
-    private int mouseButtonsDown;
+    private int  mouseButtonsDown;
     private bool mouseTracked;
     private long lastTime;
 
@@ -66,35 +62,37 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         // have to hold onto the delegate to keep it in memory for unmanaged code
         this.wndProcDelegate = this.WndProcDetour;
 
-        io.BackendFlags |= ImGuiBackendFlags.HasMouseCursors |
-                           ImGuiBackendFlags.HasSetMousePos |
+        io.BackendFlags |= ImGuiBackendFlags.HasMouseCursors      |
+                           ImGuiBackendFlags.HasSetMousePos       |
                            ImGuiBackendFlags.RendererHasViewports |
                            ImGuiBackendFlags.PlatformHasViewports |
                            ImGuiBackendFlags.HasMouseHoveredViewport;
 
-        this.platformNamePtr = Marshal.StringToHGlobalAnsi("imgui_impl_win32_c#");
+        this.platformNamePtr           = Marshal.StringToHGlobalAnsi("imgui_impl_win32_c#");
         io.Handle->BackendPlatformName = (byte*)this.platformNamePtr;
 
-        var mainViewport = ImGui.GetMainViewport();
+        var mainViewport                                             = ImGui.GetMainViewport();
         mainViewport.PlatformHandle = mainViewport.PlatformHandleRaw = hWnd;
         if (io.ConfigFlags.HasFlag(ImGuiConfigFlags.ViewportsEnable))
             this.viewportHandler = new(this);
 
-        this.cursors = new HCURSOR[9];
-        this.cursors[(int)ImGuiMouseCursor.Arrow] = LoadCursorW(default, IDC.IDC_ARROW);
-        this.cursors[(int)ImGuiMouseCursor.TextInput] = LoadCursorW(default, IDC.IDC_IBEAM);
-        this.cursors[(int)ImGuiMouseCursor.ResizeAll] = LoadCursorW(default, IDC.IDC_SIZEALL);
-        this.cursors[(int)ImGuiMouseCursor.ResizeEw] = LoadCursorW(default, IDC.IDC_SIZEWE);
-        this.cursors[(int)ImGuiMouseCursor.ResizeNs] = LoadCursorW(default, IDC.IDC_SIZENS);
+        this.cursors                                   = new HCURSOR[9];
+        this.cursors[(int)ImGuiMouseCursor.Arrow]      = LoadCursorW(default, IDC.IDC_ARROW);
+        this.cursors[(int)ImGuiMouseCursor.TextInput]  = LoadCursorW(default, IDC.IDC_IBEAM);
+        this.cursors[(int)ImGuiMouseCursor.ResizeAll]  = LoadCursorW(default, IDC.IDC_SIZEALL);
+        this.cursors[(int)ImGuiMouseCursor.ResizeEw]   = LoadCursorW(default, IDC.IDC_SIZEWE);
+        this.cursors[(int)ImGuiMouseCursor.ResizeNs]   = LoadCursorW(default, IDC.IDC_SIZENS);
         this.cursors[(int)ImGuiMouseCursor.ResizeNesw] = LoadCursorW(default, IDC.IDC_SIZENESW);
         this.cursors[(int)ImGuiMouseCursor.ResizeNwse] = LoadCursorW(default, IDC.IDC_SIZENWSE);
-        this.cursors[(int)ImGuiMouseCursor.Hand] = LoadCursorW(default, IDC.IDC_HAND);
+        this.cursors[(int)ImGuiMouseCursor.Hand]       = LoadCursorW(default, IDC.IDC_HAND);
         this.cursors[(int)ImGuiMouseCursor.NotAllowed] = LoadCursorW(default, IDC.IDC_NO);
 
-        this.cvLogMouseEvents = Service<ConsoleManager>.Get().AddVariable(
+        this.cvLogMouseEvents = Service<ConsoleManager>.Get().AddVariable
+        (
             "imgui.log_mouse_events",
             "Log mouse events to console for debugging",
-            false);
+            false
+        );
     }
 
     /// <summary>
@@ -125,13 +123,15 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         {
             if (this.iniPathPtr != 0)
                 Marshal.FreeHGlobal(this.iniPathPtr);
+
             if (!string.IsNullOrEmpty(value))
             {
-                var e = Encoding.UTF8.GetByteCount(value);
+                var e        = Encoding.UTF8.GetByteCount(value);
                 var newAlloc = Marshal.AllocHGlobal(e + 2);
+
                 try
                 {
-                    var span = new Span<byte>((void*)newAlloc, e + 2);
+                    var span            = new Span<byte>((void*)newAlloc, e + 2);
                     span[^1] = span[^2] = 0;
                     Encoding.UTF8.GetBytes(value, span);
                 }
@@ -161,18 +161,23 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
     /// <inheritdoc/>
     public void NewFrame(int targetWidth, int targetHeight)
     {
-        var io = ImGui.GetIO();
+        var io            = ImGui.GetIO();
         var focusedWindow = GetForegroundWindow();
 
-        io.DisplaySize.X = targetWidth;
-        io.DisplaySize.Y = targetHeight;
+        io.DisplaySize.X             = targetWidth;
+        io.DisplaySize.Y             = targetHeight;
         io.DisplayFramebufferScale.X = 1f;
         io.DisplayFramebufferScale.Y = 1f;
 
-        var frequency = Stopwatch.Frequency;
+        var frequency   = Stopwatch.Frequency;
         var currentTime = Stopwatch.GetTimestamp();
-        io.DeltaTime = this.lastTime > 0 ? (float)((double)(currentTime - this.lastTime) / frequency) : 1f / 60;
+        io.DeltaTime = this.lastTime > 0 ?
+                           (float)((double)(currentTime - this.lastTime) / frequency) :
+                           1f / 60;
         this.lastTime = currentTime;
+
+        if (InputSender.ApplyImGuiFrame())
+            return;
 
         this.viewportHandler.UpdateMonitors();
 
@@ -197,9 +202,11 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         // }
 
         // hacky attempt to make cursors work how I think they 'should'
-        if ((io.WantCaptureMouse || io.MouseDrawCursor) && this.UpdateCursor)
+        switch (this.UpdateCursor)
         {
-            this.UpdateMouseCursor();
+            case true when io.WantCaptureMouse || io.MouseDrawCursor:
+                this.UpdateMouseCursor();
+                break;
         }
 
         // Similar issue seen with overlapping mouse clicks
@@ -228,6 +235,9 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         if (ImGui.GetCurrentContext().IsNull)
             return null;
 
+        if (InputSender.IsPluginPlaybackActive)
+            return null;
+
         var io = ImGui.GetIO();
 
         switch (msg)
@@ -238,9 +248,9 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
                 {
                     var tme = new TRACKMOUSEEVENT
                     {
-                        cbSize = (uint)sizeof(TRACKMOUSEEVENT),
-                        dwFlags = TME.TME_LEAVE,
-                        hwndTrack = hWndCurrent,
+                        cbSize    = (uint)sizeof(TRACKMOUSEEVENT),
+                        dwFlags   = TME.TME_LEAVE,
+                        hwndTrack = hWndCurrent
                     };
                     this.mouseTracked = TrackMouseEvent(&tme);
                 }
@@ -261,7 +271,7 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
                 if (GetCursorPos(&mouseScreenPos) == 0)
                     break;
 
-                if (this.ViewportFromPoint(mouseScreenPos).IsNull)
+                if (ViewportFromPoint(mouseScreenPos).IsNull)
                 {
                     var fltMax = ImGuiNative.GETFLTMAX();
                     io.AddMousePosEvent(-fltMax, -fltMax);
@@ -281,14 +291,17 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             {
                 if (this.cvLogMouseEvents.Value)
                 {
-                    Log.Verbose(
+                    Log.Verbose
+                    (
                         "Handle MouseDown {Btn} WantCaptureMouse: {Want} mouseButtonsDown: {Down}",
                         GetButton(msg, wParam),
                         io.WantCaptureMouse,
-                        this.mouseButtonsDown);
+                        this.mouseButtonsDown
+                    );
                 }
 
                 var button = GetButton(msg, wParam);
+
                 if (io.WantCaptureMouse)
                 {
                     if (this.mouseButtonsDown == 0 && GetCapture() == nint.Zero)
@@ -314,11 +327,13 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             {
                 if (this.cvLogMouseEvents.Value)
                 {
-                    Log.Verbose(
+                    Log.Verbose
+                    (
                         "Handle MouseUp   {Btn} WantCaptureMouse: {Want} mouseButtonsDown: {Down}",
                         GetButton(msg, wParam),
                         io.WantCaptureMouse,
-                        this.mouseButtonsDown);
+                        this.mouseButtonsDown
+                    );
                 }
 
                 var button = GetButton(msg, wParam);
@@ -329,6 +344,7 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
                 if (io.WantCaptureMouse && (this.mouseButtonsDown & (1 << button)) != 0)
                 {
                     this.mouseButtonsDown &= ~(1 << button);
+
                     if (this.mouseButtonsDown == 0 && GetCapture() == hWndCurrent)
                     {
                         ReleaseCapture();
@@ -394,8 +410,9 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
                     vk = VK.VK_RETURN + 256;
 
                 // Submit key event
-                var key = VirtualKeyToImGuiKey(vk);
+                var key      = VirtualKeyToImGuiKey(vk);
                 var scancode = ((int)lParam & 0xff0000) >> 16;
+
                 if (key != ImGuiKey.None && io.WantTextInput)
                 {
                     AddKeyEvent(key, isKeyDown, vk, scancode);
@@ -470,6 +487,7 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
 
             case WM.WM_KILLFOCUS when hWndCurrent == this.hWnd:
                 io.AddFocusEvent(false);
+
                 // If we still hold mouse capture when losing focus, release it so normal OS
                 // hit-testing resumes and other windows can receive mouse messages. This is a
                 // safety net, capture should already be released on button-up, but if a button-up
@@ -492,14 +510,12 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
     {
         var io = ImGui.GetIO();
 
-        var mouseScreenPos = default(POINT);
+        var mouseScreenPos    = default(POINT);
         var hasMouseScreenPos = GetCursorPos(&mouseScreenPos) != 0;
 
         var isAppFocused =
-            focusedWindow != default
-            && (focusedWindow == this.hWnd
-                || IsChild(focusedWindow, this.hWnd)
-                || !ImGui.FindViewportByPlatformHandle(focusedWindow).IsNull);
+            focusedWindow != default &&
+            (focusedWindow == this.hWnd || IsChild(focusedWindow, this.hWnd) || !ImGui.FindViewportByPlatformHandle(focusedWindow).IsNull);
 
         if (isAppFocused)
         {
@@ -522,6 +538,7 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
             // (This is the position you can get with ::GetCursorPos() or WM_MOUSEMOVE + ::ClientToScreen(). In theory adding viewport->Pos to a client position would also be the same.)
             var mousePos = mouseScreenPos;
+
             if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) == 0)
             {
                 // Use game window, otherwise, positions are calculated based on the focused window which might not be the game.
@@ -541,8 +558,13 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         // - [X] Win32 backend correctly reports this regardless of another viewport behind focused and dragged from (we need this to find a useful drag and drop target).
         if (hasMouseScreenPos)
         {
-            var viewport = this.ViewportFromPoint(mouseScreenPos);
-            io.AddMouseViewportEvent(!viewport.IsNull ? viewport.ID : 0u);
+            var viewport = ViewportFromPoint(mouseScreenPos);
+            io.AddMouseViewportEvent
+            (
+                !viewport.IsNull ?
+                    viewport.ID :
+                    0u
+            );
         }
         else
         {
@@ -550,10 +572,12 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         }
     }
 
-    private ImGuiViewportPtr ViewportFromPoint(POINT mouseScreenPos)
+    private static ImGuiViewportPtr ViewportFromPoint(POINT mouseScreenPos)
     {
         var hoveredHwnd = WindowFromPoint(mouseScreenPos);
-        return hoveredHwnd != default ? ImGui.FindViewportByPlatformHandle(hoveredHwnd) : default;
+        return hoveredHwnd != default ?
+                   ImGui.FindViewportByPlatformHandle(hoveredHwnd) :
+                   default;
     }
 
     private bool UpdateMouseCursor()
@@ -596,11 +620,13 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         // This is something of a brute force fix that basically makes key up events irrelevant
         // Holding a key will send repeated key down events and (re)set these where appropriate, so this should be ok.
         var io = ImGui.GetIO();
+
         if (!io.WantTextInput)
         {
             // See: https://github.com/goatcorp/ImGuiScene/pull/13
             // > GetForegroundWindow from winuser.h is a surprisingly expensive function.
             var isForeground = focusedWindow == this.hWnd;
+
             for (var i = (int)ImGuiKey.NamedKeyBegin; i < (int)ImGuiKey.NamedKeyEnd; i++)
             {
                 // Skip raising modifier keys if the game is focused.
@@ -655,14 +681,16 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
                 // Without this, returning MA_NOACTIVATE suppresses the default OS Z-reordering on
                 // click, so the window stays behind other viewport windows forever (it only moved
                 // before when ImGui explicitly called PlatformSetWindowFocus, e.g. on collapse).
-                SetWindowPos(
+                SetWindowPos
+                (
                     hWndCurrent,
                     HWND.HWND_TOP,
                     0,
                     0,
                     0,
                     0,
-                    SWP.SWP_NOMOVE | SWP.SWP_NOSIZE | SWP.SWP_NOACTIVATE);
+                    SWP.SWP_NOMOVE | SWP.SWP_NOSIZE | SWP.SWP_NOACTIVATE
+                );
 
                 // Make the game the foreground window. This prevents ImGui windows from becoming
                 // choppy when users have the "limit FPS" option enabled in-game
@@ -728,19 +756,19 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             this.input = input;
 
             var pio = ImGui.GetPlatformIO();
-            pio.PlatformCreateWindow = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnCreateWindow;
-            pio.PlatformDestroyWindow = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnDestroyWindow;
-            pio.PlatformShowWindow = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnShowWindow;
-            pio.PlatformSetWindowPos = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, Vector2, void>)&OnSetWindowPos;
-            pio.PlatformGetWindowPos = (delegate* unmanaged[Cdecl]<Vector2*, ImGuiViewportPtr, Vector2*>)&OnGetWindowPos;
-            pio.PlatformSetWindowSize = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, Vector2, void>)&OnSetWindowSize;
-            pio.PlatformGetWindowSize = (delegate* unmanaged[Cdecl]<Vector2*, ImGuiViewportPtr, Vector2*>)&OnGetWindowSize;
-            pio.PlatformSetWindowFocus = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnSetWindowFocus;
-            pio.PlatformGetWindowFocus = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, byte>)&OnGetWindowFocus;
+            pio.PlatformCreateWindow       = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnCreateWindow;
+            pio.PlatformDestroyWindow      = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnDestroyWindow;
+            pio.PlatformShowWindow         = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnShowWindow;
+            pio.PlatformSetWindowPos       = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, Vector2, void>)&OnSetWindowPos;
+            pio.PlatformGetWindowPos       = (delegate* unmanaged[Cdecl]<Vector2*, ImGuiViewportPtr, Vector2*>)&OnGetWindowPos;
+            pio.PlatformSetWindowSize      = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, Vector2, void>)&OnSetWindowSize;
+            pio.PlatformGetWindowSize      = (delegate* unmanaged[Cdecl]<Vector2*, ImGuiViewportPtr, Vector2*>)&OnGetWindowSize;
+            pio.PlatformSetWindowFocus     = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnSetWindowFocus;
+            pio.PlatformGetWindowFocus     = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, byte>)&OnGetWindowFocus;
             pio.PlatformGetWindowMinimized = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, byte>)&OnGetWindowMinimized;
-            pio.PlatformSetWindowTitle = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, byte*, void>)&OnSetWindowTitle;
-            pio.PlatformSetWindowAlpha = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, float, void>)&OnSetWindowAlpha;
-            pio.PlatformUpdateWindow = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnUpdateWindow;
+            pio.PlatformSetWindowTitle     = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, byte*, void>)&OnSetWindowTitle;
+            pio.PlatformSetWindowAlpha     = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, float, void>)&OnSetWindowAlpha;
+            pio.PlatformUpdateWindow       = (delegate* unmanaged[Cdecl]<ImGuiViewportPtr, void>)&OnUpdateWindow;
             // pio.Platform_SetImeInputPos = this.RegisterFunctionPointer<SetImeInputPosDelegate>(this.OnSetImeInputPos);
             // pio.Platform_GetWindowDpiScale = this.RegisterFunctionPointer<GetWindowDpiScaleDelegate>(this.OnGetWindowDpiScale);
             // pio.Platform_ChangedViewport = this.RegisterFunctionPointer<ChangedViewportDelegate>(this.OnChangedViewport);
@@ -749,13 +777,13 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             {
                 var wcex = new WNDCLASSEXW
                 {
-                    cbSize = (uint)sizeof(WNDCLASSEXW),
-                    style = CS.CS_HREDRAW | CS.CS_VREDRAW,
-                    hInstance = (HINSTANCE)Marshal.GetHINSTANCE(typeof(ViewportHandler).Module),
+                    cbSize        = (uint)sizeof(WNDCLASSEXW),
+                    style         = CS.CS_HREDRAW | CS.CS_VREDRAW,
+                    hInstance     = (HINSTANCE)Marshal.GetHINSTANCE(typeof(ViewportHandler).Module),
                     hbrBackground = (HBRUSH)(1 + COLOR.COLOR_BACKGROUND),
                     lpfnWndProc = (delegate* unmanaged<HWND, uint, WPARAM, LPARAM, LRESULT>)Marshal
                         .GetFunctionPointerForDelegate(this.input.wndProcDelegate),
-                    lpszClassName = windowClassNamePtr,
+                    lpszClassName = windowClassNamePtr
                 };
 
                 if (RegisterClassExW(&wcex) == 0)
@@ -768,9 +796,9 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
 
             var data = (ImGuiViewportDataWin32*)Marshal.AllocHGlobal(Marshal.SizeOf<ImGuiViewportDataWin32>());
             mainViewport.PlatformUserData = data;
-            data->Hwnd = this.input.hWnd;
-            data->HwndOwned = false;
-            mainViewport.PlatformHandle = this.input.hWnd;
+            data->Hwnd                    = this.input.hWnd;
+            data->HwndOwned               = false;
+            mainViewport.PlatformHandle   = this.input.hWnd;
         }
 
         public void Dispose()
@@ -783,24 +811,26 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
 
             fixed (char* windowClassNamePtr = WindowClassName)
             {
-                UnregisterClassW(
+                UnregisterClassW
+                (
                     windowClassNamePtr,
-                    (HINSTANCE)Marshal.GetHINSTANCE(typeof(ViewportHandler).Module));
+                    (HINSTANCE)Marshal.GetHINSTANCE(typeof(ViewportHandler).Module)
+                );
             }
 
-            pio.PlatformCreateWindow = null;
-            pio.PlatformDestroyWindow = null;
-            pio.PlatformShowWindow = null;
-            pio.PlatformSetWindowPos = null;
-            pio.PlatformGetWindowPos = null;
-            pio.PlatformSetWindowSize = null;
-            pio.PlatformGetWindowSize = null;
-            pio.PlatformSetWindowFocus = null;
-            pio.PlatformGetWindowFocus = null;
+            pio.PlatformCreateWindow       = null;
+            pio.PlatformDestroyWindow      = null;
+            pio.PlatformShowWindow         = null;
+            pio.PlatformSetWindowPos       = null;
+            pio.PlatformGetWindowPos       = null;
+            pio.PlatformSetWindowSize      = null;
+            pio.PlatformGetWindowSize      = null;
+            pio.PlatformSetWindowFocus     = null;
+            pio.PlatformGetWindowFocus     = null;
             pio.PlatformGetWindowMinimized = null;
-            pio.PlatformSetWindowTitle = null;
-            pio.PlatformSetWindowAlpha = null;
-            pio.PlatformUpdateWindow = null;
+            pio.PlatformSetWindowTitle     = null;
+            pio.PlatformSetWindowAlpha     = null;
+            pio.PlatformUpdateWindow       = null;
             // pio.Platform_SetImeInputPos = nint.Zero;
             // pio.Platform_GetWindowDpiScale = nint.Zero;
             // pio.Platform_ChangedViewport = nint.Zero;
@@ -824,14 +854,17 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             EnumDisplayMonitors(default, null, &EnumDisplayMonitorsCallback, default);
 
             Log.Information("Monitors set up!");
+
             foreach (ref var monitor in pio.Handle->Monitors)
             {
-                Log.Information(
+                Log.Information
+                (
                     "Monitor: {MainPos} {MainSize} {WorkPos} {WorkSize}",
                     monitor.MainPos,
                     monitor.MainSize,
                     monitor.WorkPos,
-                    monitor.WorkSize);
+                    monitor.WorkSize
+                );
             }
 
             return;
@@ -843,19 +876,19 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
                 if (!GetMonitorInfoW(hMonitor, &info))
                     return true;
 
-                var monitorLt = new Vector2(info.rcMonitor.left, info.rcMonitor.top);
+                var monitorLt = new Vector2(info.rcMonitor.left,  info.rcMonitor.top);
                 var monitorRb = new Vector2(info.rcMonitor.right, info.rcMonitor.bottom);
-                var workLt = new Vector2(info.rcWork.left, info.rcWork.top);
-                var workRb = new Vector2(info.rcWork.right, info.rcWork.bottom);
+                var workLt    = new Vector2(info.rcWork.left,     info.rcWork.top);
+                var workRb    = new Vector2(info.rcWork.right,    info.rcWork.bottom);
 
                 // Give ImGui the info for this display
                 var imMonitor = new ImGuiPlatformMonitor
                 {
-                    MainPos = monitorLt,
+                    MainPos  = monitorLt,
                     MainSize = monitorRb - monitorLt,
-                    WorkPos = workLt,
+                    WorkPos  = workLt,
                     WorkSize = workRb - workLt,
-                    DpiScale = 1f,
+                    DpiScale = 1f
                 };
                 if ((info.dwFlags & MONITORINFOF_PRIMARY) != 0)
                     ImGui.GetPlatformIO().Monitors.PushFront(imMonitor);
@@ -871,13 +904,14 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             var data = (ImGuiViewportDataWin32*)Marshal.AllocHGlobal(Marshal.SizeOf<ImGuiViewportDataWin32>());
             viewport.PlatformUserData = data;
             viewport.Flags =
-                ImGuiViewportFlags.NoTaskBarIcon |
-                ImGuiViewportFlags.NoFocusOnClick |
+                ImGuiViewportFlags.NoTaskBarIcon      |
+                ImGuiViewportFlags.NoFocusOnClick     |
                 ImGuiViewportFlags.NoFocusOnAppearing |
                 viewport.Flags;
             ViewportFlagsToWin32Styles(viewport.Flags, out data->DwStyle, out data->DwExStyle);
 
             var parentWindow = default(HWND);
+
             if (viewport.ParentViewportId != 0)
             {
                 var parentViewport = ImGui.FindViewportByID(viewport.ParentViewportId);
@@ -887,36 +921,38 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             // Create window
             var rect = new RECT
             {
-                left = (int)viewport.Pos.X,
-                top = (int)viewport.Pos.Y,
-                right = (int)(viewport.Pos.X + viewport.Size.X),
-                bottom = (int)(viewport.Pos.Y + viewport.Size.Y),
+                left   = (int)viewport.Pos.X,
+                top    = (int)viewport.Pos.Y,
+                right  = (int)(viewport.Pos.X + viewport.Size.X),
+                bottom = (int)(viewport.Pos.Y + viewport.Size.Y)
             };
             AdjustWindowRectEx(&rect, (uint)data->DwStyle, false, (uint)data->DwExStyle);
 
             fixed (char* windowClassNamePtr = WindowClassName)
             {
-                data->Hwnd = CreateWindowExW(
+                data->Hwnd = CreateWindowExW
+                (
                     (uint)data->DwExStyle,
                     windowClassNamePtr,
                     windowClassNamePtr,
                     (uint)data->DwStyle,
                     rect.left,
                     rect.top,
-                    rect.right - rect.left,
+                    rect.right  - rect.left,
                     rect.bottom - rect.top,
                     parentWindow,
                     default,
                     (HINSTANCE)Marshal.GetHINSTANCE(typeof(ViewportHandler).Module),
-                    null);
+                    null
+                );
             }
 
             if (data->Hwnd == 0)
                 Util.Fatal($"CreateWindowExW failed: {GetLastError()}", "ImGui Viewport error");
 
-            data->HwndOwned = true;
+            data->HwndOwned                = true;
             viewport.PlatformRequestResize = false;
-            viewport.PlatformHandle = viewport.PlatformHandleRaw = data->Hwnd;
+            viewport.PlatformHandle        = viewport.PlatformHandleRaw = data->Hwnd;
         }
 
         [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -931,6 +967,7 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             {
                 // Transfer capture so if we started dragging from a window that later disappears, we'll still receive the MOUSEUP event.
                 ReleaseCapture();
+
                 if (viewport.ParentViewportId != 0)
                 {
                     var parentViewport = ImGui.FindViewportByID(viewport.ParentViewportId);
@@ -941,6 +978,7 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             if (data->Hwnd != nint.Zero && data->HwndOwned)
             {
                 var result = DestroyWindow(data->Hwnd);
+
                 if (result == false && GetLastError() == ERROR.ERROR_ACCESS_DENIED)
                 {
                     // We are disposing, and we're doing it from a different thread because of course we are
@@ -959,10 +997,13 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         {
             var data = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
 
-            if (viewport.Flags.HasFlag(ImGuiViewportFlags.NoFocusOnAppearing))
-                ShowWindow(data->Hwnd, SW.SW_SHOWNA);
-            else
-                ShowWindow(data->Hwnd, SW.SW_SHOW);
+            ShowWindow
+            (
+                data->Hwnd,
+                viewport.Flags.HasFlag(ImGuiViewportFlags.NoFocusOnAppearing) ?
+                    SW.SW_SHOWNA :
+                    SW.SW_SHOW
+            );
         }
 
         [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -973,8 +1014,8 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             var data = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
 
             viewport.Flags =
-                ImGuiViewportFlags.NoTaskBarIcon |
-                ImGuiViewportFlags.NoFocusOnClick |
+                ImGuiViewportFlags.NoTaskBarIcon      |
+                ImGuiViewportFlags.NoFocusOnClick     |
                 ImGuiViewportFlags.NoFocusOnAppearing |
                 viewport.Flags;
             ViewportFlagsToWin32Styles(viewport.Flags, out var newStyle, out var newExStyle);
@@ -984,49 +1025,54 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             {
                 // (Optional) Update TopMost state if it changed _after_ creation
                 var topMostChanged = (data->DwExStyle & WS.WS_EX_TOPMOST) !=
-                                     (newExStyle & WS.WS_EX_TOPMOST);
+                                     (newExStyle      & WS.WS_EX_TOPMOST);
 
                 var insertAfter = default(HWND);
+
                 if (topMostChanged)
                 {
-                    insertAfter = viewport.Flags.HasFlag(ImGuiViewportFlags.TopMost)
-                                      ? HWND.HWND_TOPMOST
-                                      : HWND.HWND_NOTOPMOST;
+                    insertAfter = viewport.Flags.HasFlag(ImGuiViewportFlags.TopMost) ?
+                                      HWND.HWND_TOPMOST :
+                                      HWND.HWND_NOTOPMOST;
                 }
 
-                var swpFlag = topMostChanged ? 0 : SWP.SWP_NOZORDER;
+                var swpFlag = topMostChanged ?
+                                  0 :
+                                  SWP.SWP_NOZORDER;
 
                 // Apply flags and position (since it is affected by flags)
                 // Only apply styles if they actually changed. Setting GWL_STYLE can hide the window, which causes flicker.
                 if (data->DwStyle != newStyle)
                 {
                     data->DwStyle = newStyle;
-                    _ = SetWindowLongW(data->Hwnd, GWL.GWL_STYLE, data->DwStyle);
+                    _             = SetWindowLongW(data->Hwnd, GWL.GWL_STYLE, data->DwStyle);
                 }
 
                 if (data->DwExStyle != newExStyle)
                 {
                     data->DwExStyle = newExStyle;
-                    _ = SetWindowLongW(data->Hwnd, GWL.GWL_EXSTYLE, data->DwExStyle);
+                    _               = SetWindowLongW(data->Hwnd, GWL.GWL_EXSTYLE, data->DwExStyle);
                 }
 
                 // Create window
                 var rect = new RECT
                 {
-                    left = (int)viewport.Pos.X,
-                    top = (int)viewport.Pos.Y,
-                    right = (int)(viewport.Pos.X + viewport.Size.X),
-                    bottom = (int)(viewport.Pos.Y + viewport.Size.Y),
+                    left   = (int)viewport.Pos.X,
+                    top    = (int)viewport.Pos.Y,
+                    right  = (int)(viewport.Pos.X + viewport.Size.X),
+                    bottom = (int)(viewport.Pos.Y + viewport.Size.Y)
                 };
                 AdjustWindowRectEx(&rect, (uint)data->DwStyle, false, (uint)data->DwExStyle);
-                SetWindowPos(
+                SetWindowPos
+                (
                     data->Hwnd,
                     insertAfter,
                     rect.left,
                     rect.top,
-                    rect.right - rect.left,
+                    rect.right  - rect.left,
                     rect.bottom - rect.top,
-                    (uint)(swpFlag | SWP.SWP_NOACTIVATE | SWP.SWP_FRAMECHANGED));
+                    (uint)(swpFlag | SWP.SWP_NOACTIVATE | SWP.SWP_FRAMECHANGED)
+                );
 
                 // This is necessary when we alter the style
                 ShowWindow(data->Hwnd, SW.SW_SHOWNA);
@@ -1038,7 +1084,7 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         private static Vector2* OnGetWindowPos(Vector2* returnValueStorage, ImGuiViewportPtr viewport)
         {
             var data = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
-            var pt = new POINT { x = 0, y = 0 };
+            var pt   = new POINT { x = 0, y = 0 };
             ClientToScreen(data->Hwnd, &pt);
             *returnValueStorage = new(pt.x, pt.y);
             return returnValueStorage;
@@ -1050,7 +1096,8 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
             var data = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
             var rect = new RECT((int)pos.X, (int)pos.Y, (int)pos.X, (int)pos.Y);
             AdjustWindowRectEx(&rect, (uint)data->DwStyle, false, (uint)data->DwExStyle);
-            SetWindowPos(
+            SetWindowPos
+            (
                 data->Hwnd,
                 default,
                 rect.left,
@@ -1058,14 +1105,15 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
                 0,
                 0,
                 SWP.SWP_NOZORDER |
-                SWP.SWP_NOSIZE |
-                SWP.SWP_NOACTIVATE);
+                SWP.SWP_NOSIZE   |
+                SWP.SWP_NOACTIVATE
+            );
         }
 
         [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
         private static Vector2* OnGetWindowSize(Vector2* returnValueStorage, ImGuiViewportPtr viewport)
         {
-            var data = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
+            var  data = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
             RECT rect;
             GetClientRect(data->Hwnd, &rect);
             *returnValueStorage = new(rect.right - rect.left, rect.bottom - rect.top);
@@ -1079,16 +1127,18 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
 
             var rect = new RECT(0, 0, (int)size.X, (int)size.Y);
             AdjustWindowRectEx(&rect, (uint)data->DwStyle, false, (uint)data->DwExStyle);
-            SetWindowPos(
+            SetWindowPos
+            (
                 data->Hwnd,
                 default,
                 0,
                 0,
-                rect.right - rect.left,
+                rect.right  - rect.left,
                 rect.bottom - rect.top,
                 SWP.SWP_NOZORDER |
-                SWP.SWP_NOMOVE |
-                SWP.SWP_NOACTIVATE);
+                SWP.SWP_NOMOVE   |
+                SWP.SWP_NOACTIVATE
+            );
         }
 
         [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -1105,14 +1155,18 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         private static byte OnGetWindowFocus(ImGuiViewportPtr viewport)
         {
             var data = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
-            return GetForegroundWindow() == data->Hwnd ? (byte)1 : (byte)0;
+            return GetForegroundWindow() == data->Hwnd ?
+                       (byte)1 :
+                       (byte)0;
         }
 
         [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
         private static byte OnGetWindowMinimized(ImGuiViewportPtr viewport)
         {
             var data = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
-            return IsIconic(data->Hwnd) ? (byte)1 : (byte)0;
+            return IsIconic(data->Hwnd) ?
+                       (byte)1 :
+                       (byte)0;
         }
 
         [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -1126,21 +1180,21 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
         private static void OnSetWindowAlpha(ImGuiViewportPtr viewport, float alpha)
         {
-            var data = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
+            var data  = (ImGuiViewportDataWin32*)viewport.PlatformUserData;
             var style = GetWindowLongW(data->Hwnd, GWL.GWL_EXSTYLE);
 
             alpha = Math.Clamp(alpha, 0f, 1f);
+
             if (alpha < 1.0f)
             {
                 style |= WS.WS_EX_LAYERED;
-                _ = SetWindowLongW(data->Hwnd, GWL.GWL_EXSTYLE, style);
             }
             else
             {
                 style &= ~WS.WS_EX_LAYERED;
-                _ = SetWindowLongW(data->Hwnd, GWL.GWL_EXSTYLE, style);
             }
 
+            _ = SetWindowLongW(data->Hwnd, GWL.GWL_EXSTYLE, style);
             _ = SetLayeredWindowAttributes(data->Hwnd, 0, (byte)(255 * alpha), LWA.LWA_ALPHA);
         }
 
@@ -1168,8 +1222,8 @@ internal sealed unsafe partial class Win32InputHandler : IImGuiInputHandler
         {
             public HWND Hwnd;
             public bool HwndOwned;
-            public int DwStyle;
-            public int DwExStyle;
+            public int  DwStyle;
+            public int  DwExStyle;
         }
     }
 }

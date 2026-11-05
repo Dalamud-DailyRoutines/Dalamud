@@ -56,12 +56,12 @@ internal static class ServiceResolver
     {
         var wrapper = typeof(Service<>).MakeGenericType(serviceType);
         var method = wrapper.GetMethod
-                         (nameof(Service<>.Get), BindingFlags.Public | BindingFlags.Static) ??
+                         (nameof(Service<>.GetNullable), BindingFlags.Public | BindingFlags.Static) ??
                      throw new McpException($"服务 {serviceType.Name} 没有可用的 Get 方法。");
 
         try
         {
-            return method.Invoke(null, null) ?? throw new McpException($"服务 {serviceType.Name} 返回了空实例。");
+            return method.Invoke(null, [Type.Missing]) ?? throw new McpException($"服务 {serviceType.Name} 返回了空实例。");
         }
         catch (TargetInvocationException exception)
         {
@@ -108,8 +108,8 @@ internal static class ServiceResolver
                       .Take(12)
                       .ToArray();
 
-        return matches.Length == 0
-                   ? "名称中不包含这些片段，可用 service_list 查看全部服务名。"
-                   : $"名称含相关片段的候选: {string.Join(", ", matches)}";
+        return matches.Length == 0 ?
+                   "名称中不包含这些片段，可用 service_list 查看全部服务名。" :
+                   $"名称含相关片段的候选: {string.Join(", ", matches)}";
     }
 }
