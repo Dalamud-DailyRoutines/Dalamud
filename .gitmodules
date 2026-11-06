@@ -34,3 +34,7 @@
 [submodule "lib/libdeflate"]
 	path = lib/libdeflate
 	url = https://github.com/ebiggers/libdeflate.git
+[submodule "lib/Reloaded.Hooks"]
+	path = lib/Reloaded.Hooks
+	url = https://github.com/Dalamud-DailyRoutines/goatcorp.Reloaded.Hooks.git
+	branch = modified

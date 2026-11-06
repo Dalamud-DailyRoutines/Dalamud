@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Reloaded.Hooks.Tests.csproj" />
+  <Project Path="../../lib/Reloaded.Hooks/source/Reloaded.Hooks/Reloaded.Hooks.csproj" />
+</Solution>
