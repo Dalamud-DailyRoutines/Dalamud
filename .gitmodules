@@ -38,3 +38,7 @@
 	path = lib/EXDSchema
 	url = https://github.com/xivdev/EXDSchema.git
 	branch = latest
+[submodule "lib/Reloaded.Hooks"]
+	path = lib/Reloaded.Hooks
+	url = https://github.com/Dalamud-DailyRoutines/goatcorp.Reloaded.Hooks.git
+	branch = modified

@@ -22,6 +22,7 @@
     <Project Path="lib/FFXIVClientStructs/FFXIVClientStructs/FFXIVClientStructs.csproj" />
     <Project Path="lib/FFXIVClientStructs/InteropGenerator.Runtime/InteropGenerator.Runtime.csproj" />
     <Project Path="lib/FFXIVClientStructs/InteropGenerator/InteropGenerator.csproj" />
+    <Project Path="lib/Reloaded.Hooks/source/Reloaded.Hooks/Reloaded.Hooks.csproj" />
   </Folder>
   <Folder Name="/Dependencies/imgui/">
     <Project Path="build/external/cimgui.vcxproj" Id="6c11b58c-fb91-34c6-82b2-e2186f252da5" />
@@ -55,6 +56,14 @@
     <Project Path="generators/Dalamud.EnumGenerator/Dalamud.EnumGenerator.Tests/Dalamud.EnumGenerator.Tests.csproj" />
     <Project Path="generators/Dalamud.EnumGenerator/Dalamud.EnumGenerator/Dalamud.EnumGenerator.csproj" />
   </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Dalamud.Test/Dalamud.Test.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/Reloaded.Hooks.Tests/Reloaded.Hooks.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+  </Folder>
   <Folder Name="/Utilities/">
     <Project Path="Dalamud.CorePlugin/Dalamud.CorePlugin.csproj">
       <Platform Project="x64" />
@@ -72,9 +81,6 @@
     <Platform Project="x64" />
   </Project>
   <Project Path="Dalamud.Injector/Dalamud.Injector.csproj">
-    <Platform Project="x64" />
-  </Project>
-  <Project Path="Dalamud.Test/Dalamud.Test.csproj">
     <Platform Project="x64" />
   </Project>
   <Project Path="Dalamud/Dalamud.csproj">
