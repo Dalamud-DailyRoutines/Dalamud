@@ -2,9 +2,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
-
-using CheapLoc;
-
 using Dalamud.Bindings.ImGui;
 using Dalamud.Configuration.Internal;
 using Dalamud.Game.Gui.Dtr;
@@ -19,10 +16,10 @@ internal sealed class SettingsTabDtr : SettingsTab
 {
     private List<string>? dtrOrder;
     private List<string>? dtrIgnore;
-    private int dtrSpacing;
-    private bool dtrSwapDirection;
+    private int           dtrSpacing;
+    private bool          dtrSwapDirection;
 
-    public override string Title => Loc.Localize("DalamudSettingsServerInfoBar", "Server Info Bar");
+    public override string Title => "基本信息";
 
     public override SettingsOpenKind Kind => SettingsOpenKind.ServerInfoBar;
 
@@ -30,28 +27,29 @@ internal sealed class SettingsTabDtr : SettingsTab
 
     public override void Draw()
     {
-        ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, Loc.Localize("DalamudSettingServerInfoBarHint", "Plugins can put additional information into your server information bar(where world & time can be seen).\nYou can reorder and disable these here."));
+        ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "插件可以向“基本信息”界面添加其他条目。\n可以在此调整顺序与启用禁用这些条目。");
 
         ImGuiHelpers.ScaledDummy(10);
 
         var configuration = Service<DalamudConfiguration>.Get();
-        var dtrBar = Service<DtrBar>.Get();
+        var dtrBar        = Service<DtrBar>.Get();
 
-        var order = configuration.DtrOrder!.Where(x => dtrBar.HasEntry(x)).ToList();
-        var ignore = configuration.DtrIgnore!.Where(x => dtrBar.HasEntry(x)).ToList();
-        var orderLeft = configuration.DtrOrder!.Where(x => !order.Contains(x)).ToList();
+        var order      = configuration.DtrOrder!.Where(dtrBar.HasEntry).ToList();
+        var ignore     = configuration.DtrIgnore!.Where(dtrBar.HasEntry).ToList();
+        var orderLeft  = configuration.DtrOrder!.Where(x => !order.Contains(x)).ToList();
         var ignoreLeft = configuration.DtrIgnore!.Where(x => !ignore.Contains(x)).ToList();
 
         if (order.Count == 0)
         {
-            ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, Loc.Localize("DalamudSettingServerInfoBarDidNone", "You have no plugins that use this feature."));
+            ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "暂无条目。");
         }
 
-        var isOrderChange = false;
-        Span<Vector2> upButtonCenters = stackalloc Vector2[order.Count];
-        Span<Vector2> downButtonCenters = stackalloc Vector2[order.Count];
-        scoped Span<Vector2> moveMouseTo = default;
-        var moveMouseToIndex = -1;
+        var                  isOrderChange     = false;
+        Span<Vector2>        upButtonCenters   = stackalloc Vector2[order.Count];
+        Span<Vector2>        downButtonCenters = stackalloc Vector2[order.Count];
+        scoped Span<Vector2> moveMouseTo       = default;
+        var                  moveMouseToIndex  = -1;
+
         for (var i = 0; i < order.Count; i++)
         {
             var title = order[i];
@@ -62,6 +60,7 @@ internal sealed class SettingsTabDtr : SettingsTab
             ImGui.PushFont(UiBuilder.IconFont);
 
             var arrowUpText = $"{FontAwesomeIcon.ArrowUp.ToIconString()}##{title}";
+
             if (i == 0)
             {
                 ImGuiComponents.DisabledButton(arrowUpText);
@@ -71,9 +70,9 @@ internal sealed class SettingsTabDtr : SettingsTab
                 if (ImGui.Button(arrowUpText))
                 {
                     (order[i], order[i - 1]) = (order[i - 1], order[i]);
-                    isOrderChange = true;
-                    moveMouseToIndex = i - 1;
-                    moveMouseTo = upButtonCenters;
+                    isOrderChange            = true;
+                    moveMouseToIndex         = i - 1;
+                    moveMouseTo              = upButtonCenters;
                 }
             }
 
@@ -82,6 +81,7 @@ internal sealed class SettingsTabDtr : SettingsTab
             ImGui.SameLine();
 
             var arrowDownText = $"{FontAwesomeIcon.ArrowDown.ToIconString()}##{title}";
+
             if (i == order.Count - 1)
             {
                 ImGuiComponents.DisabledButton(arrowDownText);
@@ -91,9 +91,9 @@ internal sealed class SettingsTabDtr : SettingsTab
                 if (ImGui.Button(arrowDownText) && i != order.Count - 1)
                 {
                     (order[i], order[i + 1]) = (order[i + 1], order[i]);
-                    isOrderChange = true;
-                    moveMouseToIndex = i + 1;
-                    moveMouseTo = downButtonCenters;
+                    isOrderChange            = true;
+                    moveMouseToIndex         = i + 1;
+                    moveMouseTo              = downButtonCenters;
                 }
             }
 
@@ -107,8 +107,9 @@ internal sealed class SettingsTabDtr : SettingsTab
             //     ImGui.Text($"Search in {name}");
             // } else {
 
-            var isShown = ignore.All(x => x != title);
+            var isShown    = ignore.All(x => x != title);
             var nextIsShow = isShown;
+
             if (ImGui.Checkbox($"{title}###dtrEntry{i}", ref nextIsShow) && nextIsShow != isShown)
             {
                 if (nextIsShow)
@@ -125,10 +126,10 @@ internal sealed class SettingsTabDtr : SettingsTab
         if (moveMouseToIndex >= 0 && moveMouseToIndex < moveMouseTo.Length)
         {
             ImGui.GetIO().WantSetMousePos = true;
-            ImGui.GetIO().MousePos = moveMouseTo[moveMouseToIndex];
+            ImGui.GetIO().MousePos        = moveMouseTo[moveMouseToIndex];
         }
 
-        configuration.DtrOrder = [.. order, .. orderLeft];
+        configuration.DtrOrder  = [.. order, .. orderLeft];
         configuration.DtrIgnore = [.. ignore, .. ignoreLeft];
 
         if (isOrderChange)
@@ -136,13 +137,15 @@ internal sealed class SettingsTabDtr : SettingsTab
 
         ImGuiHelpers.ScaledDummy(10);
 
-        ImGui.Text(Loc.Localize("DalamudSettingServerInfoBarSpacing", "Server Info Bar spacing"));
-        ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, Loc.Localize("DalamudSettingServerInfoBarSpacingHint", "Configure the amount of space between entries in the server info bar here."));
-        ImGui.SliderInt("Spacing"u8, ref this.dtrSpacing, 0, 40);
+        ImGui.Text("间距");
+        ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "调整“基本信息”界面中各条目之间的间距。");
+        ImGui.SliderInt("##Spacing"u8, ref this.dtrSpacing, 0, 40);
 
-        ImGui.Text(Loc.Localize("DalamudSettingServerInfoBarDirection", "Server Info Bar direction"));
-        ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, Loc.Localize("DalamudSettingServerInfoBarDirectionHint", "If checked, the Server Info Bar elements will expand to the right instead of the left."));
-        ImGui.Checkbox("Swap Direction"u8, ref this.dtrSwapDirection);
+        ImGui.NewLine();
+        
+        ImGui.Text("排列方向");
+        ImGui.TextColoredWrapped(ImGuiColors.DalamudGrey, "勾选后，“基本信息”界面中的条目将向右展开。");
+        ImGui.Checkbox("向右展开"u8, ref this.dtrSwapDirection);
 
         base.Draw();
     }
@@ -150,7 +153,7 @@ internal sealed class SettingsTabDtr : SettingsTab
     public override void OnClose()
     {
         var configuration = Service<DalamudConfiguration>.Get();
-        configuration.DtrOrder = this.dtrOrder;
+        configuration.DtrOrder  = this.dtrOrder;
         configuration.DtrIgnore = this.dtrIgnore;
 
         base.OnClose();
@@ -160,10 +163,10 @@ internal sealed class SettingsTabDtr : SettingsTab
     {
         var configuration = Service<DalamudConfiguration>.Get();
 
-        this.dtrSpacing = configuration.DtrSpacing;
+        this.dtrSpacing       = configuration.DtrSpacing;
         this.dtrSwapDirection = configuration.DtrSwapDirection;
 
-        this.dtrOrder = configuration.DtrOrder;
+        this.dtrOrder  = configuration.DtrOrder;
         this.dtrIgnore = configuration.DtrIgnore;
 
         base.Load();
@@ -173,10 +176,10 @@ internal sealed class SettingsTabDtr : SettingsTab
     {
         var configuration = Service<DalamudConfiguration>.Get();
 
-        configuration.DtrSpacing = this.dtrSpacing;
+        configuration.DtrSpacing       = this.dtrSpacing;
         configuration.DtrSwapDirection = this.dtrSwapDirection;
 
-        this.dtrOrder = configuration.DtrOrder;
+        this.dtrOrder  = configuration.DtrOrder;
         this.dtrIgnore = configuration.DtrIgnore;
 
         base.Save();
