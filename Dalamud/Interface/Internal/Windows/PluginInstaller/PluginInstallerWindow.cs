@@ -1,37 +1,11 @@
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.IO;
-using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using CheapLoc;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Configuration.Internal;
-using Dalamud.Console;
-using Dalamud.Game.Command;
-using Dalamud.Game.Player;
-using Dalamud.Interface.Animation.EasingFunctions;
-using Dalamud.Interface.Colors;
-using Dalamud.Interface.Components;
-using Dalamud.Interface.ImGuiNotification;
-using Dalamud.Interface.ImGuiNotification.Internal;
-using Dalamud.Interface.Textures.Internal;
-using Dalamud.Interface.Textures.TextureWraps;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Logging.Internal;
-using Dalamud.Plugin;
 using Dalamud.Plugin.Internal;
-using Dalamud.Plugin.Internal.Exceptions;
-using Dalamud.Plugin.Internal.Profiles;
-using Dalamud.Plugin.Internal.Types;
-using Dalamud.Plugin.Internal.Types.Manifest;
 using Dalamud.Support;
 using Dalamud.Utility;
 
@@ -61,6 +35,7 @@ internal partial class PluginInstallerWindow : Window, IDisposable
     /// </summary>
     /// <param name="imageCache">An instance of <see cref="PluginImageCache"/> class.</param>
     /// <param name="configuration">An instance of <see cref="DalamudConfiguration"/>.</param>
+    [SuppressMessage("ReSharper", "UnusedParameter.Local", Justification = "Preserves the existing constructor signature.")]
     public PluginInstallerWindow
     (
         PluginImageCache     imageCache,
@@ -77,7 +52,7 @@ internal partial class PluginInstallerWindow : Window, IDisposable
 
         this.SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = this.Size.Value,
+            MinimumSize = this.Size.Value
         };
 
         Service<PluginManager>.GetAsync().ContinueWith
@@ -184,14 +159,12 @@ internal partial class PluginInstallerWindow : Window, IDisposable
         _ = pluginManager.ReloadAllReposAsync(false);
         _ = pluginManager.ScanDevPluginsAsync();
 
-        this.adaptiveSort = true;
-
         if (!this.isSearchTextPrefilled)
         {
             this.ClearSearch();
         }
 
-        if (this.updateStatus == OperationStatus.Complete || this.updateStatus == OperationStatus.Idle)
+        if (this.updateStatus is OperationStatus.Complete or OperationStatus.Idle)
         {
             this.updateStatus      = OperationStatus.Idle;
             this.updatePluginCount = 0;
@@ -260,8 +233,5 @@ internal partial class PluginInstallerWindow : Window, IDisposable
     /// <summary>
     /// Clear the icon and image caches, forcing a fresh download.
     /// </summary>
-    public void ClearIconCache()
-    {
-        this.imageCache.ClearIconCache();
-    }
+    public void ClearIconCache() => this.imageCache.ClearIconCache();
 }

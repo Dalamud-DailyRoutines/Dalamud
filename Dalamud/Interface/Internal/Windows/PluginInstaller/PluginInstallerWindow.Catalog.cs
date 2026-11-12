@@ -48,15 +48,11 @@ internal partial class PluginInstallerWindow
 
     private PluginSortKind sortKind = PluginSortKind.Alphabetical;
 
-    private string filterText = "按字母顺序";
-
-    private bool adaptiveSort = true;
-
     private bool showInstalledPlugins = true;
 
     private bool showThirdPartyPlugins = true;
 
-    private bool showUnsupportedPlugins = true;
+    private bool showUnsupportedPlugins;
 
     private enum PluginSortKind
     {
@@ -65,8 +61,7 @@ internal partial class PluginInstallerWindow
         LastUpdate,
         NewOrNot,
         EnabledDisabled,
-        ProfileOrNot,
-        SearchScore
+        ProfileOrNot
     }
 
     private enum InstalledPluginListFilter
@@ -99,9 +94,7 @@ internal partial class PluginInstallerWindow
         {
             this.isSearchTextPrefilled = true;
             this.searchText            = text;
-            this.sortKind              = PluginSortKind.SearchScore;
-            this.filterText            = "搜索权重";
-            this.ResortPlugins();
+            this.ApplySearchChange();
         }
     }
 
@@ -119,21 +112,19 @@ internal partial class PluginInstallerWindow
     }
 
     /// <summary>
-    /// Clear the search text and reset all associated state (sort mode, category highlights, open collapsibles).
+    /// Clear the search text and refresh category highlights and list layout.
     /// </summary>
     private void ClearSearch()
     {
         this.searchText = string.Empty;
+        this.ApplySearchChange();
+    }
 
-        if (this.adaptiveSort || this.sortKind == PluginSortKind.SearchScore)
-        {
-            this.sortKind   = PluginSortKind.Alphabetical;
-            this.filterText = "按字母顺序";
-        }
-
-        this.ResortPlugins();
-
+    private void ApplySearchChange()
+    {
         this.UpdateCategoriesOnSearchChange();
+        this.openPluginCollapsibles.Clear();
+        this.pluginItemHeights.Clear();
     }
 
     private bool IsInstalledDevPluginsCategory()
@@ -146,7 +137,7 @@ internal partial class PluginInstallerWindow
             return false;
 
         var installedFilterActive = this.categoryManager.CurrentGroupKind != PluginCategoryManager.GroupKind.Installed && !this.showInstalledPlugins;
-        return installedFilterActive || !this.showThirdPartyPlugins || !this.showUnsupportedPlugins;
+        return installedFilterActive || !this.showThirdPartyPlugins || this.showUnsupportedPlugins;
     }
 
     private bool IsAvailablePluginProxyFiltered
@@ -390,10 +381,6 @@ internal partial class PluginInstallerWindow
                 var profman = Service<ProfileManager>.Get();
                 this.pluginListInstalled.Sort
                     ((p1, p2) => profman.IsInDefaultProfile(p1.EffectiveWorkingPluginId).CompareTo(profman.IsInDefaultProfile(p2.EffectiveWorkingPluginId)));
-                break;
-            case PluginSortKind.SearchScore:
-                this.pluginListAvailable = [.. this.pluginListAvailable.OrderByDescending(this.GetManifestSearchScore).ThenBy(m => m.Name)];
-                this.pluginListInstalled = [.. this.pluginListInstalled.OrderByDescending(p => this.GetManifestSearchScore(p.Manifest)).ThenBy(m => m.Name)];
                 break;
             default:
                 throw new InvalidEnumArgumentException("Unknown plugin sort type.");

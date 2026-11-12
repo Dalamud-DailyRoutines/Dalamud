@@ -20,6 +20,16 @@ namespace Dalamud.Interface.Internal.Windows.PluginInstaller;
 /// </summary>
 internal partial class PluginInstallerWindow
 {
+    private static readonly (string Label, PluginSortKind Kind)[] SortOptions =
+    [
+        ("名称", PluginSortKind.Alphabetical),
+        ("下载次数", PluginSortKind.DownloadCount),
+        ("最近更新", PluginSortKind.LastUpdate),
+        ("新插件优先", PluginSortKind.NewOrNot),
+        ("启用状态", PluginSortKind.EnabledDisabled),
+        ("在合集中", PluginSortKind.ProfileOrNot)
+    ];
+
     private void SetOpenPage
     (
         PluginInstallerOpenKind kind
@@ -64,172 +74,122 @@ internal partial class PluginInstallerWindow
 
     private void DrawHeader()
     {
-        var style      = ImGui.GetStyle();
-        var windowSize = ImGui.GetWindowContentRegionMax();
-
-        ImGui.SetCursorPosY(ImGui.GetCursorPosY() - (5 * ImGuiHelpers.GlobalScale));
-
-        var searchInputWidth       = 180 * ImGuiHelpers.GlobalScale;
-        var searchClearButtonWidth = 25  * ImGuiHelpers.GlobalScale;
-
-        const string SORT_BY_TEXT    = "排序方式";
-        var          sortByTextWidth = ImGui.CalcTextSize(SORT_BY_TEXT).X;
-        var sortSelectables = new (string Localization, PluginSortKind SortKind)[]
-        {
-            ("搜索权重", PluginSortKind.SearchScore),
-            ("按字母顺序", PluginSortKind.Alphabetical),
-            ("下载次数", PluginSortKind.DownloadCount),
-            ("最后更新", PluginSortKind.LastUpdate),
-            ("新插件优先", PluginSortKind.NewOrNot),
-            ("启用状态", PluginSortKind.EnabledDisabled),
-            ("在合集中", PluginSortKind.ProfileOrNot)
-        };
-        var          longestSelectableWidth = sortSelectables.Select(t => ImGui.CalcTextSize(t.Localization).X).Max();
-        var          selectableWidth        = longestSelectableWidth + (style.FramePadding.X * 2); // This does not include the label
-        var          sortSelectWidth        = selectableWidth + sortByTextWidth + style.ItemInnerSpacing.X; // Item spacing between the selectable and the label
-        var          filterButtonWidth      = ImGui.GetFrameHeight();
-        const string FILTER_POPUP_ID        = "###XlPluginInstaller_FilterPopup";
-
-        var headerText     = string.Empty;
-        var headerTextSize = ImGui.CalcTextSize(headerText);
-        ImGui.Text(headerText);
-
-        ImGui.SameLine();
-
-        // Shift down a little to align with the middle of the header text
-        var downShift = ImGui.GetCursorPosY() + (headerTextSize.Y / 4) - 2;
-        ImGui.SetCursorPosY(downShift);
-
-        var controlsStartX = windowSize.X - sortSelectWidth - filterButtonWidth - (style.ItemSpacing.X * 3) - searchInputWidth - searchClearButtonWidth;
-        ImGui.SetCursorPosX(controlsStartX);
-
+        var style = ImGui.GetStyle();
         var isProfileManager =
             this.categoryManager.CurrentGroupKind    == PluginCategoryManager.GroupKind.Installed &&
             this.categoryManager.CurrentCategoryKind == PluginCategoryManager.CategoryKind.PluginProfiles;
-        var disableHeaderListControls = this.categoryManager.CurrentGroupKind == PluginCategoryManager.GroupKind.Changelog || isProfileManager;
-        var filterPopupPosition       = Vector2.Zero;
+        var isChangelog         = this.categoryManager.CurrentGroupKind == PluginCategoryManager.GroupKind.Changelog;
+        var disableListControls = isChangelog || isProfileManager;
+        var availableWidth      = ImGui.GetContentRegionAvail().X;
+        var rowStartX           = ImGui.GetCursorPosX();
+        var buttonSize          = new Vector2(ImGui.GetFrameHeight());
+        var sortWidth = SortOptions.Max
+                            (option => ImGui.CalcTextSize(option.Label).X) +
+                        (style.FramePadding.X * 2)                         +
+                        ImGui.GetFrameHeight()                             +
+                        (24 * ImGuiHelpers.GlobalScale);
+        var searchWidth      = Math.Min(240 * ImGuiHelpers.GlobalScale, Math.Max(1, availableWidth - sortWidth - (buttonSize.X * 2) - (style.ItemSpacing.X * 3)));
+        var searchGroupWidth = searchWidth + (buttonSize.X * 2) + (style.ItemSpacing.X * 2);
 
-        using (ImRaii.Disabled(disableHeaderListControls))
+        using (ImRaii.Disabled(disableListControls))
         {
-            var filterButtonActive = ImGui.IsPopupOpen(FILTER_POPUP_ID) || this.HasActivePluginFilters();
-            var filterButtonColor  = ImGuiColors.SuccessBackground with { W = 0.25f };
+            this.DrawPluginSortSelector(sortWidth);
+        }
 
+        ImGui.SameLine(rowStartX + availableWidth - searchGroupWidth);
+
+        using (ImRaii.Disabled(disableListControls))
+        {
+            const string FILTER_POPUP_ID = "###XlPluginInstaller_FilterPopup";
+            var          filterActive    = this.HasActivePluginFilters();
             if (ImGuiComponents.IconButton
                 (
                     "###XlPluginInstaller_FilterToggle",
                     FontAwesomeIcon.Filter,
-                    filterButtonActive ?
-                        filterButtonColor :
+                    filterActive ?
+                        ImGuiColors.SuccessBackground with { W = 0.35f } :
                         null,
                     null,
                     null,
-                    new Vector2(filterButtonWidth / ImGuiHelpers.GlobalScale, 0)
+                    buttonSize / ImGuiHelpers.GlobalScale
                 ))
-            {
                 ImGui.OpenPopup(FILTER_POPUP_ID);
-            }
-
-            filterPopupPosition = ImGui.GetItemRectMin() + new Vector2(0, ImGui.GetItemRectSize().Y + style.ItemSpacing.Y);
 
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("筛选");
-        }
 
-        if (!disableHeaderListControls)
-        {
-            ImGui.SetNextWindowPos(filterPopupPosition, ImGuiCond.Appearing);
-            using var filterPopup = ImRaii.Popup(FILTER_POPUP_ID, ImGuiWindowFlags.AlwaysAutoResize);
-            if (filterPopup)
-                this.DrawPluginFilterPopup();
+            var popupPosition = ImGui.GetItemRectMin() + new Vector2(0, ImGui.GetItemRectSize().Y + style.ItemSpacing.Y);
+            ImGui.SetNextWindowPos(popupPosition, ImGuiCond.Appearing);
+
+            using (var filterPopup = ImRaii.Popup(FILTER_POPUP_ID, ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                if (filterPopup)
+                    this.DrawPluginFilterPopup();
+            }
         }
 
         ImGui.SameLine();
-        ImGui.SetCursorPosY(downShift);
 
-        // Disable search if profile editor
         using (ImRaii.Disabled(isProfileManager))
         {
-            var searchTextChanged = false;
-            ImGui.SetNextItemWidth(searchInputWidth);
-            searchTextChanged |= ImGui.InputTextWithHint
+            ImGui.SetNextItemWidth(searchWidth);
+            var searchChanged = ImGui.InputTextWithHint
             (
                 "###XlPluginInstaller_Search"u8,
-                "搜索",
+                isChangelog ?
+                    "搜索日志" :
+                    "搜索插件",
                 ref this.searchText,
-                100,
+                256,
                 ImGuiInputTextFlags.AutoSelectAll
             );
-
+            var clearSearch = ImGui.IsItemActive() && ImGui.IsKeyPressed(ImGuiKey.Escape);
             ImGui.SameLine();
-            ImGui.SetCursorPosY(downShift);
 
-            ImGui.SetNextItemWidth(searchClearButtonWidth);
-
-            if (ImGuiComponents.IconButton(FontAwesomeIcon.Times))
+            using (ImRaii.Disabled(this.searchText.Length == 0))
             {
+                clearSearch |= ImGuiComponents.IconButton("###XlPluginInstaller_ClearSearch", FontAwesomeIcon.Times, buttonSize / ImGuiHelpers.GlobalScale);
+            }
+
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("清空搜索");
+
+            if (clearSearch)
                 this.ClearSearch();
-            }
-
-            if (searchTextChanged)
-            {
-                if (this.adaptiveSort)
-                {
-                    if (string.IsNullOrWhiteSpace(this.searchText))
-                    {
-                        this.sortKind   = PluginSortKind.Alphabetical;
-                        this.filterText = "按字母顺序";
-                    }
-                    else
-                    {
-                        this.sortKind   = PluginSortKind.SearchScore;
-                        this.filterText = "搜索权重";
-                    }
-
-                    this.ResortPlugins();
-                }
-                else if (this.sortKind == PluginSortKind.SearchScore)
-                {
-                    this.ResortPlugins();
-                }
-
-                this.UpdateCategoriesOnSearchChange();
-            }
+            else if (searchChanged)
+                this.ApplySearchChange();
         }
 
-        // Disable sort if changelogs or profile editor
-        using (ImRaii.Disabled(disableHeaderListControls))
+        ImGui.Separator();
+    }
+
+    private void DrawPluginSortSelector(float width)
+    {
+        var sortLabel = SortOptions.First(option => option.Kind == this.sortKind).Label;
+        ImGui.SetNextItemWidth(width);
+        using var combo = ImRaii.Combo("###XlPluginInstaller_Sort", sortLabel);
+        if (!combo)
+            return;
+
+        var changed = false;
+
+        foreach (var option in SortOptions)
         {
-            ImGui.SameLine();
-            ImGui.SetCursorPosY(downShift);
-            ImGui.SetNextItemWidth(selectableWidth);
+            var selected = this.sortKind == option.Kind;
 
-            if (ImGui.BeginCombo(SORT_BY_TEXT, this.filterText, ImGuiComboFlags.NoArrowButton))
+            if (ImGui.Selectable(option.Label, selected))
             {
-                foreach (var selectable in sortSelectables)
-                {
-                    if (selectable.SortKind == PluginSortKind.SearchScore && string.IsNullOrWhiteSpace(this.searchText))
-                        continue;
-
-                    if (ImGui.Selectable(selectable.Localization))
-                    {
-                        this.sortKind     = selectable.SortKind;
-                        this.filterText   = selectable.Localization;
-                        this.adaptiveSort = false;
-
-                        using (this.listLock.EnterScope())
-                        {
-                            this.ResortPlugins();
-
-                            // Positions of plugins within the list is likely to change
-                            this.openPluginCollapsibles.Clear();
-                            this.pluginItemHeights.Clear();
-                        }
-                    }
-                }
-
-                ImGui.EndCombo();
+                this.sortKind = option.Kind;
+                changed       = true;
             }
         }
+
+        if (!changed)
+            return;
+
+        this.ResortPlugins();
+        this.openPluginCollapsibles.Clear();
+        this.pluginItemHeights.Clear();
     }
 
     private void DrawPluginFilterPopup()
@@ -247,7 +207,7 @@ internal partial class PluginInstallerWindow
 
         using (ImRaii.Disabled(installedFilterDisabled))
         {
-            if (ImGui.Checkbox($"已安装###XlPluginInstaller_FilterInstalled", ref includeInstalled) && !installedFilterDisabled)
+            if (ImGui.Checkbox("包含已安装插件###XlPluginInstaller_FilterInstalled", ref includeInstalled) && !installedFilterDisabled)
             {
                 this.showInstalledPlugins = includeInstalled;
                 filtersChanged            = true;
@@ -258,7 +218,7 @@ internal partial class PluginInstallerWindow
         {
             using (ImRaii.Disabled(isInstalledDevPluginsCategory))
             {
-                if (ImGui.Checkbox($"第三方###XlPluginInstaller_FilterThirdParty", ref includeThirdParty) && !isInstalledDevPluginsCategory)
+                if (ImGui.Checkbox("包含第三方插件###XlPluginInstaller_FilterThirdParty", ref includeThirdParty) && !isInstalledDevPluginsCategory)
                 {
                     this.showThirdPartyPlugins = includeThirdParty;
                     filtersChanged             = true;
@@ -268,15 +228,30 @@ internal partial class PluginInstallerWindow
 
         using (ImRaii.Disabled(isInstalledDevPluginsCategory))
         {
-            if (ImGui.Checkbox($"未兼容###XlPluginInstaller_FilterUnsupported", ref includeUnsupported) && !isInstalledDevPluginsCategory)
+            if (ImGui.Checkbox("包含未兼容插件###XlPluginInstaller_FilterUnsupported", ref includeUnsupported) && !isInstalledDevPluginsCategory)
             {
                 this.showUnsupportedPlugins = includeUnsupported;
                 filtersChanged              = true;
             }
         }
 
-        if (filtersChanged)
-            this.openPluginCollapsibles.Clear();
+        ImGui.Separator();
+
+        using (ImRaii.Disabled(!this.HasActivePluginFilters()))
+        {
+            if (ImGui.Button("重置筛选"))
+            {
+                this.showInstalledPlugins   = true;
+                this.showThirdPartyPlugins  = true;
+                this.showUnsupportedPlugins = false;
+                filtersChanged              = true;
+            }
+        }
+
+        if (!filtersChanged)
+            return;
+
+        this.openPluginCollapsibles.Clear();
         this.pluginItemHeights.Clear();
     }
 
