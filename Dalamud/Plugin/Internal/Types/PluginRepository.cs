@@ -35,7 +35,7 @@ internal class PluginRepository
     [
         with(StringComparer.OrdinalIgnoreCase),
         // AtmoOmen
-        "https://gh.atmoomen.top/raw.githubusercontent.com/AtmoOmen/DalamudPlugins/main/pluginmaster.json",
+        "https://raw.githubusercontent.com/AtmoOmen/DalamudPlugins/main/pluginmaster.json",
         // Nyy
         "https://gp.xuolu.com/love.json",
         // Siren
@@ -179,7 +179,7 @@ internal class PluginRepository
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"仓库数据获取失败：{this.PluginMasterUrl}");
+            Log.Error(ex, "仓库数据获取失败：{PluginMasterUrl}", this.PluginMasterUrl);
             this.State = PluginRepositoryState.Fail;
         }
     }
